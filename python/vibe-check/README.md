@@ -2,7 +2,7 @@
 
 Hey! This is a project built with [Stagehand](https://github.com/browserbase/stagehand).
 
-You can build your own web agent using: `https://docs.stagehand.dev/v2/first-steps/installation`!
+Check out our other Stagehand templates [here!](https://www.browserbase.com/templates)
 
 ## What is VibeCheck?
 
