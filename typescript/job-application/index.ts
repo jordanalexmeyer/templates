@@ -113,7 +113,7 @@ async function applyToJob(jobInfo: JobInfo, semaphore: () => Promise<void>, rele
         const fileInput = page.locator(uploadSelector);
 
         // Fetch resume from URL
-        const resumeUrl = "https://agent-job-board.vercel.app/resume";
+        const resumeUrl = "https://agent-job-board.vercel.app/Agent%20Resume.pdf";
         const response = await fetch(resumeUrl);
         if (!response.ok) {
           throw new Error(`Failed to fetch resume: ${response.statusText}`);
