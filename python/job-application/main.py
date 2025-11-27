@@ -1,3 +1,5 @@
+# Stagehand + Browserbase: Job Application Automation - See README.md for full documentation
+
 import os
 import asyncio
 import time
@@ -13,7 +15,8 @@ import httpx
 load_dotenv()
 
 
-# Define JobInfo schema with Pydantic
+# Define Pydantic schemas for structured data extraction
+# Using schemas ensures consistent data extraction even if page layout changes
 class JobInfo(BaseModel):
     url: HttpUrl = Field(..., description="Job URL")
     title: str = Field(..., description="Job title")
@@ -23,10 +26,16 @@ class JobsData(BaseModel):
     jobs: List[JobInfo]
 
 
-# Fetch project concurrency limit from Browserbase SDK (maxed at 5)
 async def get_project_concurrency() -> int:
+    """
+    Fetch project concurrency limit from Browserbase SDK.
+    
+    Retrieves the maximum concurrent sessions allowed for the project,
+    capped at 5.
+    """
     bb = Browserbase(api_key=os.environ.get("BROWSERBASE_API_KEY"))
 
+    # Use asyncio.to_thread to run synchronous SDK call in thread pool
     project = await asyncio.to_thread(
         bb.projects.retrieve,
         os.environ.get("BROWSERBASE_PROJECT_ID")
@@ -34,22 +43,37 @@ async def get_project_concurrency() -> int:
     return min(project.concurrency, 5)
 
 
-# Generate random email
 def generate_random_email() -> str:
+    """
+    Generate a random email address for form submission.
+
+    """
     random_string = ''.join(random.choices('abcdefghijklmnopqrstuvwxyz0123456789', k=8))
     return f"agent-{random_string}@example.com"
 
 
-# Generate unique agent identifier
 def generate_agent_id() -> str:
+    """
+    Generate a unique agent identifier for job applications.
+    
+    Combines timestamp and random string to ensure uniqueness across
+    multiple job applications and sessions.
+    """
     timestamp = int(time.time() * 1000)
     random_string = ''.join(random.choices('abcdefghijklmnopqrstuvwxyz0123456789', k=7))
     return f"agent-{timestamp}-{random_string}"
 
 
-# Apply to a single job
 async def apply_to_job(job_info: JobInfo, semaphore: asyncio.Semaphore):
+    """
+    Apply to a single job posting with automated form filling.
+    
+    Uses Stagehand to navigate to job page, fill out application form,
+    upload resume, and submit the application.
+    """
+    # Semaphore ensures we don't exceed project concurrency limits
     async with semaphore:
+        # Initialize Stagehand with Browserbase for cloud-based browser automation
         config = StagehandConfig(
             env="BROWSERBASE",
             api_key=os.environ.get("BROWSERBASE_API_KEY"),
@@ -59,9 +83,11 @@ async def apply_to_job(job_info: JobInfo, semaphore: asyncio.Semaphore):
         )
 
         try:
+            # Use async context manager for automatic resource management
             async with Stagehand(config) as stagehand:
                 print(f"[{job_info.title}] Session Started")
 
+                # Get session ID for live viewing/debugging
                 session_id = None
                 if hasattr(stagehand, 'session_id'):
                     session_id = stagehand.session_id
@@ -77,27 +103,27 @@ async def apply_to_job(job_info: JobInfo, semaphore: asyncio.Semaphore):
                 await page.goto(str(job_info.url))
                 print(f"[{job_info.title}] Navigated to job page")
 
-                # Click on the specific job
+                # Click on the specific job listing to open application form
                 await page.act(f"click on {job_info.title}")
                 print(f"[{job_info.title}] Clicked on job")
 
-                # Fill out the form
+                # Generate unique identifiers for this application
                 agent_id = generate_agent_id()
                 email = generate_random_email()
 
                 print(f"[{job_info.title}] Agent ID: {agent_id}")
                 print(f"[{job_info.title}] Email: {email}")
 
-                # Fill agent identifier
+                # Fill out application form fields using natural language actions
+                # Stagehand's act() method understands natural language instructions
                 await page.act(f"type '{agent_id}' into the agent identifier field")
 
-                # Fill contact endpoint
                 await page.act(f"type '{email}' into the contact endpoint field")
 
-                # Fill deployment region
                 await page.act(f"type 'us-west-2' into the deployment region field")
 
-                # Upload agent profile
+                # Upload agent profile/resume file
+                # Using observe() to find the upload button, then setting files programmatically
                 upload_actions = await page.observe("find the file upload button for agent profile")
                 if upload_actions and len(upload_actions) > 0:
                     upload_action = upload_actions[0]
@@ -105,7 +131,8 @@ async def apply_to_job(job_info: JobInfo, semaphore: asyncio.Semaphore):
                     if upload_selector:
                         file_input = page.locator(upload_selector)
 
-                        # Fetch resume from URL
+                        # Fetch resume PDF from remote URL
+                        # Using httpx to download the file before uploading
                         resume_url = "https://agent-job-board.vercel.app/Agent%20Resume.pdf"
                         async with httpx.AsyncClient() as client:
                             response = await client.get(resume_url)
@@ -113,6 +140,7 @@ async def apply_to_job(job_info: JobInfo, semaphore: asyncio.Semaphore):
                                 raise Exception(f"Failed to fetch resume: {response.status_code}")
                             resume_buffer = response.content
 
+                        # Upload file using Playwright's set_input_files with buffer
                         await file_input.set_input_files({
                             "name": "Agent Resume.pdf",
                             "mimeType": "application/pdf",
@@ -120,10 +148,10 @@ async def apply_to_job(job_info: JobInfo, semaphore: asyncio.Semaphore):
                         })
                         print(f"[{job_info.title}] Uploaded resume from {resume_url}")
 
-                # Select multi-region deployment
+                # Select multi-region deployment option
                 await page.act("select 'Yes' for multi region deployment")
 
-                # Submit the form
+                # Submit the application form
                 await page.act("click deploy agent button")
 
                 print(f"[{job_info.title}] Application submitted successfully!")
@@ -134,10 +162,21 @@ async def apply_to_job(job_info: JobInfo, semaphore: asyncio.Semaphore):
 
 
 async def main():
-    # Get project concurrency limit
+    """
+    Main application entry point.
+    
+    Orchestrates the job application process:
+    1. Fetches project concurrency limits
+    2. Scrapes job listings from the job board
+    3. Applies to all jobs in parallel with concurrency control
+    """
+    print("Starting Job Application Automation...")
+    
+    # Get project concurrency limit to control parallel execution
     max_concurrency = await get_project_concurrency()
     print(f"Executing with concurrency limit: {max_concurrency}")
 
+    # Initialize Stagehand with Browserbase for cloud-based browser automation
     config = StagehandConfig(
         env="BROWSERBASE",
         api_key=os.environ.get("BROWSERBASE_API_KEY"),
@@ -146,9 +185,11 @@ async def main():
         model_api_key=os.environ.get("GOOGLE_GENERATIVE_AI_API_KEY")
     )
 
+    # Use async context manager for automatic resource management
     async with Stagehand(config) as stagehand:
         print("Main Stagehand Session Started")
 
+        # Get session ID for live viewing/debugging
         session_id = None
         if hasattr(stagehand, 'session_id'):
             session_id = stagehand.session_id
@@ -160,15 +201,16 @@ async def main():
 
         page = stagehand.page
 
-        # Navigate to agent job board
+        # Navigate to agent job board homepage
         await page.goto("https://agent-job-board.vercel.app/")
         print("Navigated to agent-job-board.vercel.app")
 
-        # Click on "View Jobs" button
+        # Click on "View Jobs" button to access job listings
         await page.act("click on the view jobs button")
         print("Clicked on view jobs button")
 
-        # Extract all jobs with titles using extract
+        # Extract all job listings with titles and URLs using structured schema
+        # Using extract() with Pydantic schema ensures consistent data extraction
         jobs_result = await page.extract(
             "extract all job listings with their titles and URLs",
             schema=JobsData
@@ -177,14 +219,17 @@ async def main():
         jobs_data = jobs_result.jobs
         print(f"Found {len(jobs_data)} jobs")
 
-    # Create semaphore with concurrency limit
+    # Create semaphore with concurrency limit to control parallel job applications
+    # Semaphore ensures we don't exceed Browserbase project limits
     semaphore = asyncio.Semaphore(max_concurrency)
 
     # Apply to all jobs in parallel with concurrency control
+    # Using asyncio.gather() to run all applications concurrently
     print(f"Starting to apply to {len(jobs_data)} jobs with max concurrency of {max_concurrency}")
 
     application_tasks = [apply_to_job(job, semaphore) for job in jobs_data]
 
+    # Wait for all applications to complete
     await asyncio.gather(*application_tasks)
 
     print("All applications completed!")
