@@ -24,7 +24,7 @@ Your required API keys/environment variables are in the `.env.example` file. Cop
 cp .env.example .env && nano .env # Add your API keys to .env
 ```
 
-Quick note - in addition to your Browserbase keys, you'll only need the API key of the model provider you're using. For example, to use a google model you'll need a GEMINI_API_KEY.
+Quick note - in addition to your Browserbase keys, you'll only need the API key of the model providers you're using. For example, to use a google model and an open ai model you'll need a GEMINI_API_KEY and an OPENAI_API_KEY.
 
 ### Run your vibe check
 
