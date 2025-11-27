@@ -5,7 +5,7 @@ import os
 import json
 import asyncio
 from dotenv import load_dotenv
-from stagehand import Stagehand
+from stagehand import Stagehand, StagehandConfig
 from pydantic import BaseModel, Field
 
 # Load environment variables
@@ -69,12 +69,13 @@ async def main() -> None:
     # ============= INITIALIZE STAGEHAND =============
 
     print("\n🅱️  Initializing Stagehand...\n")
-    stagehand = Stagehand(
+    config = StagehandConfig(
         env="BROWSERBASE",
         api_key=os.environ["BROWSERBASE_API_KEY"],
         project_id=os.environ["BROWSERBASE_PROJECT_ID"],
-        model_name="google/gemini-2.5-flash",
-        model_api_key=os.environ["GEMINI_API_KEY"],
+        model_name="openai/gpt-4.1",
+        model_api_key=os.environ["OPENAI_API_KEY"],
+        disable_api=True,
         browserbase_session_create_params={
             "project_id": os.environ["BROWSERBASE_PROJECT_ID"],
             "browser_settings": {
@@ -87,6 +88,7 @@ async def main() -> None:
         },
     )
 
+    stagehand = Stagehand(config)
     await stagehand.init()
 
     print("\n🅱️  Browser initialized...\n")

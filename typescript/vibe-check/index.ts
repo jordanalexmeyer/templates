@@ -47,8 +47,9 @@ async function main(): Promise<void> {
   console.log("\n🅱️  Initializing Stagehand...\n");
   const stagehand = new Stagehand({
     env: "BROWSERBASE",
-    model: "google/gemini-2.5-flash",
-    // auto-loads GEMINI_API_KEY from environment
+    model: "openai/gpt-4.1",
+    // auto-loads OPENAI_API_KEY from environment
+    useAPI: false,
     browserbaseSessionCreateParams: {
       projectId: process.env.BROWSERBASE_PROJECT_ID!,
       browserSettings: {
@@ -123,8 +124,12 @@ async function main(): Promise<void> {
 
   console.log("\n🅱️  Using agent to score venues...\n");
   const agent = stagehand.agent({
-    model: "google/gemini-2.5-flash",
-    // auto-loads GEMINI_API_KEY from environment
+    cua: true,
+    // @ts-ignore
+    model: {
+      modelName: "google/gemini-2.5-computer-use-preview-10-2025",
+      apiKey: process.env.GEMINI_API_KEY,
+    },
   });
 
   const scoringInstruction = `
