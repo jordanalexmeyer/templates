@@ -1,11 +1,12 @@
 # Stagehand + Browserbase: Automated Nurse License Verification - See README.md for full documentation
 
-import os
 import asyncio
+import os
+
 from dotenv import load_dotenv
-from stagehand import Stagehand, StagehandConfig
 from pydantic import BaseModel, Field
-from typing import List
+
+from stagehand import Stagehand, StagehandConfig
 
 # Load environment variables
 load_dotenv()
@@ -13,6 +14,7 @@ load_dotenv()
 
 class LicenseRecord(BaseModel):
     """Single license verification record"""
+
     name: str = Field(..., description="the name of the license holder")
     license_number: str = Field(..., description="the license number")
     status: str = Field(..., description="the status of the license")
@@ -21,7 +23,10 @@ class LicenseRecord(BaseModel):
 
 class LicenseResults(BaseModel):
     """Collection of license verification results"""
-    list_of_licenses: List[LicenseRecord] = Field(..., description="array of license verification results")
+
+    list_of_licenses: list[LicenseRecord] = Field(
+        ..., description="array of license verification results"
+    )
 
 
 # License records to verify - add more records as needed
@@ -63,11 +68,11 @@ async def main():
 
             # Provide live session URL for debugging and monitoring
             session_id = None
-            if hasattr(stagehand, 'session_id'):
+            if hasattr(stagehand, "session_id"):
                 session_id = stagehand.session_id
-            elif hasattr(stagehand, 'browserbase_session_id'):
+            elif hasattr(stagehand, "browserbase_session_id"):
                 session_id = stagehand.browserbase_session_id
-            
+
             if session_id:
                 print(f"Watch live: https://browserbase.com/sessions/{session_id}")
 
@@ -75,20 +80,24 @@ async def main():
 
             # Process each license record sequentially
             for license_record in LICENSE_RECORDS:
-                print(f"Verifying license for: {license_record['FirstName']} {license_record['LastName']}")
+                print(
+                    f"Verifying license for: {license_record['FirstName']} {license_record['LastName']}"
+                )
 
                 # Navigate to license verification site
                 print(f"Navigating to: {license_record['Site']}")
-                await page.goto(license_record['Site'])
+                await page.goto(license_record["Site"])
                 await page.wait_for_load_state("domcontentloaded")
                 # Brief timeout to ensure form fields are interactive
                 await page.wait_for_timeout(1000)
 
                 # Fill in form fields with license information
                 print("Filling in license information...")
-                await page.act(f"Type \"{license_record['FirstName']}\" into the first name field")
-                await page.act(f"Type \"{license_record['LastName']}\" into the last name field")
-                await page.act(f"Type \"{license_record['LicenseNumber']}\" into the license number field")
+                await page.act(f'Type "{license_record["FirstName"]}" into the first name field')
+                await page.act(f'Type "{license_record["LastName"]}" into the last name field')
+                await page.act(
+                    f'Type "{license_record["LicenseNumber"]}" into the license number field'
+                )
 
                 # Submit search
                 print("Clicking search button...")
@@ -102,13 +111,14 @@ async def main():
                 print("Extracting license verification results...")
                 results = await page.extract(
                     "Extract ALL the license verification results from the page, including name, license number and status",
-                    schema=LicenseResults
+                    schema=LicenseResults,
                 )
 
                 print("License verification results extracted:")
-                
+
                 # Display results in formatted JSON
                 import json
+
                 print(json.dumps(results.model_dump(), indent=2))
 
         print("Session closed successfully")
@@ -132,4 +142,3 @@ if __name__ == "__main__":
     except Exception as err:
         print(f"Application error: {err}")
         exit(1)
-

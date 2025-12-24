@@ -1,13 +1,13 @@
 # Stagehand + Browserbase: Website Link Tester - See README.md for full documentation
 
-import os
 import asyncio
 import json
-from typing import List, Optional
+import os
 
 from dotenv import load_dotenv
-from stagehand import Stagehand, StagehandConfig
 from pydantic import BaseModel, Field, HttpUrl
+
+from stagehand import Stagehand, StagehandConfig
 
 # Load environment variables
 load_dotenv()
@@ -33,7 +33,7 @@ class ExtractedLink(BaseModel):
 class ExtractedLinks(BaseModel):
     """Collection of extracted links"""
 
-    links: List[ExtractedLink]
+    links: list[ExtractedLink]
 
 
 class LinkVerificationResult(BaseModel):
@@ -42,10 +42,10 @@ class LinkVerificationResult(BaseModel):
     link_text: str
     url: HttpUrl
     success: bool
-    page_title: Optional[str] = None
-    content_matches: Optional[bool] = None
-    assessment: Optional[str] = None
-    error: Optional[str] = None
+    page_title: str | None = None
+    content_matches: bool | None = None
+    assessment: str | None = None
+    error: str | None = None
 
 
 class PageVerificationSummary(BaseModel):
@@ -89,12 +89,12 @@ def create_stagehand() -> Stagehand:
     return Stagehand(config)
 
 
-def deduplicate_links(extracted_links: ExtractedLinks) -> List[ExtractedLink]:
+def deduplicate_links(extracted_links: ExtractedLinks) -> list[ExtractedLink]:
     """
     Removes duplicate links by URL while preserving the first occurrence.
     """
     seen_urls: set[str] = set()
-    unique_links: List[ExtractedLink] = []
+    unique_links: list[ExtractedLink] = []
 
     for link in extracted_links.links:
         url = str(link.url)
@@ -106,14 +106,14 @@ def deduplicate_links(extracted_links: ExtractedLinks) -> List[ExtractedLink]:
     return unique_links
 
 
-async def collect_links_from_homepage() -> List[ExtractedLink]:
+async def collect_links_from_homepage() -> list[ExtractedLink]:
     """
     Opens the homepage and uses Stagehand `extract()` to collect all links.
     Returns a de-duplicated list of link objects that we will later verify.
     """
     print("Collecting links from homepage...")
 
-    stagehand: Optional[Stagehand] = None
+    stagehand: Stagehand | None = None
 
     try:
         stagehand = create_stagehand()
@@ -147,7 +147,7 @@ async def collect_links_from_homepage() -> List[ExtractedLink]:
             )
             print(
                 json.dumps(
-                    {"links": [link.model_dump(mode='json') for link in unique_links]}, indent=2
+                    {"links": [link.model_dump(mode="json") for link in unique_links]}, indent=2
                 )
             )
 
@@ -167,7 +167,7 @@ async def verify_single_link(link: ExtractedLink) -> LinkVerificationResult:
     """
     print(f"\nChecking: {link.link_text} ({link.url})")
 
-    stagehand: Optional[Stagehand] = None
+    stagehand: Stagehand | None = None
 
     try:
         stagehand = create_stagehand()
@@ -199,9 +199,7 @@ async def verify_single_link(link: ExtractedLink) -> LinkVerificationResult:
 
             # For social links, we consider a successful load good enough
             if is_social_link:
-                print(
-                    f"[{link.link_text}] Social media link - skipping content verification"
-                )
+                print(f"[{link.link_text}] Social media link - skipping content verification")
                 return LinkVerificationResult(
                     link_text=link.link_text,
                     url=link.url,
@@ -248,8 +246,8 @@ async def verify_single_link(link: ExtractedLink) -> LinkVerificationResult:
 
 
 async def verify_links_in_batches(
-    links: List[ExtractedLink],
-) -> List[LinkVerificationResult]:
+    links: list[ExtractedLink],
+) -> list[LinkVerificationResult]:
     """
     Verifies all links in batches to avoid opening too many concurrent sessions.
     Returns a list of LinkVerificationResult objects for all processed links.
@@ -257,32 +255,24 @@ async def verify_links_in_batches(
     max_concurrent = max(1, MAX_CONCURRENT_LINKS)
     print(f"\nVerifying links in batches of {max_concurrent}...")
 
-    results: List[LinkVerificationResult] = []
+    results: list[LinkVerificationResult] = []
 
     for i in range(0, len(links), max_concurrent):
         batch = links[i : i + max_concurrent]
         batch_number = i // max_concurrent + 1
         total_batches = (len(links) + max_concurrent - 1) // max_concurrent
 
-        print(
-            f"\n=== Processing batch {batch_number}/{total_batches} ({len(batch)} links) ==="
-        )
+        print(f"\n=== Processing batch {batch_number}/{total_batches} ({len(batch)} links) ===")
 
-        batch_results = await asyncio.gather(
-            *[verify_single_link(link) for link in batch]
-        )
+        batch_results = await asyncio.gather(*[verify_single_link(link) for link in batch])
         results.extend(batch_results)
 
-        print(
-            f"\nBatch {batch_number}/{total_batches} complete ({len(results)} total verified)"
-        )
+        print(f"\nBatch {batch_number}/{total_batches} complete ({len(results)} total verified)")
 
     return results
 
 
-def output_results(
-    results: List[LinkVerificationResult], label: str = "FINAL RESULTS"
-) -> None:
+def output_results(results: list[LinkVerificationResult], label: str = "FINAL RESULTS") -> None:
     """
     Logs a JSON summary of all link verification results.
     Falls back to a brief textual summary if JSON serialization fails.
@@ -295,7 +285,7 @@ def output_results(
         "total_links": len(results),
         "successful": len([r for r in results if r.success]),
         "failed": len([r for r in results if not r.success]),
-        "results": [r.model_dump(mode='json') for r in results],
+        "results": [r.model_dump(mode="json") for r in results],
     }
 
     try:
@@ -319,7 +309,7 @@ async def main():
     """
     print("Starting Website Link Tester (Python)...")
 
-    results: List[LinkVerificationResult] = []
+    results: list[LinkVerificationResult] = []
 
     try:
         links = await collect_links_from_homepage()
@@ -337,14 +327,10 @@ async def main():
         print("\nError occurred during execution:", error)
 
         if results:
-            print(
-                f"\nOutputting partial results ({len(results)} links processed before error):"
-            )
+            print(f"\nOutputting partial results ({len(results)} links processed before error):")
             output_results(results, "PARTIAL RESULTS (Error Occurred)")
         else:
-            print(
-                "No results to output - error occurred before any links were verified"
-            )
+            print("No results to output - error occurred before any links were verified")
 
         raise
 

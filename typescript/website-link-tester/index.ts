@@ -78,9 +78,7 @@ async function collectLinksFromHomepage(): Promise<Link[]> {
     // Start a fresh browser session for link collection
     await stagehand.init();
 
-    console.log(
-      `Watch live: https://browserbase.com/sessions/${stagehand.browserbaseSessionId}`,
-    );
+    console.log(`Watch live: https://browserbase.com/sessions/${stagehand.browserbaseSessionId}`);
 
     const page = stagehand.context.pages()[0];
 
@@ -141,9 +139,7 @@ async function verifySingleLink(link: Link): Promise<LinkCheckResult> {
     const page = browser.context.pages()[0];
 
     // Detect if this is a social link (we treat those differently)
-    const isSocialLink = SOCIAL_DOMAINS.some((domain) =>
-      link.url.includes(domain)
-    );
+    const isSocialLink = SOCIAL_DOMAINS.some((domain) => link.url.includes(domain));
 
     await page.goto(link.url, { timeoutMs: 30000 });
     await page.waitForLoadState("domcontentloaded");
@@ -159,9 +155,7 @@ async function verifySingleLink(link: Link): Promise<LinkCheckResult> {
 
     // For social links, we consider a successful load good enough
     if (isSocialLink) {
-      console.log(
-        `[${link.linkText}] Social media link - skipping content verification`,
-      );
+      console.log(`[${link.linkText}] Social media link - skipping content verification`);
 
       return {
         linkText: link.linkText,
@@ -169,8 +163,7 @@ async function verifySingleLink(link: Link): Promise<LinkCheckResult> {
         success: true,
         pageTitle: "Social Media Link",
         contentMatches: true,
-        assessment:
-          "Social media link loaded successfully (content verification skipped)",
+        assessment: "Social media link loaded successfully (content verification skipped)",
       };
     }
 
@@ -186,9 +179,7 @@ async function verifySingleLink(link: Link): Promise<LinkCheckResult> {
 
     console.log(`[${link.linkText}] Page Title: ${verification.pageTitle}`);
     console.log(
-      `[${link.linkText}] Content Matches: ${
-        verification.contentMatches ? "YES" : "NO"
-      }`,
+      `[${link.linkText}] Content Matches: ${verification.contentMatches ? "YES" : "NO"}`,
     );
     console.log(`[${link.linkText}] Assessment: ${verification.assessment}`);
 
@@ -203,9 +194,7 @@ async function verifySingleLink(link: Link): Promise<LinkCheckResult> {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
-    console.error(
-      `Failed to verify link "${link.linkText}": ${errorMessage}`,
-    );
+    console.error(`Failed to verify link "${link.linkText}": ${errorMessage}`);
 
     // On failure, return a structured result capturing the error message
     return {
@@ -239,9 +228,7 @@ async function verifyLinksInBatches(links: Link[]): Promise<LinkCheckResult[]> {
       `\n=== Processing batch ${Math.floor(i / MAX_CONCURRENT_LINKS) + 1} (${batch.length} links) ===`,
     );
 
-    const batchResults = await Promise.all(
-      batch.map((link) => verifySingleLink(link)),
-    );
+    const batchResults = await Promise.all(batch.map((link) => verifySingleLink(link)));
 
     results.push(...batchResults);
 
@@ -261,14 +248,14 @@ function outputResults(results: LinkCheckResult[], label: string = "FINAL RESULT
   console.log("\n" + "=".repeat(80));
   console.log(label);
   console.log("=".repeat(80));
-  
+
   const finalReport = {
     totalLinks: results.length,
     successful: results.filter((r) => r.success).length,
     failed: results.filter((r) => !r.success).length,
     results,
   };
-  
+
   try {
     console.log(JSON.stringify(finalReport, null, 2));
   } catch (stringifyError) {
@@ -278,7 +265,7 @@ function outputResults(results: LinkCheckResult[], label: string = "FINAL RESULT
     console.log(`Successful: ${finalReport.successful}`);
     console.log(`Failed: ${finalReport.failed}`);
   }
-  
+
   console.log("\n" + "=".repeat(80));
 }
 
@@ -290,31 +277,31 @@ function outputResults(results: LinkCheckResult[], label: string = "FINAL RESULT
  */
 async function main() {
   console.log("Starting main function...");
-  
+
   let results: LinkCheckResult[] = [];
-  
+
   try {
     const links = await collectLinksFromHomepage();
     console.log(`Collected ${links.length} links, starting verification...`);
 
     results = await verifyLinksInBatches(links);
-    
+
     console.log("\n✓ All links verified!");
     console.log(`Results array length: ${results.length}`);
 
     outputResults(results);
-    
+
     console.log("Script completed successfully");
   } catch (error) {
     console.error("\nError occurred during execution:", error);
-    
+
     if (results.length > 0) {
       console.log(`\nOutputting partial results (${results.length} links processed before error):`);
       outputResults(results, "PARTIAL RESULTS (Error Occurred)");
     } else {
       console.log("No results to output - error occurred before any links were verified");
     }
-    
+
     throw error;
   }
 }

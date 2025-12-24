@@ -25,13 +25,13 @@ async function createSessionWithGeoLocation() {
     projectId: process.env.BROWSERBASE_PROJECT_ID!,
     proxies: [
       {
-        "type": "browserbase", // Use Browserbase's managed proxy infrastructure.
-        "geolocation": {
-          "city": "NEW_YORK", // Simulate traffic from New York for testing geo-specific content.
-          "state": "NY", // See https://docs.browserbase.com/features/proxies for more geolocation options.
-          "country": "US"
-        }
-      }
+        type: "browserbase", // Use Browserbase's managed proxy infrastructure.
+        geolocation: {
+          city: "NEW_YORK", // Simulate traffic from New York for testing geo-specific content.
+          state: "NY", // See https://docs.browserbase.com/features/proxies for more geolocation options.
+          country: "US",
+        },
+      },
     ],
   });
   return session;
@@ -43,20 +43,22 @@ async function createSessionWithCustomProxies() {
     projectId: process.env.BROWSERBASE_PROJECT_ID!,
     proxies: [
       {
-        "type": "external", // Connect to your own proxy server infrastructure.
-        "server": "http://...", // Your proxy server endpoint.
-        "username": "user", // Authentication credentials for proxy access.
-        "password": "pass",
-      }
-    ]
+        type: "external", // Connect to your own proxy server infrastructure.
+        server: "http://...", // Your proxy server endpoint.
+        username: "user", // Authentication credentials for proxy access.
+        password: "pass",
+      },
+    ],
   });
   return session;
 }
 
-
-async function testSession(sessionFunction: () => Promise<any>, sessionName: string) {
+async function testSession(
+  sessionFunction: () => Promise<{ id: string; connectUrl: string }>,
+  sessionName: string,
+) {
   console.log(`\n=== Testing ${sessionName} ===`);
-  
+
   // Create session with specific proxy configuration to test different routing scenarios.
   const session = await sessionFunction();
   console.log("Session URL: https://browserbase.com/sessions/" + session.id);
@@ -76,22 +78,24 @@ async function testSession(sessionFunction: () => Promise<any>, sessionName: str
   const stagehand = new Stagehand({
     env: "BROWSERBASE",
     verbose: 1,
-    // 0 = errors only, 1 = info, 2 = debug 
-    // (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.) 
+    // 0 = errors only, 1 = info, 2 = debug
+    // (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.)
     // https://docs.stagehand.dev/configuration/logging
     model: "openai/gpt-4.1",
     browserbaseSessionID: session.id, // Use the existing Browserbase session
   });
 
   try {
-    // Initialize Stagehand 
+    // Initialize Stagehand
     await stagehand.init();
 
     const stagehandPage = stagehand.context.pages()[0];
 
     // Navigate to IP info service to verify proxy location and IP address.
-    await stagehandPage.goto("https://ipinfo.io/json", { waitUntil: "domcontentloaded" });
-    
+    await stagehandPage.goto("https://ipinfo.io/json", {
+      waitUntil: "domcontentloaded",
+    });
+
     // Extract structured IP and location data using Stagehand and Zod schema
     const geoInfo = await stagehand.extract(
       "Extract all IP information and geolocation data from the JSON response",
@@ -102,10 +106,10 @@ async function testSession(sessionFunction: () => Promise<any>, sessionName: str
         country: z.string().optional().describe("The country code"),
         loc: z.string().optional().describe("The latitude and longitude coordinates"),
         timezone: z.string().optional().describe("The timezone"),
-        org: z.string().optional().describe("The organization or ISP"), 
+        org: z.string().optional().describe("The organization or ISP"),
         postal: z.string().optional().describe("The postal code"),
-        hostname: z.string().optional().describe("The hostname if available")
-      })
+        hostname: z.string().optional().describe("The hostname if available"),
+      }),
     );
 
     console.log("Geo Info:", JSON.stringify(geoInfo, null, 2));
@@ -124,10 +128,10 @@ async function testSession(sessionFunction: () => Promise<any>, sessionName: str
 async function main() {
   // Test 1: Built-in proxies - Verify default proxy rotation works and shows different IPs.
   await testSession(createSessionWithBuiltInProxies, "Built-in Proxies");
-  
+
   // Test 2: Geolocation proxies - Confirm traffic routes through specified location (New York).
   await testSession(createSessionWithGeoLocation, "Geolocation Proxies (New York)");
-  
+
   // Test 3: Custom external proxies - Enable if you have a custom proxy server set up.
   // await testSession(createSessionWithCustomProxies, "Custom External Proxies");
   console.log("\n=== All tests completed ===");

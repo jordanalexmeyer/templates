@@ -34,33 +34,24 @@ async function main() {
     console.log("Stagehand session started successfully");
 
     // Provide live session URL for debugging and monitoring
-    console.log(
-      `Watch live: https://browserbase.com/sessions/${stagehand.browserbaseSessionID}`,
-    );
+    console.log(`Watch live: https://browserbase.com/sessions/${stagehand.browserbaseSessionID}`);
 
     const page = stagehand.context.pages()[0];
 
     // Process each license record sequentially
     for (const LicenseRecord of LicenseRecords) {
-      console.log(
-        `Verifying license for: ${LicenseRecord.FirstName} ${LicenseRecord.LastName}`,
-      );
+      console.log(`Verifying license for: ${LicenseRecord.FirstName} ${LicenseRecord.LastName}`);
 
       // Navigate to license verification site
       console.log(`Navigating to: ${LicenseRecord.Site}`);
       await page.goto(LicenseRecord.Site);
       await page.waitForLoadState("domcontentloaded");
-  
 
       // Fill in form fields with license information
       console.log("Filling in license information...");
-      await stagehand.act(
-        `Type "${LicenseRecord.FirstName}" into the first name field`,
-      );
+      await stagehand.act(`Type "${LicenseRecord.FirstName}" into the first name field`);
       await stagehand.act(`Type "${LicenseRecord.LastName}" into the last name field`);
-      await stagehand.act(
-        `Type "${LicenseRecord.LicenseNumber}" into the license number field`,
-      );
+      await stagehand.act(`Type "${LicenseRecord.LicenseNumber}" into the license number field`);
 
       // Submit search
       console.log("Clicking search button...");

@@ -1,8 +1,10 @@
 # Stagehand + Browserbase: Computer Use Agent (CUA) Example - See README.md for full documentation
 
-import os
 import asyncio
+import os
+
 from dotenv import load_dotenv
+
 from stagehand import Stagehand, StagehandConfig
 
 # Load environment variables
@@ -26,29 +28,26 @@ instruction = """Search for the next visible solar eclipse in North America and 
 
 # ============================================================================
 
+
 async def main():
     print("Starting Computer Use Agent Example...")
-    
+
     # Initialize Stagehand with Browserbase for cloud-based browser automation.
     config = StagehandConfig(
         env="BROWSERBASE",
         api_key=os.environ.get("BROWSERBASE_API_KEY"),
         project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
-        model_api_key=os.environ.get("GOOGLE_API_KEY"),  # this is the model stagehand uses in act, observe, extract (not agent)
+        model_api_key=os.environ.get(
+            "GOOGLE_API_KEY"
+        ),  # this is the model stagehand uses in act, observe, extract (not agent)
         browserbase_session_create_params={
             "project_id": os.environ.get("BROWSERBASE_PROJECT_ID"),
             "proxies": True,  # Using proxies will give the agent a better chance of success - requires Developer Plan or higher, comment out if you don't have access
             "region": "us-west-2",
-            "browser_settings": {
-                "block_ads": True,
-                "viewport": {
-                    "width": 1288,
-                    "height": 711
-                }
-            }
+            "browser_settings": {"block_ads": True, "viewport": {"width": 1288, "height": 711}},
         },
-        verbose=1  # 0 = errors only, 1 = info, 2 = debug 
-        # (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.) 
+        verbose=1,  # 0 = errors only, 1 = info, 2 = debug
+        # (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.)
         # https://docs.stagehand.dev/configuration/logging
     )
 
@@ -62,9 +61,9 @@ async def main():
             # Navigate to search engine with extended timeout for slow-loading sites.
             print("Navigating to Google search...")
             await page.goto(
-                "https://www.google.com/", 
+                "https://www.google.com/",
                 wait_until="domcontentloaded",
-                timeout=60000  # Extended timeout for reliable page loading
+                timeout=60000,  # Extended timeout for reliable page loading
             )
 
             # Create agent with computer use capabilities for autonomous web browsing.
@@ -84,8 +83,8 @@ async def main():
             print("Executing instruction:", instruction)
             result = await agent.execute(
                 instruction=instruction,
-                max_steps=30, # The maximum number of steps the agent can take to complete the task
-                auto_screenshot=True
+                max_steps=30,  # The maximum number of steps the agent can take to complete the task
+                auto_screenshot=True,
             )
 
             if result.success == True:
@@ -93,12 +92,13 @@ async def main():
                 print("Result:", result)
             else:
                 print("Task failed or was incomplete")
-        
+
         print("Session closed successfully")
 
     except Exception as error:
         print(f"Error executing computer use agent: {error}")
         raise
+
 
 if __name__ == "__main__":
     try:

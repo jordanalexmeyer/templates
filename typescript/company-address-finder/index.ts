@@ -25,10 +25,10 @@ async function withRetry<T>(
   fn: () => Promise<T>,
   description: string,
   maxRetries: number = 3,
-  delayMs: number = 2000
+  delayMs: number = 2000,
 ): Promise<T> {
   let lastError: Error | null = null;
-  
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       return await fn();
@@ -36,11 +36,11 @@ async function withRetry<T>(
       lastError = error instanceof Error ? error : new Error(String(error));
       if (attempt < maxRetries) {
         console.log(`${description} - Attempt ${attempt} failed, retrying in ${delayMs}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delayMs));
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
     }
   }
-  
+
   throw new Error(`${description} - Failed after ${maxRetries} attempts: ${lastError?.message}`);
 }
 
@@ -49,9 +49,9 @@ async function withRetry<T>(
 // Falls back to Privacy Policy if address not found in Terms of Service
 async function processCompany(companyName: string): Promise<CompanyData> {
   console.log(`\nProcessing: ${companyName}`);
-  
+
   let stagehand: Stagehand | null = null;
-  
+
   try {
     // Initialize Stagehand with Browserbase
     stagehand = new Stagehand({
@@ -75,25 +75,22 @@ async function processCompany(companyName: string): Promise<CompanyData> {
     console.log(`[${companyName}] Initializing browser session...`);
     await stagehand.init();
     const sessionId = stagehand.browserbaseSessionId;
-    
+
     if (!sessionId) {
       throw new Error(`Failed to initialize browser session for ${companyName}`);
     }
-    
+
     console.log(`[${companyName}] Live View Link: https://browserbase.com/sessions/${sessionId}`);
 
     const page = stagehand.context.pages()[0];
 
     // Navigate to Google as starting point for CUA agent to search and find company homepage
     console.log(`[${companyName}] Navigating to Google...`);
-    await withRetry(
-      async () => {
-        await page.goto("https://www.google.com/", {
-          waitUntil: "domcontentloaded",
-        });
-      },
-      `[${companyName}] Initial navigation to Google`
-    );
+    await withRetry(async () => {
+      await page.goto("https://www.google.com/", {
+        waitUntil: "domcontentloaded",
+      });
+    }, `[${companyName}] Initial navigation to Google`);
 
     // Create CUA agent for autonomous navigation
     // Agent can interact with the browser like a human: search, click, scroll, and navigate
@@ -109,16 +106,13 @@ async function processCompany(companyName: string): Promise<CompanyData> {
     });
 
     console.log(`[${companyName}] Finding company homepage using CUA agent...`);
-    await withRetry(
-      async () => {
-        await agent.execute({
-          instruction: `Navigate to the ${companyName} website`,
-          maxSteps: 5,
-          highlightCursor: true,
-        });
-      },
-      `[${companyName}] Navigation to website`
-    );
+    await withRetry(async () => {
+      await agent.execute({
+        instruction: `Navigate to the ${companyName} website`,
+        maxSteps: 5,
+        highlightCursor: true,
+      });
+    }, `[${companyName}] Navigation to website`);
 
     const homepageUrl = page.url();
     console.log(`[${companyName}] Homepage found: ${homepageUrl}`);
@@ -130,13 +124,13 @@ async function processCompany(companyName: string): Promise<CompanyData> {
         "extract the link to the Terms of Service page (may also be labeled as Terms of Use, Terms and Conditions, or similar equivalent names)",
         z.object({
           termsOfServiceLink: z.string().url(),
-        })
+        }),
       ),
       stagehand.extract(
         "extract the link to the Privacy Policy page (may also be labeled as Privacy Notice, Privacy Statement, or similar equivalent names)",
         z.object({
           privacyPolicyLink: z.string().url(),
-        })
+        }),
       ),
     ]);
 
@@ -158,19 +152,16 @@ async function processCompany(companyName: string): Promise<CompanyData> {
     // Try Terms of Service first - most likely to contain physical address for legal/contact purposes
     if (termsOfServiceLink) {
       console.log(`[${companyName}] Extracting address from Terms of Service...`);
-      await withRetry(
-        async () => {
-          await page.goto(termsOfServiceLink);
-        },
-        `[${companyName}] Navigate to Terms of Service`
-      );
+      await withRetry(async () => {
+        await page.goto(termsOfServiceLink);
+      }, `[${companyName}] Navigate to Terms of Service`);
 
       try {
         const addressResult = await stagehand.extract(
           "Extract the physical company mailing address (street, city, state, postal code, and country if present) from the Terms of Service page. Ignore phone numbers or email addresses.",
           z.object({
             companyAddress: z.string(),
-          })
+          }),
         );
 
         const companyAddress = addressResult.companyAddress || "";
@@ -179,26 +170,25 @@ async function processCompany(companyName: string): Promise<CompanyData> {
           console.log(`[${companyName}] Address found in Terms of Service: ${address}`);
         }
       } catch (error) {
-        console.log(`[${companyName}] Could not extract address from Terms of Service page`);
+        console.log(`[${companyName}] Could not extract address from Terms of Service page: ${error}`);
       }
     }
 
     // Fallback: check Privacy Policy if address not found in Terms of Service
     if (!address && privacyPolicyLink) {
-      console.log(`[${companyName}] Address not found in Terms of Service, trying Privacy Policy...`);
-      await withRetry(
-        async () => {
-          await page.goto(privacyPolicyLink);
-        },
-        `[${companyName}] Navigate to Privacy Policy`
+      console.log(
+        `[${companyName}] Address not found in Terms of Service, trying Privacy Policy...`,
       );
+      await withRetry(async () => {
+        await page.goto(privacyPolicyLink);
+      }, `[${companyName}] Navigate to Privacy Policy`);
 
       try {
         const addressResult = await stagehand.extract(
           "Extract the physical company mailing  address(street, city, state, postal code, and country if present) from the Privacy Policy page. Ignore phone numbers or email addresses.",
           z.object({
             companyAddress: z.string(),
-          })
+          }),
         );
 
         const companyAddress = addressResult.companyAddress || "";
@@ -207,7 +197,7 @@ async function processCompany(companyName: string): Promise<CompanyData> {
           console.log(`[${companyName}] Address found in Privacy Policy: ${address}`);
         }
       } catch (error) {
-        console.log(`[${companyName}] Could not extract address from Privacy Policy page`);
+        console.log(`[${companyName}] Could not extract address from Privacy Policy page: ${error}`);
       }
     }
 
@@ -226,10 +216,9 @@ async function processCompany(companyName: string): Promise<CompanyData> {
 
     console.log(`[${companyName}] Successfully processed`);
     return result;
-
   } catch (error) {
     console.error(`[${companyName}] Error:`, error);
-    
+
     return {
       companyName,
       homepageUrl: "",
@@ -260,7 +249,9 @@ async function main(): Promise<void> {
 
   const companyCount = companyNames.length;
   const isSequential = maxConcurrent === 1;
-  console.log(`\nProcessing ${companyCount} ${companyCount === 1 ? 'company' : 'companies'} ${isSequential ? 'sequentially' : `concurrently (batch size: ${maxConcurrent})`}...`);
+  console.log(
+    `\nProcessing ${companyCount} ${companyCount === 1 ? "company" : "companies"} ${isSequential ? "sequentially" : `concurrently (batch size: ${maxConcurrent})`}...`,
+  );
 
   const allResults: CompanyData[] = [];
 
@@ -282,8 +273,10 @@ async function main(): Promise<void> {
       const batchPromises = batch.map((companyName) => processCompany(companyName));
       const batchResults = await Promise.all(batchPromises);
       allResults.push(...batchResults);
-      
-      console.log(`Batch ${batchNumber}/${totalBatches} completed: ${batchResults.length} companies processed`);
+
+      console.log(
+        `Batch ${batchNumber}/${totalBatches} completed: ${batchResults.length} companies processed`,
+      );
     }
   }
 
