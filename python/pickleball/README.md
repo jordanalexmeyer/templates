@@ -24,13 +24,12 @@
 
 1. Create an account with SF Recreation & Parks website -> https://www.rec.us/organizations/san-francisco-rec-park
 2. cd pickleball-template
-3. python -m venv venv
+3. uv venv venv
 4. source venv/bin/activate # On Windows: venv\Scripts\activate
 5. pip install -r requirements.txt
 6. pip install InquirerPy pydantic
-7. cp .env.example .env
-8. Add your Browserbase API key, Project ID, and SF Rec Park credentials to .env
-9. python main.py
+7. cp .env.example .env # Add your Browserbase API key, Project ID, and SF Rec Park credentials to .env
+8. python main.py
 
 ## EXPECTED OUTPUT
 
@@ -81,3 +80,4 @@
 💡 Try it out: https://www.browserbase.com/playground
 🔧 Templates: https://www.browserbase.com/templates
 📧 Need help? support@browserbase.com
+💬 Discord: http://stagehand.dev/discord

@@ -19,12 +19,11 @@
 ## QUICKSTART
 
 1.  cd form-fill-template
-2.  python -m venv venv
+2.  uv venv venv
 3.  source venv/bin/activate # On Windows: venv\Scripts\activate
 4.  pip install -r requirements.txt
-5.  cp .env.example .env
-6.  Add your Browserbase API key and Project ID to .env
-7.  python main.py
+5.  cp .env.example .env # Add your Browserbase API key and Project ID to .env
+6.  python main.py
 
 ## EXPECTED OUTPUT
 
@@ -63,3 +62,4 @@
 💡 Try it out: https://www.browserbase.com/playground
 🔧 Templates: https://www.browserbase.com/templates
 📧 Need help? support@browserbase.com
+💬 Discord: http://stagehand.dev/discord

@@ -59,6 +59,7 @@ A comprehensive collection of ready-to-use automation templates demonstrating th
 ### Support
 
 - **Community**: Join our Discord community
+- **Discord**: http://stagehand.dev/discord
 - **Email Support**: support@browserbase.com
 - **GitHub Issues**: Report bugs and request features
 

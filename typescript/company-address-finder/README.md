@@ -71,3 +71,4 @@
 💡 Try it out: https://www.browserbase.com/playground
 🔧 Templates: https://www.browserbase.com/templates
 📧 Need help? support@browserbase.com
+💬 Discord: http://stagehand.dev/discord

@@ -22,12 +22,11 @@
 
 ## QUICKSTART
 
-1. python -m venv venv
+1. uv venv venv
 2. source venv/bin/activate # On Windows: venv\Scripts\activate
 3. uvx install stagehand browserbase pydantic python-dotenv httpx
-4. cp .env.example .env
-5. Add required API keys/IDs to .env (BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID, GOOGLE_GENERATIVE_AI_API_KEY)
-6. python main.py
+4. cp .env.example .env # Add required API keys/IDs to .env (BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID, GOOGLE_GENERATIVE_AI_API_KEY)
+5. python main.py
 
 ## EXPECTED OUTPUT
 
@@ -87,3 +86,4 @@
 💡 Try it out: https://www.browserbase.com/playground
 🔧 Templates: https://www.browserbase.com/templates
 📧 Need help? support@browserbase.com
+💬 Discord: http://stagehand.dev/discord

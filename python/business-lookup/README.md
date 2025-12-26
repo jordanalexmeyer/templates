@@ -16,12 +16,11 @@
 
 ## QUICKSTART
 
-1. python -m venv venv
+1. uv venv venv
 2. source venv/bin/activate # On Windows: venv\Scripts\activate
 3. uvx install stagehand python-dotenv pydantic
-4. cp .env.example .env
-5. Add required API keys/IDs to .env
-6. python main.py
+4. cp .env.example .env # Add required API keys/IDs to .env
+5. python main.py
 
 ## EXPECTED OUTPUT
 
@@ -62,3 +61,4 @@
 💡 Try it out: https://www.browserbase.com/playground
 🔧 Templates: https://www.browserbase.com/templates
 📧 Need help? support@browserbase.com
+💬 Discord: http://stagehand.dev/discord

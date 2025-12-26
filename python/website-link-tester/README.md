@@ -22,7 +22,7 @@
 1. **cd into the template**
    - `cd python/website-link-tester`
 2. **Create & activate a virtual environment (optional but recommended)**
-   - `python -m venv venv`
+   - `uv venv venv`
    - `source venv/bin/activate` (macOS/Linux)  
      `venv\Scripts\activate` (Windows)
 3. **Install dependencies with uvx**
@@ -107,3 +107,4 @@
 - 💡 **Try it out**: `https://www.browserbase.com/playground`
 - 🔧 **Templates**: `https://www.browserbase.com/templates`
 - 📧 **Need help?**: `support@browserbase.com`
+- 💬 **Discord**: `http://stagehand.dev/discord`

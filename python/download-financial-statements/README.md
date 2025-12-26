@@ -19,9 +19,8 @@
 ## QUICKSTART
 
 1.  cd python/download-financial-statements
-2.  cp .env.example .env
-3.  Add your Browserbase API key and Project ID to .env
-4.  uvx --with browserbase --with python-dotenv stagehand main.py
+2.  cp .env.example .env # Add your Browserbase API key and Project ID to .env
+3.  uvx --with browserbase --with python-dotenv stagehand main.py
 
 ## EXPECTED OUTPUT
 
@@ -60,3 +59,4 @@
 💡 Try it out: https://www.browserbase.com/playground
 🔧 Templates: https://www.browserbase.com/templates
 📧 Need help? support@browserbase.com
+💬 Discord: http://stagehand.dev/discord

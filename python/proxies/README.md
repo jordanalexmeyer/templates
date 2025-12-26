@@ -12,14 +12,13 @@
 ## QUICKSTART
 
 1.  cd proxies-template
-2.  python -m venv venv
+2.  uv venv venv
 3.  source venv/bin/activate # On Windows: venv\Scripts\activate
 4.  pip install -r requirements.txt
 5.  pip install browserbase playwright
 6.  playwright install chromium
-7.  cp .env.example .env
-8.  Add your Browserbase API key and Project ID to .env
-9.  python main.py
+7.  cp .env.example .env # Add your Browserbase API key and Project ID to .env
+8.  python main.py
 
 ## EXPECTED OUTPUT
 
@@ -57,3 +56,4 @@
 💡 Try it out: https://www.browserbase.com/playground
 🔧 Templates: https://www.browserbase.com/templates
 📧 Need help? support@browserbase.com
+💬 Discord: http://stagehand.dev/discord

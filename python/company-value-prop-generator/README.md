@@ -18,9 +18,8 @@
 
 1. cd python/company-value-prop-generator
 2. pip install python-dotenv stagehand openai pydantic
-3. cp .env.example .env
-4. Add required API keys/IDs to .env
-5. python main.py
+3. cp .env.example .env # Add required API keys/IDs to .env
+4. python main.py
 
 ## EXPECTED OUTPUT
 
@@ -63,3 +62,4 @@
 🎮 Browserbase: https://www.browserbase.com
 💡 Templates: https://www.browserbase.com/templates
 📧 Need help? support@browserbase.com
+💬 Discord: http://stagehand.dev/discord

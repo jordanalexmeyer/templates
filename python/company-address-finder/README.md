@@ -23,13 +23,12 @@
 
 ## QUICKSTART
 
-1. python -m venv venv
+1. uv venv venv
 2. source venv/bin/activate # On Windows: venv\Scripts\activate
 3. uvx install stagehand python-dotenv pydantic
-4. cp .env.example .env
-5. Add your Browserbase API key, Project ID, and Google Generative AI API key to .env
-6. Edit COMPANY_NAMES array in main.py to specify which companies to process
-7. python main.py
+4. cp .env.example .env # Add your Browserbase API key, Project ID, and Google Generative AI API key to .env
+5. Edit COMPANY_NAMES array in main.py to specify which companies to process
+6. python main.py
 
 ## EXPECTED OUTPUT
 
@@ -72,3 +71,4 @@
 💡 Try it out: https://www.browserbase.com/playground
 🔧 Templates: https://www.browserbase.com/templates
 📧 Need help? support@browserbase.com
+💬 Discord: http://stagehand.dev/discord
