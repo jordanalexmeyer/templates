@@ -1,12 +1,13 @@
 # Stagehand + Browserbase: AI-Powered Gift Finder - See README.md for full documentation
 
-import os
 import asyncio
-from typing import List, Optional
+import os
+
 from dotenv import load_dotenv
-from stagehand import Stagehand, StagehandConfig
 from openai import OpenAI
 from pydantic import BaseModel, Field, HttpUrl
+
+from stagehand import Stagehand, StagehandConfig
 
 # Load environment variables
 load_dotenv()
@@ -30,23 +31,23 @@ class Product(BaseModel):
     url: str
     price: str
     rating: str
-    ai_score: Optional[int] = None
-    ai_reason: Optional[str] = None
+    ai_score: int | None = None
+    ai_reason: str | None = None
 
 
 class SearchResult(BaseModel):
     query: str
     session_index: int
-    products: List[Product]
+    products: list[Product]
 
 
 client = OpenAI()
 
 
-async def generate_search_queries(recipient: str, description: str) -> List[str]:
+async def generate_search_queries(recipient: str, description: str) -> list[str]:
     """
     Generate intelligent search queries based on recipient profile.
-    
+
     Uses AI to create thoughtful, complementary gift search terms that go beyond
     obvious basics to find unique and meaningful gifts.
     """
@@ -60,7 +61,7 @@ async def generate_search_queries(recipient: str, description: str) -> List[str]
         messages=[
             {
                 "role": "user",
-                "content": f"""Generate exactly 3 short gift search queries (1-2 words each) for finding gifts for a {recipient.lower()} who is described as: "{description}". 
+                "content": f"""Generate exactly 3 short gift search queries (1-2 words each) for finding gifts for a {recipient.lower()} who is described as: "{description}".
 
 IMPORTANT: Assume they already have the basic necessities related to their interests. Focus on:
 - Complementary items that enhance their hobbies
@@ -89,13 +90,13 @@ Return ONLY the search terms, one per line, no dashes, bullets, or numbers. Just
 
 
 async def score_products(
-    products: List[Product],
+    products: list[Product],
     recipient: str,
     description: str,
-) -> List[Product]:
+) -> list[Product]:
     """
     Score and rank products based on recipient profile using AI.
-    
+
     Analyzes each product against the recipient's interests, relationship context,
     value, uniqueness, and practical usefulness to find the best gift matches.
     """
@@ -109,10 +110,12 @@ async def score_products(
         return []
 
     # Format products for AI analysis with index numbers for reference
-    product_list = "\n".join([
-        f"{index + 1}. {product.title} - {product.price} - {product.rating}"
-        for index, product in enumerate(all_products)
-    ])
+    product_list = "\n".join(
+        [
+            f"{index + 1}. {product.title} - {product.price} - {product.rating}"
+            for index, product in enumerate(all_products)
+        ]
+    )
 
     print(f"Scoring {len(all_products)} products...")
 
@@ -151,7 +154,7 @@ Return ONLY a valid JSON array (no markdown, no code blocks) with this exact for
   }}
 ]
 
-IMPORTANT: 
+IMPORTANT:
 - Return raw JSON only, no code blocks
 - Include all {len(all_products)} products
 - Keep reasons under 100 characters
@@ -163,12 +166,22 @@ IMPORTANT:
 
     try:
         # Clean up AI response by removing markdown code blocks
-        response_content = response.choices[0].message.content.strip() if response.choices[0].message.content else "[]"
+        response_content = (
+            response.choices[0].message.content.strip()
+            if response.choices[0].message.content
+            else "[]"
+        )
 
-        response_content = response_content.replace("```json\n", "").replace("```json", "").replace("```\n", "").replace("```", "")
+        response_content = (
+            response_content.replace("```json\n", "")
+            .replace("```json", "")
+            .replace("```\n", "")
+            .replace("```", "")
+        )
 
         # Parse JSON response from AI scoring
         import json
+
         scores_data = json.loads(response_content)
 
         # Map AI scores back to products using index matching
@@ -176,7 +189,11 @@ IMPORTANT:
         for index, product in enumerate(all_products):
             score_info = next((s for s in scores_data if s.get("productIndex") == index + 1), None)
             product.ai_score = score_info.get("score", 0) if score_info else 0
-            product.ai_reason = score_info.get("reason", "No scoring available") if score_info else "No scoring available"
+            product.ai_reason = (
+                score_info.get("reason", "No scoring available")
+                if score_info
+                else "No scoring available"
+            )
             scored_products.append(product)
 
         # Sort by AI score descending to show best matches first
@@ -197,7 +214,7 @@ IMPORTANT:
 async def get_user_input() -> GiftFinderAnswers:
     """
     Collect user input for gift recipient and description.
-    
+
     Uses the CONFIG dictionary at the top of the file for configuration.
     """
     print("Welcome to the Gift Finder App!")
@@ -207,18 +224,17 @@ async def get_user_input() -> GiftFinderAnswers:
 
     # Validate description length
     if len(CONFIG["description"].strip()) < 5:
-        raise ValueError("Description must be at least 5 characters long. Please update the CONFIG at the top of the file.")
+        raise ValueError(
+            "Description must be at least 5 characters long. Please update the CONFIG at the top of the file."
+        )
 
-    return GiftFinderAnswers(
-        recipient=CONFIG["recipient"],
-        description=CONFIG["description"]
-    )
+    return GiftFinderAnswers(recipient=CONFIG["recipient"], description=CONFIG["description"])
 
 
 async def main() -> None:
     """
     Main application entry point.
-    
+
     Orchestrates the entire gift finding process:
     1. Collects user input
     2. Generates intelligent search queries
@@ -241,7 +257,7 @@ async def main() -> None:
 
         print("\nGenerated Search Queries:")
         for index, query in enumerate(search_queries):
-            cleaned_query = query.replace('"', '').replace("'", '')
+            cleaned_query = query.replace('"', "").replace("'", "")
             print(f"   {index + 1}. {cleaned_query}")
     except Exception as error:
         print(f"Error generating search queries: {error}")
@@ -253,7 +269,7 @@ async def main() -> None:
     print("\nStarting concurrent browser searches...")
 
     async def run_single_search(query: str, session_index: int) -> SearchResult:
-        print(f"Starting search session {session_index + 1} for: \"{query}\"")
+        print(f'Starting search session {session_index + 1} for: "{query}"')
 
         # Create separate Stagehand instance for each search to run concurrently
         # Each session searches independently to maximize speed and parallel processing
@@ -262,7 +278,7 @@ async def main() -> None:
             api_key=os.environ.get("BROWSERBASE_API_KEY"),
             project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
             verbose=1,  # Silent logging to avoid cluttering output
-            # Logging levels: 0 = errors only, 1 = info, 2 = debug 
+            # Logging levels: 0 = errors only, 1 = info, 2 = debug
             # When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs
             # https://docs.stagehand.dev/configuration/logging
             model_name="openai/gpt-4.1",
@@ -286,8 +302,8 @@ async def main() -> None:
                         "width": 1920,
                         "height": 1080,
                     }
-                }
-            }
+                },
+            },
         )
 
         try:
@@ -297,11 +313,11 @@ async def main() -> None:
 
                 # Display live view URL for debugging and monitoring
                 session_id = None
-                if hasattr(session_stagehand, 'session_id'):
+                if hasattr(session_stagehand, "session_id"):
                     session_id = session_stagehand.session_id
-                elif hasattr(session_stagehand, 'browserbase_session_id'):
+                elif hasattr(session_stagehand, "browserbase_session_id"):
                     session_id = session_stagehand.browserbase_session_id
-                
+
                 if session_id:
                     live_view_url = f"https://www.browserbase.com/sessions/{session_id}"
                     print(f"Session {session_index + 1} Live View: {live_view_url}")
@@ -311,60 +327,57 @@ async def main() -> None:
                 await session_page.goto("https://firebox.eu/")
 
                 # Perform search using natural language actions
-                print(f"Session {session_index + 1}: Searching for \"{query}\"...")
+                print(f'Session {session_index + 1}: Searching for "{query}"...')
                 await session_page.act(f"Type {query} into the search bar")
                 await session_page.act("Click the search button")
                 await session_page.wait_for_timeout(1000)
 
                 # Extract structured product data using Pydantic schema for type safety
                 print(f"Session {session_index + 1}: Extracting product data...")
-                
+
                 # Define Pydantic schemas for structured data extraction
                 class ProductItem(BaseModel):
                     title: str = Field(..., description="the title/name of the product")
                     url: HttpUrl = Field(..., description="the full URL link to the product page")
-                    price: str = Field(..., description="the price of the product (include currency symbol)")
-                    rating: str = Field(..., description="the star rating or number of reviews (e.g., '4.5 stars' or '123 reviews')")
-                
+                    price: str = Field(
+                        ..., description="the price of the product (include currency symbol)"
+                    )
+                    rating: str = Field(
+                        ...,
+                        description="the star rating or number of reviews (e.g., '4.5 stars' or '123 reviews')",
+                    )
+
                 class ProductsData(BaseModel):
-                    products: List[ProductItem] = Field(..., max_length=3, description="array of the first 3 products from search results")
-                
+                    products: list[ProductItem] = Field(
+                        ...,
+                        max_length=3,
+                        description="array of the first 3 products from search results",
+                    )
+
                 products_data = await session_page.extract(
-                    "Extract the first 3 products from the search results",
-                    schema=ProductsData
+                    "Extract the first 3 products from the search results", schema=ProductsData
                 )
 
                 print(
-                    f"Session {session_index + 1}: Found {len(products_data.products)} products for \"{query}\""
+                    f'Session {session_index + 1}: Found {len(products_data.products)} products for "{query}"'
                 )
 
                 # Convert to Product objects
                 products = [
-                    Product(
-                        title=p.title,
-                        url=str(p.url),
-                        price=p.price,
-                        rating=p.rating
-                    )
+                    Product(title=p.title, url=str(p.url), price=p.price, rating=p.rating)
                     for p in products_data.products
                 ]
 
-                return SearchResult(
-                    query=query,
-                    session_index=session_index + 1,
-                    products=products
-                )
+                return SearchResult(query=query, session_index=session_index + 1, products=products)
         except Exception as error:
             print(f"Session {session_index + 1} failed: {error}")
 
-            return SearchResult(
-                query=query,
-                session_index=session_index + 1,
-                products=[]
-            )
+            return SearchResult(query=query, session_index=session_index + 1, products=[])
 
     # Create concurrent search tasks for all generated queries
-    search_promises = [run_single_search(query, index) for index, query in enumerate(search_queries)]
+    search_promises = [
+        run_single_search(query, index) for index, query in enumerate(search_queries)
+    ]
 
     print("\nBrowser Sessions Starting...")
     print("Live view links will appear as each session initializes")

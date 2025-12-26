@@ -1,15 +1,16 @@
 # Stagehand + Browserbase: Job Application Automation - See README.md for full documentation
 
-import os
 import asyncio
-import time
+import os
 import random
-from typing import List
-from dotenv import load_dotenv
-from stagehand import Stagehand, StagehandConfig
-from browserbase import Browserbase
-from pydantic import BaseModel, Field, HttpUrl
+import time
+
 import httpx
+from browserbase import Browserbase
+from dotenv import load_dotenv
+from pydantic import BaseModel, Field, HttpUrl
+
+from stagehand import Stagehand, StagehandConfig
 
 # Load environment variables
 load_dotenv()
@@ -23,13 +24,13 @@ class JobInfo(BaseModel):
 
 
 class JobsData(BaseModel):
-    jobs: List[JobInfo]
+    jobs: list[JobInfo]
 
 
 async def get_project_concurrency() -> int:
     """
     Fetch project concurrency limit from Browserbase SDK.
-    
+
     Retrieves the maximum concurrent sessions allowed for the project,
     capped at 5.
     """
@@ -37,8 +38,7 @@ async def get_project_concurrency() -> int:
 
     # Use asyncio.to_thread to run synchronous SDK call in thread pool
     project = await asyncio.to_thread(
-        bb.projects.retrieve,
-        os.environ.get("BROWSERBASE_PROJECT_ID")
+        bb.projects.retrieve, os.environ.get("BROWSERBASE_PROJECT_ID")
     )
     return min(project.concurrency, 5)
 
@@ -48,26 +48,26 @@ def generate_random_email() -> str:
     Generate a random email address for form submission.
 
     """
-    random_string = ''.join(random.choices('abcdefghijklmnopqrstuvwxyz0123456789', k=8))
+    random_string = "".join(random.choices("abcdefghijklmnopqrstuvwxyz0123456789", k=8))
     return f"agent-{random_string}@example.com"
 
 
 def generate_agent_id() -> str:
     """
     Generate a unique agent identifier for job applications.
-    
+
     Combines timestamp and random string to ensure uniqueness across
     multiple job applications and sessions.
     """
     timestamp = int(time.time() * 1000)
-    random_string = ''.join(random.choices('abcdefghijklmnopqrstuvwxyz0123456789', k=7))
+    random_string = "".join(random.choices("abcdefghijklmnopqrstuvwxyz0123456789", k=7))
     return f"agent-{timestamp}-{random_string}"
 
 
 async def apply_to_job(job_info: JobInfo, semaphore: asyncio.Semaphore):
     """
     Apply to a single job posting with automated form filling.
-    
+
     Uses Stagehand to navigate to job page, fill out application form,
     upload resume, and submit the application.
     """
@@ -79,7 +79,7 @@ async def apply_to_job(job_info: JobInfo, semaphore: asyncio.Semaphore):
             api_key=os.environ.get("BROWSERBASE_API_KEY"),
             project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
             model_name="google/gemini-2.5-flash",
-            model_api_key=os.environ.get("GOOGLE_GENERATIVE_AI_API_KEY")
+            model_api_key=os.environ.get("GOOGLE_GENERATIVE_AI_API_KEY"),
         )
 
         try:
@@ -89,13 +89,15 @@ async def apply_to_job(job_info: JobInfo, semaphore: asyncio.Semaphore):
 
                 # Get session ID for live viewing/debugging
                 session_id = None
-                if hasattr(stagehand, 'session_id'):
+                if hasattr(stagehand, "session_id"):
                     session_id = stagehand.session_id
-                elif hasattr(stagehand, 'browserbase_session_id'):
+                elif hasattr(stagehand, "browserbase_session_id"):
                     session_id = stagehand.browserbase_session_id
 
                 if session_id:
-                    print(f"[{job_info.title}] Watch live: https://browserbase.com/sessions/{session_id}")
+                    print(
+                        f"[{job_info.title}] Watch live: https://browserbase.com/sessions/{session_id}"
+                    )
 
                 page = stagehand.page
 
@@ -120,7 +122,7 @@ async def apply_to_job(job_info: JobInfo, semaphore: asyncio.Semaphore):
 
                 await page.act(f"type '{email}' into the contact endpoint field")
 
-                await page.act(f"type 'us-west-2' into the deployment region field")
+                await page.act("type 'us-west-2' into the deployment region field")
 
                 # Upload agent profile/resume file
                 # Using observe() to find the upload button, then setting files programmatically
@@ -141,11 +143,13 @@ async def apply_to_job(job_info: JobInfo, semaphore: asyncio.Semaphore):
                             resume_buffer = response.content
 
                         # Upload file using Playwright's set_input_files with buffer
-                        await file_input.set_input_files({
-                            "name": "Agent Resume.pdf",
-                            "mimeType": "application/pdf",
-                            "buffer": resume_buffer,
-                        })
+                        await file_input.set_input_files(
+                            {
+                                "name": "Agent Resume.pdf",
+                                "mimeType": "application/pdf",
+                                "buffer": resume_buffer,
+                            }
+                        )
                         print(f"[{job_info.title}] Uploaded resume from {resume_url}")
 
                 # Select multi-region deployment option
@@ -164,14 +168,14 @@ async def apply_to_job(job_info: JobInfo, semaphore: asyncio.Semaphore):
 async def main():
     """
     Main application entry point.
-    
+
     Orchestrates the job application process:
     1. Fetches project concurrency limits
     2. Scrapes job listings from the job board
     3. Applies to all jobs in parallel with concurrency control
     """
     print("Starting Job Application Automation...")
-    
+
     # Get project concurrency limit to control parallel execution
     max_concurrency = await get_project_concurrency()
     print(f"Executing with concurrency limit: {max_concurrency}")
@@ -182,7 +186,7 @@ async def main():
         api_key=os.environ.get("BROWSERBASE_API_KEY"),
         project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
         model_name="google/gemini-2.5-flash",
-        model_api_key=os.environ.get("GOOGLE_GENERATIVE_AI_API_KEY")
+        model_api_key=os.environ.get("GOOGLE_GENERATIVE_AI_API_KEY"),
     )
 
     # Use async context manager for automatic resource management
@@ -191,9 +195,9 @@ async def main():
 
         # Get session ID for live viewing/debugging
         session_id = None
-        if hasattr(stagehand, 'session_id'):
+        if hasattr(stagehand, "session_id"):
             session_id = stagehand.session_id
-        elif hasattr(stagehand, 'browserbase_session_id'):
+        elif hasattr(stagehand, "browserbase_session_id"):
             session_id = stagehand.browserbase_session_id
 
         if session_id:
@@ -212,8 +216,7 @@ async def main():
         # Extract all job listings with titles and URLs using structured schema
         # Using extract() with Pydantic schema ensures consistent data extraction
         jobs_result = await page.extract(
-            "extract all job listings with their titles and URLs",
-            schema=JobsData
+            "extract all job listings with their titles and URLs", schema=JobsData
         )
 
         jobs_data = jobs_result.jobs

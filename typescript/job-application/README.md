@@ -1,6 +1,7 @@
 # Stagehand + Browserbase: Automated Job Application Agent
 
 ## AT A GLANCE
+
 - Goal: Automate job applications by discovering job listings and submitting applications with unique agent identifiers.
 - Concurrent Processing: applies to multiple jobs in parallel with configurable concurrency limits based on Browserbase project settings.
 - Dynamic Data Generation: generates unique agent IDs and email addresses for each application.
@@ -8,6 +9,7 @@
 - Docs → https://docs.stagehand.dev/basics/agent
 
 ## GLOSSARY
+
 - agent: create an autonomous AI agent that can execute complex multi-step tasks
   Docs → https://docs.stagehand.dev/basics/agent#what-is-agent
 - act: perform UI actions from a prompt (click, type, fill forms)
@@ -19,12 +21,14 @@
 - semaphore: concurrency control mechanism to limit parallel job applications based on project limits
 
 ## QUICKSTART
-1) npm install
-2) cp .env.example .env
-3) Add required API keys/IDs to .env (BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID, GOOGLE_GENERATIVE_AI_API_KEY)
-4) npm start
+
+1. npm install
+2. cp .env.example .env
+3. Add required API keys/IDs to .env (BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID, GOOGLE_GENERATIVE_AI_API_KEY)
+4. npm start
 
 ## EXPECTED OUTPUT
+
 - Fetches project concurrency limit from Browserbase (maxed at 5)
 - Initializes main Stagehand session with Browserbase
 - Displays live session link for monitoring
@@ -47,6 +51,7 @@
 - Displays completion message when all applications are finished
 
 ## COMMON PITFALLS
+
 - Dependency install errors: ensure npm install completed
 - Missing credentials: verify .env contains BROWSERBASE_PROJECT_ID, BROWSERBASE_API_KEY, and GOOGLE_GENERATIVE_AI_API_KEY
 - Google API access: ensure you have access to Google's gemini-2.5-flash model
@@ -57,12 +62,14 @@
 - Find more information on your Browserbase dashboard -> https://www.browserbase.com/sign-in
 
 ## USE CASES
+
 • Bulk job applications: Automate applying to multiple job postings simultaneously with unique credentials for each application.
 • Agent deployment automation: Streamline the process of deploying multiple AI agents by automating the application and registration workflow.
 • Testing & QA: Validate job application forms and workflows across multiple listings to ensure consistent functionality.
 • Recruitment automation: Scale agent recruitment processes by programmatically submitting applications with generated identifiers.
 
 ## NEXT STEPS
+
 • Add filtering: Implement job filtering by title keywords, location, or other criteria before applying.
 • Error handling: Add retry logic for failed applications and better error reporting with job-specific logs.
 • Resume customization: Support multiple resume versions or dynamic resume generation based on job requirements.
@@ -71,9 +78,10 @@
 • Multi-site support: Extend to support multiple job boards with site-specific form field mappings.
 
 ## HELPFUL RESOURCES
-📚 Stagehand Docs:     https://docs.stagehand.dev/v3/first-steps/introduction
-🎮 Browserbase:        https://www.browserbase.com
-💡 Try it out:         https://www.browserbase.com/playground
-🔧 Templates:          https://www.browserbase.com/templates
-📧 Need help?          support@browserbase.com
 
+📚 Stagehand Docs: https://docs.stagehand.dev/v3/first-steps/introduction
+🎮 Browserbase: https://www.browserbase.com
+💡 Try it out: https://www.browserbase.com/playground
+🔧 Templates: https://www.browserbase.com/templates
+📧 Need help? support@browserbase.com
+💬 Discord: http://stagehand.dev/discord

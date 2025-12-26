@@ -75,7 +75,7 @@ async function applyToJob(jobInfo: JobInfo, semaphore: () => Promise<void>, rele
     model: {
       modelName: "google/gemini-2.5-flash",
       apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-    }
+    },
   });
 
   try {
@@ -84,7 +84,7 @@ async function applyToJob(jobInfo: JobInfo, semaphore: () => Promise<void>, rele
 
     console.log(`[${jobInfo.title}] Session Started`);
     console.log(
-      `[${jobInfo.title}] Watch live: https://browserbase.com/sessions/${stagehand.browserbaseSessionId}`
+      `[${jobInfo.title}] Watch live: https://browserbase.com/sessions/${stagehand.browserbaseSessionId}`,
     );
 
     const page = stagehand.context.pages()[0];
@@ -114,7 +114,7 @@ async function applyToJob(jobInfo: JobInfo, semaphore: () => Promise<void>, rele
 
     // Upload agent profile/resume file
     // Using observe() to find the upload button, then setting files programmatically
-    const [ uploadAction ] = await stagehand.observe("find the file upload button for agent profile");
+    const [uploadAction] = await stagehand.observe("find the file upload button for agent profile");
     if (uploadAction) {
       const uploadSelector = uploadAction.selector;
       if (uploadSelector) {
@@ -171,16 +171,14 @@ async function main() {
     model: {
       modelName: "google/gemini-2.5-flash",
       apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-    }
+    },
   });
 
   // Initialize browser session to start automation
   await stagehand.init();
 
   console.log(`Main Stagehand Session Started`);
-  console.log(
-    `Watch live: https://browserbase.com/sessions/${stagehand.browserbaseSessionId}`
-  );
+  console.log(`Watch live: https://browserbase.com/sessions/${stagehand.browserbaseSessionId}`);
 
   const page = stagehand.context.pages()[0];
 
@@ -196,7 +194,7 @@ async function main() {
   // Using extract() with Zod schema ensures consistent data extraction
   const jobsData = await stagehand.extract(
     "extract all job listings with their titles and URLs",
-    z.array(JobInfoSchema)
+    z.array(JobInfoSchema),
   );
 
   console.log(`Found ${jobsData.length} jobs`);
@@ -209,7 +207,9 @@ async function main() {
 
   // Apply to all jobs in parallel with concurrency control
   // Using Promise.all() to run all applications concurrently
-  console.log(`Starting to apply to ${jobsData.length} jobs with max concurrency of ${maxConcurrency}`);
+  console.log(
+    `Starting to apply to ${jobsData.length} jobs with max concurrency of ${maxConcurrency}`,
+  );
 
   const applicationPromises = jobsData.map((job) => applyToJob(job, semaphore, release));
 

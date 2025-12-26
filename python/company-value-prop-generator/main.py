@@ -1,11 +1,13 @@
 # Stagehand + Browserbase: Value Prop One-Liner Generator - See README.md for full documentation
 
-import os
 import asyncio
+import os
+
 from dotenv import load_dotenv
-from stagehand import Stagehand, StagehandConfig
-from pydantic import BaseModel, Field
 from openai import OpenAI
+from pydantic import BaseModel, Field
+
+from stagehand import Stagehand, StagehandConfig
 
 # Load environment variables
 load_dotenv()
@@ -42,11 +44,11 @@ async def generate_one_liner(domain: str) -> str:
         async with Stagehand(config) as stagehand:
             print("Stagehand initialized successfully!")
             session_id = None
-            if hasattr(stagehand, 'session_id'):
+            if hasattr(stagehand, "session_id"):
                 session_id = stagehand.session_id
-            elif hasattr(stagehand, 'browserbase_session_id'):
+            elif hasattr(stagehand, "browserbase_session_id"):
                 session_id = stagehand.browserbase_session_id
-            
+
             if session_id:
                 print(f"Live View Link: https://browserbase.com/sessions/{session_id}")
 
@@ -57,7 +59,7 @@ async def generate_one_liner(domain: str) -> str:
             # 5min timeout to handle slow-loading sites or network issues
             await page.goto(
                 f"https://{domain}/",
-                wait_until='domcontentloaded',
+                wait_until="domcontentloaded",
                 timeout=300000,
             )
 
@@ -74,11 +76,7 @@ async def generate_one_liner(domain: str) -> str:
             print(f"📊 Extracted value prop for {domain}: {value_prop}")
 
             # Validate extraction returned meaningful content
-            if (
-                not value_prop
-                or value_prop.lower() == "null"
-                or value_prop.lower() == "undefined"
-            ):
+            if not value_prop or value_prop.lower() == "null" or value_prop.lower() == "undefined":
                 print("⚠️ Value prop extraction returned empty or invalid result")
                 raise ValueError(f"No value prop found for {domain}")
 
@@ -153,7 +151,9 @@ async def main():
         print(f"\n❌ Error: {error_message}")
         print("\nCommon issues:")
         print("  - Check .env file has OPENAI_API_KEY set (required for LLM generation)")
-        print("  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY set (required for browser automation)")
+        print(
+            "  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY set (required for browser automation)"
+        )
         print("  - Ensure the domain is accessible and not a placeholder/maintenance page")
         print("  - Verify internet connectivity and that the target site is reachable")
         print("Docs: https://docs.browserbase.com/stagehand")
@@ -166,4 +166,3 @@ if __name__ == "__main__":
     except Exception as err:
         print(f"Fatal error: {err}")
         exit(1)
-

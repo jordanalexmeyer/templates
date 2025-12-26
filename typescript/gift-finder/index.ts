@@ -154,7 +154,10 @@ IMPORTANT:
 
     // Map AI scores back to products using index matching
     const scoredProducts = allProducts.map((product, index) => {
-      const scoreInfo = scoresData.find((s: any) => s.productIndex === index + 1);
+      const scoreInfo = scoresData.find(
+        (s: { productIndex: number; score: number; reason: string }) =>
+          s.productIndex === index + 1,
+      );
       return {
         ...product,
         aiScore: scoreInfo?.score || 0,
@@ -186,7 +189,9 @@ async function getUserInput(): Promise<GiftFinderAnswers> {
 
   // Validate description length
   if (CONFIG.description.trim().length < 5) {
-    throw new Error("Description must be at least 5 characters long. Please update the CONFIG at the top of the file.");
+    throw new Error(
+      "Description must be at least 5 characters long. Please update the CONFIG at the top of the file.",
+    );
   }
 
   return CONFIG;
@@ -226,8 +231,8 @@ async function main(): Promise<void> {
     const sessionStagehand = new Stagehand({
       env: "BROWSERBASE",
       verbose: 1,
-      // 0 = errors only, 1 = info, 2 = debug 
-      // (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.) 
+      // 0 = errors only, 1 = info, 2 = debug
+      // (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.)
       // https://docs.stagehand.dev/configuration/logging
       model: "openai/gpt-4.1",
       browserbaseSessionCreateParams: {
@@ -294,7 +299,7 @@ async function main(): Promise<void> {
             )
             .max(3)
             .describe("array of the first 3 products from search results"),
-        })
+        }),
       );
 
       console.log(

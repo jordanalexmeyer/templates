@@ -12,15 +12,17 @@ A comprehensive collection of ready-to-use automation templates demonstrating th
 ## 📁 Available Templates
 
 ### TypeScript Templates (`/typescript/`)
+
 - **context** - AI-powered context switching and page analysis
 - **CUA** - Computer Use Agent for autonomous web browsing and decision-making
-- **formFilling** - Automated form submission and data entry  
+- **formFilling** - Automated form submission and data entry
 - **giftfinder** - AI-powered product discovery and recommendation
 - **pickleball** - Court booking automation with user interaction
 - **proxies** - Proxy testing and geolocation verification
 - **realEstateCheck** - License verification and data extraction
 
 ### Python Templates (`/python/`)
+
 - **context** - AI-powered context switching and page analysis
 - **CUA** - Computer Use Agent for autonomous web browsing and decision-making
 - **formFilling** - Automated form submission and data entry
@@ -30,6 +32,7 @@ A comprehensive collection of ready-to-use automation templates demonstrating th
 - **realEstateCheck** - License verification and data extraction
 
 > **📖 Each template includes a comprehensive README with:**
+>
 > - Detailed setup instructions
 > - Required environment variables
 > - Use cases and examples
@@ -48,16 +51,20 @@ A comprehensive collection of ready-to-use automation templates demonstrating th
 ## 📚 Resources
 
 ### Documentation
+
 - **Stagehand Docs**: https://docs.stagehand.dev/v3/first-steps/introduction
 - **Browserbase Docs**: https://docs.browserbase.com
 - **API Reference**: https://docs.browserbase.com/api
 
 ### Support
+
 - **Community**: Join our Discord community
+- **Discord**: http://stagehand.dev/discord
 - **Email Support**: support@browserbase.com
 - **GitHub Issues**: Report bugs and request features
 
 ### Examples & Tutorials
+
 - **Getting Started Guide**: Learn the basics of Stagehand
 - **Advanced Patterns**: Complex automation workflows
 - **Best Practices**: Tips for reliable automation
@@ -72,6 +79,7 @@ We welcome contributions! Here's how you can help:
 4. **Share Templates**: Create and share your own templates
 
 ### Template Guidelines
+
 - Follow the established structure and naming conventions
 - Include comprehensive README documentation
 - Add proper error handling and logging

@@ -1,6 +1,7 @@
 # Stagehand + Browserbase: Website Link Tester (Python)
 
 ## AT A GLANCE
+
 - **Goal**: Crawl a website’s homepage, collect all links, and verify that each link loads successfully and matches its link text.
 - **Link extraction**: Uses `page.extract()` with a Pydantic schema to pull all links and their visible text from the homepage.
 - **Content verification**: Opens each link and uses AI to assess whether the page content matches what the link text suggests.
@@ -8,6 +9,7 @@
 - **Batch processing**: Processes links in batches controlled by `MAX_CONCURRENT_LINKS` (sequential by default, can be made concurrent).
 
 ## GLOSSARY
+
 - **Stagehand (Python v2)**: Python client that wraps AI-powered browser automation on top of Browserbase.  
   Docs → `https://docs.stagehand.dev/python`
 - **extract**: Extract structured data from web pages using natural language instructions and Pydantic models.  
@@ -16,10 +18,11 @@
   Docs → `https://docs.browserbase.com/guides/concurrency-rate-limits`
 
 ## QUICKSTART
+
 1. **cd into the template**
    - `cd python/website-link-tester`
 2. **Create & activate a virtual environment (optional but recommended)**
-   - `python -m venv venv`
+   - `uv venv venv`
    - `source venv/bin/activate` (macOS/Linux)  
      `venv\Scripts\activate` (Windows)
 3. **Install dependencies with uvx**
@@ -33,6 +36,7 @@
    - `python main.py`
 
 ## EXPECTED OUTPUT
+
 - **Initial setup**
   - Initializes a Stagehand session with Browserbase.
   - Prints a live session link for monitoring the browser in real time (when available).
@@ -57,6 +61,7 @@
   - Always closes browser sessions cleanly via context managers.
 
 ## COMMON PITFALLS
+
 - **Missing credentials**
   - Ensure `.env` contains `BROWSERBASE_PROJECT_ID`, `BROWSERBASE_API_KEY`, and `GOOGLE_API_KEY`.
 - **Concurrency limits**
@@ -69,12 +74,14 @@
   - Social links and complex redirect chains may succeed in loading but not be fully verifiable for content; these are marked as special cases.
 
 ## USE CASES
+
 - **Regression testing**: Quickly verify that all key marketing and product links on your homepage still resolve correctly after a deployment.
 - **Content QA**: Detect mismatches between link text and destination page content (e.g., wrong page wired to a CTA).
 - **SEO and UX audits**: Find broken or misdirected links that can harm search rankings or user experience.
 - **Monitoring**: Run this periodically to flag link issues across your marketing site or documentation hub.
 
 ## TUNING BATCH SIZE & CONCURRENCY
+
 - **`MAX_CONCURRENT_LINKS` in `main.py`**
   - Default: `1` → sequential link verification (works on all plans).
   - Set to `> 1` → more concurrent link verifications per batch (requires higher Browserbase concurrency limits).
@@ -86,6 +93,7 @@
     - Apply different limits for external vs internal links if desired.
 
 ## NEXT STEPS
+
 - **Filter link scopes**: Limit verification to specific path prefixes (e.g., only `/docs` or `/blog`) or exclude certain domains.
 - **Recursive crawling**: Start from the homepage, follow internal links to secondary/tertiary pages, and cascade link discovery deeper into the site to build a more complete link map.
 - **Alerting & monitoring**: Integrate with Slack, email, or logging tools to notify when links start failing.
@@ -93,10 +101,10 @@
 - **Richer assessments**: Expand the extraction schema to capture additional metadata (e.g., HTTP status code, canonical URL, or key headings).
 
 ## HELPFUL RESOURCES
+
 - 📚 **Stagehand Docs**: `https://docs.stagehand.dev/v2/first-steps/introduction`
 - 🎮 **Browserbase**: `https://www.browserbase.com`
 - 💡 **Try it out**: `https://www.browserbase.com/playground`
 - 🔧 **Templates**: `https://www.browserbase.com/templates`
 - 📧 **Need help?**: `support@browserbase.com`
-
-
+- 💬 **Discord**: `http://stagehand.dev/discord`

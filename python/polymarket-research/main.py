@@ -1,11 +1,12 @@
 # Stagehand + Browserbase: Polymarket prediction market research - See README.md for full documentation
 
-import os
 import asyncio
+import os
+
 from dotenv import load_dotenv
-from stagehand import Stagehand, StagehandConfig
 from pydantic import BaseModel, Field
-from typing import Optional
+
+from stagehand import Stagehand, StagehandConfig
 
 # Load environment variables
 load_dotenv()
@@ -13,12 +14,13 @@ load_dotenv()
 
 class MarketData(BaseModel):
     """Market data extracted from Polymarket prediction market"""
-    marketTitle: Optional[str] = Field(None, description="the title of the market")
-    currentOdds: Optional[str] = Field(None, description="the current odds or probability")
-    yesPrice: Optional[str] = Field(None, description="the yes price")
-    noPrice: Optional[str] = Field(None, description="the no price")
-    totalVolume: Optional[str] = Field(None, description="the total trading volume")
-    priceChange: Optional[str] = Field(None, description="the recent price change")
+
+    marketTitle: str | None = Field(None, description="the title of the market")
+    currentOdds: str | None = Field(None, description="the current odds or probability")
+    yesPrice: str | None = Field(None, description="the yes price")
+    noPrice: str | None = Field(None, description="the no price")
+    totalVolume: str | None = Field(None, description="the total trading volume")
+    priceChange: str | None = Field(None, description="the recent price change")
 
 
 async def main():
@@ -37,8 +39,8 @@ async def main():
         model_name="openai/gpt-4.1",
         model_api_key=os.environ.get("OPENAI_API_KEY"),
         verbose=1,
-        # 0 = errors only, 1 = info, 2 = debug 
-        # (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.) 
+        # 0 = errors only, 1 = info, 2 = debug
+        # (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.)
         # https://docs.stagehand.dev/configuration/logging
     )
 
@@ -50,11 +52,11 @@ async def main():
 
             # Provide live session URL for debugging and monitoring
             session_id = None
-            if hasattr(stagehand, 'session_id'):
+            if hasattr(stagehand, "session_id"):
                 session_id = stagehand.session_id
-            elif hasattr(stagehand, 'browserbase_session_id'):
+            elif hasattr(stagehand, "browserbase_session_id"):
                 session_id = stagehand.browserbase_session_id
-            
+
             if session_id:
                 print(f"Watch live: https://browserbase.com/sessions/{session_id}")
 
@@ -83,27 +85,28 @@ async def main():
             print("Extracting market information...")
             marketData = await page.extract(
                 "Extract the current odds and market information for the prediction market",
-                schema=MarketData
+                schema=MarketData,
             )
 
             print("Market data extracted successfully:")
-            
+
             # Display results in formatted JSON
             import json
+
             print(json.dumps(marketData.model_dump(), indent=2))
 
         print("Session closed successfully")
 
     except Exception as error:
         print(f"Error during market research: {error}")
-        
+
         # Provide helpful troubleshooting information
         print("\nCommon issues:")
         print("1. Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY")
         print("2. Verify OPENAI_API_KEY is set in environment")
         print("3. Ensure internet access and https://polymarket.com is accessible")
         print("4. Verify Browserbase account has sufficient credits")
-        
+
         raise
 
 
@@ -119,4 +122,3 @@ if __name__ == "__main__":
         print("  - Verify Browserbase account has sufficient credits")
         print("Docs: https://docs.stagehand.dev/v3/first-steps/introduction")
         exit(1)
-

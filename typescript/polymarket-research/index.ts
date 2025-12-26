@@ -16,8 +16,8 @@ async function main() {
   const stagehand = new Stagehand({
     env: "BROWSERBASE",
     verbose: 1,
-    // 0 = errors only, 1 = info, 2 = debug 
-    // (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.) 
+    // 0 = errors only, 1 = info, 2 = debug
+    // (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.)
     // https://docs.stagehand.dev/configuration/logging
     model: "openai/gpt-4.1",
   });
@@ -70,14 +70,14 @@ async function main() {
     console.log(JSON.stringify(marketData, null, 2));
   } catch (error) {
     console.error("Error during market research:", error);
-    
+
     // Provide helpful troubleshooting information
     console.error("\nCommon issues:");
     console.error("1. Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY");
     console.error("2. Verify OPENAI_API_KEY is set in environment");
     console.error("3. Ensure internet access and https://polymarket.com is accessible");
     console.error("4. Verify Browserbase account has sufficient credits");
-    
+
     throw error;
   } finally {
     // Clean up browser session

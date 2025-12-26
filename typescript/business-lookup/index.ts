@@ -19,7 +19,9 @@ async function main() {
     // Initialize browser session to start automation.
     await stagehand.init();
     console.log("Stagehand initialized successfully!");
-    console.log(`Live View Link: https://browserbase.com/sessions/${stagehand.browserbaseSessionId}`);
+    console.log(
+      `Live View Link: https://browserbase.com/sessions/${stagehand.browserbaseSessionId}`,
+    );
 
     const page = stagehand.context.pages()[0];
 
@@ -32,9 +34,10 @@ async function main() {
       cua: true, // Enable Computer Use Agent mode
       model: {
         modelName: "google/gemini-2.5-computer-use-preview-10-2025",
-        apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY
-    },
-      systemPrompt: "You are a helpful assistant that can use a web browser to search for business information.",
+        apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+      },
+      systemPrompt:
+        "You are a helpful assistant that can use a web browser to search for business information.",
     });
 
     console.log(`Searching for business: ${businessName}`);
@@ -68,7 +71,6 @@ async function main() {
 
     console.log("Business Information:");
     console.log(JSON.stringify(businessInfo, null, 2));
-
   } catch (error) {
     console.error("Error during business lookup:", error);
   } finally {
@@ -86,4 +88,3 @@ main().catch((err) => {
   console.error("Docs: https://docs.stagehand.dev/v3/first-steps/introduction");
   process.exit(1);
 });
-

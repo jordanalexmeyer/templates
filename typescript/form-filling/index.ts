@@ -10,88 +10,90 @@ const lastName = "Johnson";
 const company = "TechCorp Solutions";
 const jobTitle = "Software Developer";
 const email = "alex.johnson@techcorp.com";
-const message = "Hello, I'm interested in learning more about your services and would like to schedule a demo.";
+const message =
+  "Hello, I'm interested in learning more about your services and would like to schedule a demo.";
 
 async function main() {
-	console.log("Starting Form Filling Example...");
-	
-	// Initialize Stagehand with Browserbase for cloud-based browser automation.
-	const stagehand = new Stagehand({
-		env: "BROWSERBASE",
-		model: "openai/gpt-4.1",
-		verbose: 1,
-		browserbaseSessionCreateParams: {
-			projectId: process.env.BROWSERBASE_PROJECT_ID!,
-		}
-	});
+  console.log("Starting Form Filling Example...");
 
-	try {
-		// Initialize browser session to start automation.
-		await stagehand.init();
-		console.log("Stagehand initialized successfully!");
-		console.log(`Live View Link: https://browserbase.com/sessions/${stagehand.browserbaseSessionID}`);
+  // Initialize Stagehand with Browserbase for cloud-based browser automation.
+  const stagehand = new Stagehand({
+    env: "BROWSERBASE",
+    model: "openai/gpt-4.1",
+    verbose: 1,
+    browserbaseSessionCreateParams: {
+      projectId: process.env.BROWSERBASE_PROJECT_ID!,
+    },
+  });
 
-		const page = stagehand.context.pages()[0];
+  try {
+    // Initialize browser session to start automation.
+    await stagehand.init();
+    console.log("Stagehand initialized successfully!");
+    console.log(
+      `Live View Link: https://browserbase.com/sessions/${stagehand.browserbaseSessionID}`,
+    );
 
-		// Navigate to contact page with extended timeout for slow-loading sites.
-		console.log("Navigating to Browserbase contact page...");
-		await page.goto('https://www.browserbase.com/contact', {
-			waitUntil: 'domcontentloaded', // Wait for DOM to be ready before proceeding.
-			timeout: 60000 // Extended timeout for reliable page loading.
-		});
+    const page = stagehand.context.pages()[0];
 
-		// Single observe call to plan all form filling
-		const formFields = await stagehand.observe(
-			"Find form fields for: first name, last name, company, job title, email, message"
-		);
+    // Navigate to contact page with extended timeout for slow-loading sites.
+    console.log("Navigating to Browserbase contact page...");
+    await page.goto("https://www.browserbase.com/contact", {
+      waitUntil: "domcontentloaded", // Wait for DOM to be ready before proceeding.
+      timeout: 60000, // Extended timeout for reliable page loading.
+    });
 
-		// Execute all actions without LLM calls
-		for (const field of formFields) {
-			// Match field to data based on description
-			let value = '';
-			const desc = field.description.toLowerCase();
-			
-			if (desc.includes('first name')) value = firstName;
-			else if (desc.includes('last name')) value = lastName;
-			else if (desc.includes('company')) value = company;
-			else if (desc.includes('job title')) value = jobTitle;
-			else if (desc.includes('email')) value = email;
-			else if (desc.includes('message')) value = message;
-			
-			if (value) {
-				await stagehand.act({
-					...field,
-					arguments: [value]
-				});
-			}
-		}
-		
-		// Language choice in Stagehand act() is crucial for reliable automation.
-		// Use "click" for dropdown interactions rather than "select"
-		await stagehand.act("Click on the How Can we help? dropdown");
-		await stagehand.act("Click on the first option from the dropdown");
-		// await stagehand.act("Select the first option from the dropdown"); // Less reliable than "click"
+    // Single observe call to plan all form filling
+    const formFields = await stagehand.observe(
+      "Find form fields for: first name, last name, company, job title, email, message",
+    );
 
-		// Uncomment the line below if you want to submit the form
-		// await stagehand.act("Click the submit button");
-	
-		console.log("Form filled successfully! Waiting 3 seconds...");
-		await page.waitForTimeout(30000);
+    // Execute all actions without LLM calls
+    for (const field of formFields) {
+      // Match field to data based on description
+      let value = "";
+      const desc = field.description.toLowerCase();
 
-	} catch (error) {
-		console.error(`Error during form filling: ${error}`);
-	} finally {
-		// Always close session to release resources and clean up.
-		await stagehand.close();
-		console.log("Session closed successfully");
-	}
+      if (desc.includes("first name")) value = firstName;
+      else if (desc.includes("last name")) value = lastName;
+      else if (desc.includes("company")) value = company;
+      else if (desc.includes("job title")) value = jobTitle;
+      else if (desc.includes("email")) value = email;
+      else if (desc.includes("message")) value = message;
+
+      if (value) {
+        await stagehand.act({
+          ...field,
+          arguments: [value],
+        });
+      }
+    }
+
+    // Language choice in Stagehand act() is crucial for reliable automation.
+    // Use "click" for dropdown interactions rather than "select"
+    await stagehand.act("Click on the How Can we help? dropdown");
+    await stagehand.act("Click on the first option from the dropdown");
+    // await stagehand.act("Select the first option from the dropdown"); // Less reliable than "click"
+
+    // Uncomment the line below if you want to submit the form
+    // await stagehand.act("Click the submit button");
+
+    console.log("Form filled successfully! Waiting 3 seconds...");
+    await page.waitForTimeout(30000);
+  } catch (error) {
+    console.error(`Error during form filling: ${error}`);
+  } finally {
+    // Always close session to release resources and clean up.
+    await stagehand.close();
+    console.log("Session closed successfully");
+  }
 }
 
 main().catch((err) => {
-	console.error("Error in form filling example:", err);
-	console.error("Common issues:");
-	console.error("  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY");
-	console.error("  - Ensure form fields are available on the contact page");
-	console.error("Docs: https://docs.stagehand.dev/v3/first-steps/introduction");
-	process.exit(1);
+  console.error("Error in form filling example:", err);
+  console.error("Common issues:");
+  console.error("  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY");
+  console.error("  - Ensure form fields are available on the contact page");
+  console.error("Docs: https://docs.stagehand.dev/v3/first-steps/introduction");
+  process.exit(1);
 });

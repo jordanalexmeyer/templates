@@ -1,12 +1,13 @@
 # Stagehand + Browserbase: Business Lookup with Agent - See README.md for full documentation
 
-import os
 import asyncio
 import json
+import os
+
 from dotenv import load_dotenv
-from stagehand import Stagehand, StagehandConfig
 from pydantic import BaseModel, Field
-from typing import Optional
+
+from stagehand import Stagehand, StagehandConfig
 
 # Load environment variables
 load_dotenv()
@@ -14,9 +15,10 @@ load_dotenv()
 # Business search variables
 business_name = "Jalebi Street"
 
+
 async def main():
     print("Starting business lookup...")
-    
+
     # Initialize Stagehand with Browserbase for cloud-based browser automation.
     # Note: set verbose: 0 to prevent API keys from appearing in logs when handling sensitive data.
     config = StagehandConfig(
@@ -28,8 +30,8 @@ async def main():
         browserbase_session_create_params={
             "project_id": os.environ.get("BROWSERBASE_PROJECT_ID"),
         },
-        verbose=1  # 0 = errors only, 1 = info, 2 = debug 
-        # (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.) 
+        verbose=1,  # 0 = errors only, 1 = info, 2 = debug
+        # (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.)
         # https://docs.stagehand.dev/configuration/logging
     )
 
@@ -39,11 +41,11 @@ async def main():
             # Initialize browser session to start automation.
             print("Stagehand initialized successfully")
             session_id = None
-            if hasattr(stagehand, 'session_id'):
+            if hasattr(stagehand, "session_id"):
                 session_id = stagehand.session_id
-            elif hasattr(stagehand, 'browserbase_session_id'):
+            elif hasattr(stagehand, "browserbase_session_id"):
                 session_id = stagehand.browserbase_session_id
-            
+
             if session_id:
                 print(f"Live View Link: https://browserbase.com/sessions/{session_id}")
 
@@ -54,7 +56,7 @@ async def main():
             await page.goto(
                 "https://data.sfgov.org/stories/s/Registered-Business-Lookup/k6sk-2y6w/",
                 wait_until="domcontentloaded",
-                timeout=60000
+                timeout=60000,
             )
 
             # Create agent with computer use capabilities for autonomous business search.
@@ -73,34 +75,36 @@ async def main():
             result = await agent.execute(
                 instruction=f'Find and look up the business "{business_name}" in the SF Business Registry. Use the DBA Name filter to search for "{business_name}", apply the filter, and click on the business row to view detailed information. Scroll towards the right to see the NAICS code.',
                 max_steps=30,
-                auto_screenshot=True
+                auto_screenshot=True,
             )
 
             if not result.success:
                 raise Exception("Agent failed to complete the search")
-            
+
             print("Agent completed search successfully")
 
             # Extract comprehensive business information after agent completes the search.
             # Using structured schema ensures consistent data extraction even if page layout changes.
             print("Extracting business information...")
-            
+
             # Define schema using Pydantic
             class BusinessInfo(BaseModel):
                 dba_name: str = Field(..., description="DBA Name")
-                ownership_name: Optional[str] = Field(None, description="Ownership Name")
+                ownership_name: str | None = Field(None, description="Ownership Name")
                 business_account_number: str = Field(..., description="Business Account Number")
-                location_id: Optional[str] = Field(None, description="Location Id")
-                street_address: Optional[str] = Field(None, description="Street Address")
-                business_start_date: Optional[str] = Field(None, description="Business Start Date")
-                business_end_date: Optional[str] = Field(None, description="Business End Date")
-                neighborhood: Optional[str] = Field(None, description="Neighborhood")
+                location_id: str | None = Field(None, description="Location Id")
+                street_address: str | None = Field(None, description="Street Address")
+                business_start_date: str | None = Field(None, description="Business Start Date")
+                business_end_date: str | None = Field(None, description="Business End Date")
+                neighborhood: str | None = Field(None, description="Neighborhood")
                 naics_code: str = Field(..., description="NAICS Code")
-                naics_code_description: Optional[str] = Field(None, description="NAICS Code Description")
+                naics_code_description: str | None = Field(
+                    None, description="NAICS Code Description"
+                )
 
             business_info = await page.extract(
                 "Extract all visible business information including DBA Name, Ownership Name, Business Account Number, Location Id, Street Address, Business Start Date, Business End Date, Neighborhood, NAICS Code, and NAICS Code Description",
-                schema=BusinessInfo
+                schema=BusinessInfo,
             )
 
             print("Business information extracted:")
@@ -123,4 +127,3 @@ if __name__ == "__main__":
         print("  - Verify GOOGLE_API_KEY is set for the agent")
         print("Docs: https://docs.stagehand.dev/v3/first-steps/introduction")
         exit(1)
-
