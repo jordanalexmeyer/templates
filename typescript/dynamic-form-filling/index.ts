@@ -17,9 +17,7 @@ async function main() {
     // Initialize browser session to start automation.
     await stagehand.init();
     console.log(`Stagehand Session Started`);
-    console.log(
-      `Watch live: https://browserbase.com/sessions/${stagehand.browserbaseSessionId}`
-    );
+    console.log(`Watch live: https://browserbase.com/sessions/${stagehand.browserbaseSessionId}`);
 
     const page = stagehand.context.pages()[0];
 
