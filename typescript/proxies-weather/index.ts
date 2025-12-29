@@ -1,11 +1,8 @@
 // Stagehand + Browserbase: Weather Proxy Demo - See README.md for full documentation
 
 import "dotenv/config";
-import { Browserbase } from "@browserbasehq/sdk";
 import { Stagehand } from "@browserbasehq/stagehand";
 import { z } from "zod";
-
-const bb = new Browserbase({ apiKey: process.env.BROWSERBASE_API_KEY! });
 
 interface GeolocationConfig {
   city: string;
@@ -13,61 +10,22 @@ interface GeolocationConfig {
   state?: string;
 }
 
-// Creates a Browserbase session with geolocation proxies to route traffic through specific geographic locations
-// This enables fetching location-specific weather data by simulating requests from different cities/countries
-// See https://docs.browserbase.com/features/proxies for more geolocation options
-async function createSessionWithGeoLocation(geolocation: GeolocationConfig) {
-  // Configure proxy to route traffic through specified geographic location for location-specific weather data
-  const proxyConfig: {
-    type: "browserbase";
-    geolocation: {
-      city: string;
-      country: string;
-      state?: string;
-    };
-  } = {
-    type: "browserbase", // Use Browserbase's managed proxy infrastructure for reliable geolocation routing
-    geolocation: {
-      city: geolocation.city, // City name (case-insensitive, e.g., "NEW_YORK", "new_york", "New York" all work)
-      country: geolocation.country, // ISO country code (case-insensitive, e.g., "US", "us", "gb", "GB" all work)
-    },
-  };
-
-  // Add state if provided (required for US locations to ensure accurate geolocation, case-insensitive)
-  if (geolocation.state) {
-    proxyConfig.geolocation.state = geolocation.state;
-  }
-
-  // Create Browserbase session with geolocation proxy configuration
-  const session = await bb.sessions.create({
-    projectId: process.env.BROWSERBASE_PROJECT_ID!,
-    proxies: [proxyConfig],
-  });
-  return session;
-}
-
 interface WeatherResult {
   city: string;
   country: string;
   temperature: number;
   unit: string;
-  sessionUrl?: string;
   error?: string;
 }
 
 // Fetches weather data for a specific location using geolocation proxies
-// Creates a Browserbase session with location-specific proxy, navigates to weather site,
+// Configures Stagehand with location-specific proxy, navigates to weather site,
 // and extracts temperature data using Stagehand's structured extraction capabilities
 async function getWeatherForLocation(geolocation: GeolocationConfig): Promise<WeatherResult> {
   const cityName = geolocation.city.replace(/_/g, " ");
   console.log(`\n=== Getting weather for ${cityName}, ${geolocation.country} ===`);
 
-  // Create Browserbase session with geolocation proxies to route traffic through specified location
-  console.log(`Creating Browserbase session with geolocation proxy for ${cityName}...`);
-  const session = await createSessionWithGeoLocation(geolocation);
-  console.log(`Session URL: https://browserbase.com/sessions/${session.id}`);
-
-  // Initialize Stagehand with the existing Browserbase session to leverage geolocation proxies
+  // Initialize Stagehand with geolocation proxy configuration
   // This ensures all browser traffic routes through the specified geographic location
   const stagehand = new Stagehand({
     env: "BROWSERBASE",
@@ -75,7 +33,19 @@ async function getWeatherForLocation(geolocation: GeolocationConfig): Promise<We
     // 0 = errors only, 1 = info, 2 = debug
     // (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.)
     // https://docs.stagehand.dev/configuration/logging
-    browserbaseSessionID: session.id, // Use the existing Browserbase session with geolocation proxies
+    browserbaseSessionCreateParams: {
+      projectId: process.env.BROWSERBASE_PROJECT_ID!,
+      proxies: [
+        {
+          type: "browserbase", // Use Browserbase's managed proxy infrastructure for reliable geolocation routing
+          geolocation: {
+            city: geolocation.city, // City name (case-insensitive, e.g., "NEW_YORK", "new_york", "New York" all work)
+            country: geolocation.country, // ISO country code (case-insensitive, e.g., "US", "us", "gb", "GB" all work)
+            ...(geolocation.state && { state: geolocation.state }), // State required for US locations (case-insensitive)
+          },
+        },
+      ],
+    },
   });
 
   try {
@@ -89,9 +59,12 @@ async function getWeatherForLocation(geolocation: GeolocationConfig): Promise<We
     // Navigate to weather service - geolocation proxy ensures location-specific weather data
     console.log(`Navigating to weather service for ${cityName}...`);
     await page.goto("https://www.windy.com/", {
-      waitUntil: "domcontentloaded",
+      waitUntil: "networkidle", // Wait for network to be idle to ensure weather data is loaded
     });
     console.log(`Page loaded for ${cityName}`);
+
+    // Wait a bit for weather data to render
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
     // Extract structured temperature data using Stagehand and Zod schema for type safety
     console.log(`Extracting temperature data for ${cityName}...`);
@@ -115,18 +88,15 @@ async function getWeatherForLocation(geolocation: GeolocationConfig): Promise<We
       country: geolocation.country,
       temperature: extractResult.temperature,
       unit: extractResult.unit,
-      sessionUrl: `https://browserbase.com/sessions/${session.id}`,
     };
   } catch (error) {
-    // Ensure session is closed even if extraction fails
-    await stagehand.close().catch(() => {});
+    await stagehand.close();
     console.error(`Error getting weather for ${cityName}:`, error);
     return {
       city: cityName,
       country: geolocation.country,
       temperature: 0,
       unit: "",
-      sessionUrl: `https://browserbase.com/sessions/${session.id}`,
       error: error instanceof Error ? error.message : String(error),
     };
   }
@@ -140,14 +110,8 @@ function displayResults(results: WeatherResult[]) {
   for (const result of results) {
     if (result.error) {
       console.log(`${result.city}, ${result.country}: Error - ${result.error}`);
-      if (result.sessionUrl) {
-        console.log(`  Session URL: ${result.sessionUrl}`);
-      }
     } else {
       console.log(`${result.city}, ${result.country}: ${result.temperature} ${result.unit}`);
-      if (result.sessionUrl) {
-        console.log(`  Session URL: ${result.sessionUrl}`);
-      }
     }
   }
 }

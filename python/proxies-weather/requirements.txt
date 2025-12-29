@@ -1,4 +1,3 @@
-browserbase
 python-dotenv
 pydantic
 stagehand
