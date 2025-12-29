@@ -28,6 +28,7 @@ async function main() {
     // Create agent with custom system prompt for intelligent form filling.
     // The agent will use semantic matching to select appropriate form options.
     const agent = stagehand.agent({
+      cua: false,
       model: {
         modelName: "google/gemini-2.5-pro",
         apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
