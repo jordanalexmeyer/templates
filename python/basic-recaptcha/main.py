@@ -21,7 +21,7 @@ async def main():
         env="BROWSERBASE",
         api_key=os.environ.get("BROWSERBASE_API_KEY"),
         project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
-        model_name="google/gemini-2.5-flash",
+        model_name="google/gemini-2.5-pro",
         model_api_key=os.environ.get("GOOGLE_API_KEY"),
         verbose=0,
         # 0 = errors only, 1 = info, 2 = debug
