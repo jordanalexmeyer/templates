@@ -73,7 +73,9 @@ async function main() {
     // Initialize browser session to start automation
     await stagehand.init();
     console.log("Stagehand initialized successfully!");
-    console.log(`Live View Link: https://browserbase.com/sessions/${stagehand.browserbaseSessionId}`);
+    console.log(
+      `Live View Link: https://browserbase.com/sessions/${stagehand.browserbaseSessionId}`,
+    );
 
     const page = stagehand.context.pages()[0];
 
@@ -91,7 +93,7 @@ async function main() {
         email: z.string(),
         password: z.string(),
         totpSecret: z.string().describe("The TOTP secret key for generating codes"),
-      })
+      }),
     );
 
     console.log(`Credentials extracted - Email: ${credentials.email}`);
@@ -123,7 +125,7 @@ async function main() {
     } catch (err) {
       console.warn(
         "Timed out waiting for 'networkidle' after submit; continuing because the login likely succeeded.",
-        err
+        err,
       );
     }
 
@@ -134,7 +136,7 @@ async function main() {
       z.object({
         success: z.boolean(),
         message: z.string(),
-      })
+      }),
     );
 
     if (result.success) {
@@ -158,14 +160,11 @@ async function main() {
       } catch (err) {
         console.warn(
           "Timed out waiting for 'networkidle' after retry submit; continuing because the login likely succeeded.",
-          err
+          err,
         );
       }
 
-      const retryResult = await stagehand.extract(
-        "Check if the login was successful",
-        z.boolean()
-      );
+      const retryResult = await stagehand.extract("Check if the login was successful", z.boolean());
 
       if (retryResult) {
         console.log("Success on retry!");
@@ -173,7 +172,6 @@ async function main() {
         console.log("Authentication failed after retry");
       }
     }
-
   } catch (error) {
     console.error("Error during MFA handling:", error);
   } finally {

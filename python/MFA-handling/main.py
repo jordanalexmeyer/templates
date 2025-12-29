@@ -1,13 +1,15 @@
 # Stagehand + Browserbase: MFA Handling - TOTP Automation - See README.md for full documentation
 
-import os
 import asyncio
-import hmac
 import hashlib
+import hmac
+import os
 import time
+
 from dotenv import load_dotenv
-from stagehand import Stagehand
 from pydantic import BaseModel, Field
+
+from stagehand import Stagehand
 
 # Load environment variables
 load_dotenv()
@@ -19,7 +21,7 @@ DEMO_URL = "https://authenticationtest.com/totpChallenge/"
 def generate_totp(secret: str, window: int = 0) -> str:
     """
     Generate TOTP code (Time-based One-Time Password) using RFC 6238 compliant algorithm.
-    
+
     Same algorithm used by Google Authenticator, Authy, and other authenticator apps.
     """
     # Convert base32 secret to bytes
@@ -88,7 +90,7 @@ async def main():
         project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
         model="openai/gpt-4.1",
         model_api_key=os.environ.get("OPENAI_API_KEY"),
-        verbose=0  # 0 = errors only, 1 = info, 2 = debug
+        verbose=0,  # 0 = errors only, 1 = info, 2 = debug
         # (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.)
         # https://docs.stagehand.dev/configuration/logging
     )
@@ -97,9 +99,11 @@ async def main():
         # Initialize browser session
         await stagehand.init()
         print("Stagehand initialized successfully!")
-        
+
         # Get session ID if available
-        session_id = getattr(stagehand, "session_id", None) or getattr(stagehand, "browserbase_session_id", None)
+        session_id = getattr(stagehand, "session_id", None) or getattr(
+            stagehand, "browserbase_session_id", None
+        )
         if session_id:
             print(f"Live View Link: https://browserbase.com/sessions/{session_id}")
 
@@ -143,7 +147,7 @@ async def main():
         try:
             print("Waiting for page to finish loading after submit...")
             await page.wait_for_load_state("networkidle", timeout=15000)
-        except Exception as err:
+        except Exception:
             print(
                 "Timed out waiting for 'networkidle' after submit; continuing because the login likely succeeded."
             )
@@ -173,7 +177,7 @@ async def main():
             try:
                 print("Waiting for page to finish loading after retry submit...")
                 await page.wait_for_load_state("networkidle", timeout=15000)
-            except Exception as err:
+            except Exception:
                 print(
                     "Timed out waiting for 'networkidle' after retry submit; continuing because the login likely succeeded."
                 )
@@ -194,6 +198,7 @@ async def main():
     except Exception as error:
         print(f"Error during MFA handling: {error}")
         import traceback
+
         traceback.print_exc()
         raise
 
