@@ -30,8 +30,8 @@ async def create_session_with_context():
         env="BROWSERBASE",
         api_key=os.environ.get("BROWSERBASE_API_KEY"),
         project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
-        model_name="openai/gpt-4.1-mini",
-        model_api_key=os.environ.get("OPENAI_API_KEY"),
+        model_name="google/gemini-2.5-flash",
+        model_api_key=os.environ.get("GOOGLE_GENERATIVE_AI_API_KEY"),
         browserbase_session_create_params={
             "project_id": os.environ.get("BROWSERBASE_PROJECT_ID"),
             "browser_settings": {
@@ -135,8 +135,8 @@ async def reuse_context(context_id: str):
         env="BROWSERBASE",
         api_key=os.environ.get("BROWSERBASE_API_KEY"),
         project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
-        model_name="openai/gpt-4.1-mini",
-        model_api_key=os.environ.get("OPENAI_API_KEY"),
+        model_name="google/gemini-2.5-flash",
+        model_api_key=os.environ.get("GOOGLE_GENERATIVE_AI_API_KEY"),
         browserbase_session_create_params={
             "project_id": os.environ.get("BROWSERBASE_PROJECT_ID"),
             "browser_settings": {
@@ -266,6 +266,6 @@ if __name__ == "__main__":
         print(f"Application error: {err}")
         print("Common issues:")
         print("  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY")
-        print("  - Verify OPENAI_API_KEY is set in environment")
+        print("  - Verify GOOGLE_GENERATIVE_AI_API_KEY is set in environment")
         print("Docs: https://docs.stagehand.dev/v2/first-steps/introduction")
         exit(1)
