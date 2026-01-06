@@ -69,8 +69,10 @@
 
 ## HELPFUL RESOURCES
 
-📚 Stagehand Docs: https://docs.stagehand.dev/v3/first-steps/introduction
+📚 Stagehand Docs: https://docs.stagehand.dev/v2/first-steps/introduction
 🎮 Browserbase: https://www.browserbase.com
 💡 Try it out: https://www.browserbase.com/playground
 🔧 Templates: https://www.browserbase.com/templates
 📧 Need help? support@browserbase.com
+💬 Discord: http://stagehand.dev/discord
+
