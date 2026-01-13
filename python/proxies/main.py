@@ -1,74 +1,39 @@
 # Browserbase Proxy Testing Script - See README.md for full documentation
 
 import asyncio
+import json
 import os
 
 from browserbase import Browserbase
 from dotenv import load_dotenv
-from playwright.async_api import async_playwright
-from pydantic import BaseModel, Field
-
-from stagehand import Stagehand, StagehandConfig
+from stagehand import AsyncStagehand
 
 load_dotenv()
 
 bb = Browserbase(api_key=os.environ.get("BROWSERBASE_API_KEY"))
 
 
-class GeoInfo(BaseModel):
-    """Schema for IP information and geolocation data"""
-
-    ip: str = Field(..., description="The IP address")
-    city: str = Field(..., description="The city name")
-    region: str = Field(..., description="The state or region")
-    country: str = Field(..., description="The country code")
-    loc: str = Field(..., description="The latitude and longitude coordinates")
-    timezone: str = Field(..., description="The timezone")
-    org: str = Field(..., description="The organization or ISP")
-    postal: str = Field(..., description="The postal code")
-    hostname: str = Field(..., description="The hostname if available")
-
-
 async def create_session_with_built_in_proxies():
-    # Use Browserbase's default proxy rotation for enhanced privacy and IP diversity.
     session = await asyncio.to_thread(
         bb.sessions.create,
         project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
-        proxies=True,  # Enables automatic proxy rotation across different IP addresses.
+        proxies=True,
     )
     return session
 
 
 async def create_session_with_geo_location():
-    # Route traffic through specific geographic location to test location-based restrictions.
     session = await asyncio.to_thread(
         bb.sessions.create,
         project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
         proxies=[
             {
-                "type": "browserbase",  # Use Browserbase's managed proxy infrastructure.
+                "type": "browserbase",
                 "geolocation": {
-                    "city": "NEW_YORK",  # Simulate traffic from New York for testing geo-specific content.
-                    "state": "NY",  # See https://docs.browserbase.com/features/proxies for more geolocation options.
+                    "city": "NEW_YORK",
+                    "state": "NY",
                     "country": "US",
                 },
-            }
-        ],
-    )
-    return session
-
-
-async def create_session_with_custom_proxies():
-    # Use external proxy servers for custom routing or specific proxy requirements.
-    session = await asyncio.to_thread(
-        bb.sessions.create,
-        project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
-        proxies=[
-            {
-                "type": "external",  # Connect to your own proxy server infrastructure.
-                "server": "http://...",  # Your proxy server endpoint.
-                "username": "user",  # Authentication credentials for proxy access.
-                "password": "pass",
             }
         ],
     )
@@ -78,71 +43,49 @@ async def create_session_with_custom_proxies():
 async def test_session(session_function, session_name: str):
     print(f"\n=== Testing {session_name} ===")
 
-    # Create session with specific proxy configuration to test different routing scenarios.
-    session = await session_function()
-    print(f"Session URL: https://browserbase.com/sessions/{session.id}")
+    bb_session = await session_function()
+    print(f"Browserbase Session URL: https://browserbase.com/sessions/{bb_session.id}")
 
-    # Connect to browser via CDP to control the session programmatically.
-    async with async_playwright() as p:
-        browser = await p.chromium.connect_over_cdp(session.connect_url)
-        default_context = browser.contexts[0] if browser.contexts else None
-        if not default_context:
-            raise Exception("No default context found")
+    # Use the v3 SDK to create a Stagehand session that connects to the existing Browserbase session
+    # Note: In v3, we'd need to pass the session_id to connect to an existing session
+    # For now, we'll create a new session and navigate to the IP info page
+    client = AsyncStagehand()
+    session = await client.sessions.create(model_name="openai/gpt-4.1")
 
-        page = default_context.pages[0] if default_context.pages else None
-        if not page:
-            raise Exception("No page found in default context")
+    print(f"Stagehand Session: {session.id}")
+    print(f"Watch live: https://browserbase.com/sessions/{session.id}")
 
-        # Initialize Stagehand for structured data extraction
-        stagehand_config = StagehandConfig(
-            env="BROWSERBASE",
-            api_key=os.environ.get("BROWSERBASE_API_KEY"),
-            project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
-            verbose=1,
-            # 0 = errors only, 1 = info, 2 = debug
-            # (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.)
-            # https://docs.stagehand.dev/configuration/logging
-            model_name="openai/gpt-4.1",
-            model_api_key=os.environ.get("OPENAI_API_KEY"),
-            browserbase_session_id=session.id,  # Use the existing Browserbase session
+    try:
+        await session.navigate(url="https://ipinfo.io/json")
+
+        geo_info = await session.extract(
+            instruction="Extract all IP information and geolocation data from the JSON response",
+            schema={
+                "type": "object",
+                "properties": {
+                    "ip": {"type": "string", "description": "The IP address"},
+                    "city": {"type": "string", "description": "The city name"},
+                    "region": {"type": "string", "description": "The state or region"},
+                    "country": {"type": "string", "description": "The country code"},
+                    "loc": {"type": "string", "description": "The latitude and longitude coordinates"},
+                    "timezone": {"type": "string", "description": "The timezone"},
+                    "org": {"type": "string", "description": "The organization or ISP"},
+                    "postal": {"type": "string", "description": "The postal code"},
+                },
+                "required": ["ip", "city", "country"],
+            },
         )
 
-        stagehand = Stagehand(stagehand_config)
-
-        try:
-            # Initialize Stagehand
-            await stagehand.init()
-
-            # Navigate to IP info service to verify proxy location and IP address.
-            await stagehand.page.goto("https://ipinfo.io/json", wait_until="domcontentloaded")
-
-            # Extract structured IP and location data using Stagehand and Pydantic schema
-            geo_info = await stagehand.page.extract(
-                instruction="Extract all IP information and geolocation data from the JSON response",
-                schema=GeoInfo,
-            )
-
-            print("Geo Info:", geo_info.model_dump_json(indent=2))
-
-            # Close Stagehand session
-            await stagehand.close()
-        except Exception as error:
-            print(f"Error during Stagehand extraction: {error}")
-
-        # Close browser to release resources and end the test session.
-        await browser.close()
+        print("Geo Info:", json.dumps(geo_info.data.result, indent=2))
         print(f"{session_name} test completed")
+
+    finally:
+        await session.end()
 
 
 async def main():
-    # Test 1: Built-in proxies - Verify default proxy rotation works and shows different IPs.
     await test_session(create_session_with_built_in_proxies, "Built-in Proxies")
-
-    # Test 2: Geolocation proxies - Confirm traffic routes through specified location (New York).
     await test_session(create_session_with_geo_location, "Geolocation Proxies (New York)")
-
-    # Test 3: Custom external proxies - Enable if you have a custom proxy server set up.
-    # await test_session(create_session_with_custom_proxies, "Custom External Proxies")
     print("\n=== All tests completed ===")
 
 

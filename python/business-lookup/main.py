@@ -5,116 +5,74 @@ import json
 import os
 
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field
+from stagehand import AsyncStagehand
 
-from stagehand import Stagehand, StagehandConfig
-
-# Load environment variables
 load_dotenv()
 
-# Business search variables
 business_name = "Jalebi Street"
 
 
 async def main():
     print("Starting business lookup...")
 
-    # Initialize Stagehand with Browserbase for cloud-based browser automation.
-    # Note: set verbose: 0 to prevent API keys from appearing in logs when handling sensitive data.
-    config = StagehandConfig(
-        env="BROWSERBASE",
-        api_key=os.environ.get("BROWSERBASE_API_KEY"),
-        project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
-        model_name="openai/gpt-4.1",
-        model_api_key=os.environ.get("OPENAI_API_KEY"),
-        browserbase_session_create_params={
-            "project_id": os.environ.get("BROWSERBASE_PROJECT_ID"),
-        },
-        verbose=1,  # 0 = errors only, 1 = info, 2 = debug
-        # (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.)
-        # https://docs.stagehand.dev/configuration/logging
-    )
+    client = AsyncStagehand()
+    session = await client.sessions.create(model_name="openai/gpt-4.1")
+
+    print("Stagehand initialized successfully")
+    print(f"Session ID: {session.id}")
+    print(f"Live View Link: https://browserbase.com/sessions/{session.id}")
 
     try:
-        # Use async context manager for automatic resource management
-        async with Stagehand(config) as stagehand:
-            # Initialize browser session to start automation.
-            print("Stagehand initialized successfully")
-            session_id = None
-            if hasattr(stagehand, "session_id"):
-                session_id = stagehand.session_id
-            elif hasattr(stagehand, "browserbase_session_id"):
-                session_id = stagehand.browserbase_session_id
+        print("Navigating to SF Business Registry...")
+        await session.navigate(
+            url="https://data.sfgov.org/stories/s/Registered-Business-Lookup/k6sk-2y6w/"
+        )
 
-            if session_id:
-                print(f"Live View Link: https://browserbase.com/sessions/{session_id}")
+        print(f"Searching for business: {business_name}")
+        print("Creating Computer Use Agent...")
+        result = await session.execute(
+            execute_options={
+                "instruction": f'Find and look up the business "{business_name}" in the SF Business Registry. Use the DBA Name filter to search for "{business_name}", apply the filter, and click on the business row to view detailed information. Scroll towards the right to see the NAICS code.',
+                "max_steps": 30,
+            },
+            agent_config={
+                "model": "google/gemini-2.5-computer-use-preview-10-2025",
+            },
+            timeout=300.0,
+        )
 
-            page = stagehand.page
+        if hasattr(result.data, "success") and not result.data.success:
+            raise Exception("Agent failed to complete the search")
 
-            # Navigate to SF Business Registry search page.
-            print("Navigating to SF Business Registry...")
-            await page.goto(
-                "https://data.sfgov.org/stories/s/Registered-Business-Lookup/k6sk-2y6w/",
-                wait_until="domcontentloaded",
-                timeout=60000,
-            )
+        print("Agent task completed")
 
-            # Create agent with computer use capabilities for autonomous business search.
-            # Using CUA mode allows the agent to interact with complex UI elements like filters and tables.
-            print("Creating Computer Use Agent...")
-            agent = stagehand.agent(
-                provider="google",
-                model="gemini-2.5-computer-use-preview-10-2025",
-                instructions="You are a helpful assistant that can use a web browser to search for business information.",
-                options={
-                    "api_key": os.getenv("GOOGLE_API_KEY"),
+        print("Extracting business information...")
+        business_info = await session.extract(
+            instruction="Extract all visible business information including DBA Name, Ownership Name, Business Account Number, Location Id, Street Address, Business Start Date, Business End Date, Neighborhood, NAICS Code, and NAICS Code Description",
+            schema={
+                "type": "object",
+                "properties": {
+                    "dba_name": {"type": "string", "description": "DBA Name"},
+                    "ownership_name": {"type": "string", "description": "Ownership Name"},
+                    "business_account_number": {"type": "string", "description": "Business Account Number"},
+                    "location_id": {"type": "string", "description": "Location Id"},
+                    "street_address": {"type": "string", "description": "Street Address"},
+                    "business_start_date": {"type": "string", "description": "Business Start Date"},
+                    "business_end_date": {"type": "string", "description": "Business End Date"},
+                    "neighborhood": {"type": "string", "description": "Neighborhood"},
+                    "naics_code": {"type": "string", "description": "NAICS Code"},
+                    "naics_code_description": {"type": "string", "description": "NAICS Code Description"},
                 },
-            )
+                "required": ["dba_name", "business_account_number", "naics_code"],
+            },
+        )
 
-            print(f"Searching for business: {business_name}")
-            result = await agent.execute(
-                instruction=f'Find and look up the business "{business_name}" in the SF Business Registry. Use the DBA Name filter to search for "{business_name}", apply the filter, and click on the business row to view detailed information. Scroll towards the right to see the NAICS code.',
-                max_steps=30,
-                auto_screenshot=True,
-            )
+        print("Business information extracted:")
+        print(json.dumps(business_info.data.result, indent=2))
 
-            if not result.success:
-                raise Exception("Agent failed to complete the search")
-
-            print("Agent completed search successfully")
-
-            # Extract comprehensive business information after agent completes the search.
-            # Using structured schema ensures consistent data extraction even if page layout changes.
-            print("Extracting business information...")
-
-            # Define schema using Pydantic
-            class BusinessInfo(BaseModel):
-                dba_name: str = Field(..., description="DBA Name")
-                ownership_name: str | None = Field(None, description="Ownership Name")
-                business_account_number: str = Field(..., description="Business Account Number")
-                location_id: str | None = Field(None, description="Location Id")
-                street_address: str | None = Field(None, description="Street Address")
-                business_start_date: str | None = Field(None, description="Business Start Date")
-                business_end_date: str | None = Field(None, description="Business End Date")
-                neighborhood: str | None = Field(None, description="Neighborhood")
-                naics_code: str = Field(..., description="NAICS Code")
-                naics_code_description: str | None = Field(
-                    None, description="NAICS Code Description"
-                )
-
-            business_info = await page.extract(
-                "Extract all visible business information including DBA Name, Ownership Name, Business Account Number, Location Id, Street Address, Business Start Date, Business End Date, Neighborhood, NAICS Code, and NAICS Code Description",
-                schema=BusinessInfo,
-            )
-
-            print("Business information extracted:")
-            print(json.dumps(business_info.model_dump(), indent=2))
-
+    finally:
+        await session.end()
         print("Session closed successfully")
-
-    except Exception as error:
-        print(f"Error during business lookup: {error}")
-        raise
 
 
 if __name__ == "__main__":
@@ -124,6 +82,5 @@ if __name__ == "__main__":
         print(f"Error in business lookup: {err}")
         print("Common issues:")
         print("  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY")
-        print("  - Verify GOOGLE_API_KEY is set for the agent")
-        print("Docs: https://docs.stagehand.dev/v3/first-steps/introduction")
+        print("  - Verify MODEL_API_KEY is set for the agent")
         exit(1)

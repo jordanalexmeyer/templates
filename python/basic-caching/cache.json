@@ -1,0 +1,11 @@
+{
+  "Click on the View Demo button": {
+    "description": "View demo button",
+    "selector": "xpath=/html[1]/body[1]/div[4]/div[1]/div[1]/div[1]/button[1]",
+    "arguments": [],
+    "method": "click"
+  },
+  "Type 'test@example.com' into the email field": {
+    "input": "Type 'test@example.com' into the email field"
+  }
+}
