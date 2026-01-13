@@ -7,12 +7,17 @@ from browserbase import Browserbase
 from dotenv import load_dotenv
 from stagehand import AsyncStagehand
 
+# Load environment variables
 load_dotenv()
 
 
 async def save_downloads_with_retry(
     bb: Browserbase, session_id: str, retry_for_seconds: int = 30
 ) -> int:
+    """
+    Polls Browserbase for downloaded files and saves them locally.
+    Retries until downloads are ready or timeout is reached.
+    """
     print(f"Waiting up to {retry_for_seconds} seconds for downloads to complete...")
 
     start_time = asyncio.get_event_loop().time()

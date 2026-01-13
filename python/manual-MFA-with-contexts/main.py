@@ -15,8 +15,13 @@ bb = Browserbase(api_key=os.environ.get("BROWSERBASE_API_KEY"))
 
 
 async def create_session_with_context():
+    """
+    Creates a new Browserbase context and performs initial login with MFA.
+    The context persists authentication state (cookies, MFA trust) for reuse.
+    """
     print("Creating new Browserbase context...")
 
+    # Create a persistent context to store authentication state across sessions
     context = bb.contexts.create(project_id=os.environ.get("BROWSERBASE_PROJECT_ID"))
 
     print(f"Context created: {context.id}")
@@ -86,9 +91,14 @@ async def create_session_with_context():
 
 
 async def reuse_context(context_id: str):
+    """
+    Demonstrates session reuse with persisted authentication.
+    No login or MFA required since the context contains saved auth state.
+    """
     print(f"Second session: Reusing context {context_id}")
     print("   (No login, no MFA required - auth state persisted)\n")
 
+    # New session using saved context - will be pre-authenticated
     client = AsyncStagehand()
     session = await client.sessions.create(model_name="google/gemini-2.5-flash")
 
@@ -124,6 +134,7 @@ async def reuse_context(context_id: str):
 
 
 async def delete_context(context_id: str):
+    """Cleans up the Browserbase context. Contexts auto-expire after 30 days if not deleted."""
     print(f"Deleting context: {context_id}")
     try:
         response = requests.delete(
@@ -144,6 +155,10 @@ async def delete_context(context_id: str):
 
 
 async def main():
+    """
+    Demonstrates MFA persistence using Browserbase contexts.
+    User completes MFA once, then future sessions skip MFA entirely.
+    """
     print("Starting Browserbase Context MFA Persistence Demo...")
 
     if not os.environ.get("BROWSERBASE_API_KEY") or not os.environ.get("BROWSERBASE_PROJECT_ID"):

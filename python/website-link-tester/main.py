@@ -19,6 +19,7 @@ SOCIAL_DOMAINS = [
 
 
 def deduplicate_links(links: list) -> list:
+    """Removes duplicate links based on URL, preserving first occurrence."""
     seen_urls: set[str] = set()
     unique_links: list = []
     for link in links:
@@ -31,8 +32,10 @@ def deduplicate_links(links: list) -> list:
 
 
 async def collect_links_from_homepage() -> list:
+    """Extracts all unique links from the target homepage."""
     print("Collecting links from homepage...")
 
+    # Each link collection gets its own browser session
     client = AsyncStagehand()
     session = await client.sessions.create(model_name="google/gemini-2.5-pro")
 
@@ -78,11 +81,13 @@ async def collect_links_from_homepage() -> list:
 
 
 async def verify_single_link(link: dict) -> dict:
+    """Verifies a single link by navigating to it and checking if content matches link text."""
     link_text = link.get("link_text", "")
     link_url = link.get("url", "")
 
     print(f"\nChecking: {link_text} ({link_url})")
 
+    # Each link verification gets its own isolated browser session
     client = AsyncStagehand()
     session = await client.sessions.create(model_name="google/gemini-2.5-pro")
 
@@ -148,6 +153,7 @@ async def verify_single_link(link: dict) -> dict:
 
 
 async def verify_links_in_batches(links: list) -> list:
+    """Processes links in batches to respect concurrency limits."""
     max_concurrent = max(1, MAX_CONCURRENT_LINKS)
     print(f"\nVerifying links in batches of {max_concurrent}...")
 
@@ -169,6 +175,7 @@ async def verify_links_in_batches(links: list) -> list:
 
 
 def output_results(results: list, label: str = "FINAL RESULTS") -> None:
+    """Formats and displays link verification results as JSON report."""
     print("\n" + "=" * 80)
     print(label)
     print("=" * 80)
@@ -185,6 +192,10 @@ def output_results(results: list, label: str = "FINAL RESULTS") -> None:
 
 
 async def main():
+    """
+    Collects all links from a website and verifies each one works correctly.
+    Social media links are validated as reachable; other links check content relevance.
+    """
     print("Starting Website Link Tester (Python)...")
 
     results: list = []

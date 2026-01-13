@@ -10,12 +10,15 @@ import aiofiles
 from dotenv import load_dotenv
 from stagehand import AsyncStagehand
 
+# Load environment variables
 load_dotenv()
 
+# Cache file location - stores observe() results for reuse
 CACHE_FILE = Path(__file__).parent / "cache.json"
 
 
 async def get_cache(key: str) -> dict[str, Any] | None:
+    """Retrieves a cached action by key, returns None if not found."""
     try:
         async with aiofiles.open(CACHE_FILE) as f:
             cache_content = await f.read()
@@ -26,6 +29,7 @@ async def get_cache(key: str) -> dict[str, Any] | None:
 
 
 async def set_cache(key: str, value: Any) -> None:
+    """Stores an action in the cache file for later reuse."""
     try:
         async with aiofiles.open(CACHE_FILE) as f:
             cache_content = await f.read()

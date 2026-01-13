@@ -6,10 +6,15 @@ import os
 from dotenv import load_dotenv
 from stagehand import AsyncStagehand
 
+# Load environment variables
 load_dotenv()
 
 
 async def get_weather_for_location(geolocation: dict) -> dict:
+    """
+    Fetches weather data for a specific location using geolocation proxies.
+    Each call creates a new session that appears to originate from the specified location.
+    """
     city_name = geolocation["city"].replace("_", " ")
     print(f"\n=== Getting weather for {city_name}, {geolocation['country']} ===")
 

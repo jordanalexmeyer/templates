@@ -8,12 +8,15 @@ from browserbase import Browserbase
 from dotenv import load_dotenv
 from stagehand import AsyncStagehand
 
+# Load environment variables
 load_dotenv()
 
+# Initialize Browserbase client for proxy-enabled session management
 bb = Browserbase(api_key=os.environ.get("BROWSERBASE_API_KEY"))
 
 
 async def create_session_with_built_in_proxies():
+    """Creates a Browserbase session with built-in proxy rotation."""
     session = await asyncio.to_thread(
         bb.sessions.create,
         project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
@@ -23,6 +26,7 @@ async def create_session_with_built_in_proxies():
 
 
 async def create_session_with_geo_location():
+    """Creates a Browserbase session with geolocation proxy for New York."""
     session = await asyncio.to_thread(
         bb.sessions.create,
         project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),

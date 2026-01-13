@@ -7,17 +7,25 @@ import os
 from dotenv import load_dotenv
 from stagehand import AsyncStagehand
 
+# Load environment variables
 load_dotenv()
 
 
 async def main():
+    """
+    Searches Polymarket for a prediction market and extracts current odds, pricing, and volume data.
+    Uses AI-powered browser automation to navigate and interact with the site.
+    """
     print("Starting Polymarket research automation...")
 
+    # Initialize Stagehand with Browserbase for cloud-based browser automation.
+    # Environment variables used: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID, MODEL_API_KEY
     client = AsyncStagehand()
     session = await client.sessions.create(model_name="openai/gpt-4.1")
 
     print("Initializing browser session...")
     print("Stagehand session started successfully")
+    # Provide live session URL for debugging and monitoring
     print(f"Session ID: {session.id}")
     print(f"Watch live: https://browserbase.com/sessions/{session.id}")
 
@@ -26,9 +34,11 @@ async def main():
         await session.navigate(url="https://polymarket.com/")
         print("Page loaded successfully")
 
+        # Click the search box to trigger search dropdown
         print("Clicking the search box at the top of the page")
         await session.act(input="click the search box at the top of the page")
 
+        # Type search query
         searchQuery = "Elon Musk unfollow Trump"
         print(f"Typing '{searchQuery}' into the search box")
         await session.act(input=f"type '{searchQuery}' into the search box")

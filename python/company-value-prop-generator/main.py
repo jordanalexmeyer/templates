@@ -7,16 +7,23 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from stagehand import AsyncStagehand
 
+# Load environment variables
 load_dotenv()
 
 # Domain to analyze - change this to target a different website
-target_domain = "www.browserbase.com"
+target_domain = "www.browserbase.com"  # Or extract from email: email.split("@")[1]
 
-# Initialize OpenAI client
+# Initialize OpenAI client for generating one-liners
 openai_client = OpenAI()
 
 
 async def generate_one_liner(domain: str) -> str:
+    """
+    Analyzes a website's landing page to generate a concise one-liner value proposition.
+    Extracts the value prop using Stagehand, then uses an LLM to format it into a short phrase.
+    """
+    # Initialize Stagehand with Browserbase for cloud-based browser automation.
+    # Environment variables used: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID, MODEL_API_KEY
     client = AsyncStagehand()
     session = await client.sessions.create(model_name="openai/gpt-4.1")
 

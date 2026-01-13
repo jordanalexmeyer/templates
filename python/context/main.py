@@ -8,10 +8,15 @@ from browserbase import Browserbase
 from dotenv import load_dotenv
 from stagehand import AsyncStagehand
 
+# Load environment variables
 load_dotenv()
 
 
 async def create_session_context_id():
+    """
+    Creates a Browserbase context and performs initial login.
+    The context persists authentication state across sessions.
+    """
     print("Creating new Browserbase context...")
     bb = Browserbase(api_key=os.environ.get("BROWSERBASE_API_KEY"))
     context = bb.contexts.create(project_id=os.environ.get("BROWSERBASE_PROJECT_ID"))

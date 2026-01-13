@@ -6,9 +6,11 @@ import os
 from dotenv import load_dotenv
 from stagehand import AsyncStagehand
 
+# Load environment variables
 load_dotenv()
 
 # Form data variables - using random/fake data for testing
+# Set your own variables below to customize the form submission
 first_name = "Alex"
 last_name = "Johnson"
 company = "TechCorp Solutions"
@@ -22,6 +24,8 @@ message = (
 async def main():
     print("Starting Form Filling Example...")
 
+    # Initialize Stagehand with Browserbase for cloud-based browser automation.
+    # Environment variables used: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID, MODEL_API_KEY
     client = AsyncStagehand()
     session = await client.sessions.create(model_name="openai/gpt-4.1")
 
@@ -29,13 +33,14 @@ async def main():
     print(f"Live View: https://browserbase.com/sessions/{session.id}")
 
     try:
-        await session.navigate(
-            url="https://www.browserbase.com/contact",
-        )
+        # Navigate to contact page
+        await session.navigate(url="https://www.browserbase.com/contact")
         print("Navigated to Browserbase contact page")
 
+        # Fill form using individual act() calls for reliability
         print("Filling in contact form...")
 
+        # Fill each field individually for better reliability
         await session.act(input=f'Fill in the first name field with "{first_name}"')
         await session.act(input=f'Fill in the last name field with "{last_name}"')
         await session.act(input=f'Fill in the company field with "{company}"')
@@ -43,9 +48,14 @@ async def main():
         await session.act(input=f'Fill in the email field with "{email}"')
         await session.act(input=f'Fill in the message field with "{message}"')
 
+        # Language choice in Stagehand act() is crucial for reliable automation.
+        # Use "click" for dropdown interactions rather than "select"
         await session.act(input="Click on the How Can we help? dropdown")
         await asyncio.sleep(0.5)
         await session.act(input="Click on the first option from the dropdown")
+
+        # Uncomment the line below if you want to submit the form
+        # await session.act(input="Click the submit button")
 
         print("Form filled successfully! Waiting 3 seconds...")
         await asyncio.sleep(3)

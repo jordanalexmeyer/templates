@@ -14,6 +14,7 @@ load_dotenv()
 
 
 async def get_project_concurrency() -> int:
+    """Retrieves the project's max concurrency limit from Browserbase (capped at 5)."""
     bb = Browserbase(api_key=os.environ.get("BROWSERBASE_API_KEY"))
     project = await asyncio.to_thread(
         bb.projects.retrieve, os.environ.get("BROWSERBASE_PROJECT_ID")
@@ -22,18 +23,22 @@ async def get_project_concurrency() -> int:
 
 
 def generate_random_email() -> str:
+    """Generates a random email address for job application forms."""
     random_string = "".join(random.choices("abcdefghijklmnopqrstuvwxyz0123456789", k=8))
     return f"agent-{random_string}@example.com"
 
 
 def generate_agent_id() -> str:
+    """Generates a unique agent identifier with timestamp for tracking applications."""
     timestamp = int(time.time() * 1000)
     random_string = "".join(random.choices("abcdefghijklmnopqrstuvwxyz0123456789", k=7))
     return f"agent-{timestamp}-{random_string}"
 
 
 async def apply_to_job(job_info: dict, semaphore: asyncio.Semaphore):
+    """Applies to a single job using a dedicated browser session with concurrency control."""
     async with semaphore:
+        # Each job application gets its own isolated browser session
         client = AsyncStagehand()
         session = await client.sessions.create(model_name="google/gemini-2.5-flash")
 
@@ -76,11 +81,17 @@ async def apply_to_job(job_info: dict, semaphore: asyncio.Semaphore):
 
 
 async def main():
+    """
+    Demonstrates parallel job application automation using concurrent browser sessions.
+    Extracts job listings then applies to each in parallel (up to concurrency limit).
+    """
     print("Starting Job Application Automation...")
 
+    # Get project concurrency limit to avoid exceeding Browserbase quotas
     max_concurrency = await get_project_concurrency()
     print(f"Executing with concurrency limit: {max_concurrency}")
 
+    # Main session for extracting job listings from the job board
     client = AsyncStagehand()
     session = await client.sessions.create(model_name="google/gemini-2.5-flash")
 

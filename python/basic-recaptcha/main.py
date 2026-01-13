@@ -11,6 +11,12 @@ load_dotenv()
 
 
 async def main():
+    """
+    Demonstrates automatic CAPTCHA solving using Browserbase's built-in capabilities.
+    The solveCaptchas feature must be enabled at the Browserbase project level.
+    """
+    # Initialize Stagehand with Browserbase for cloud-based browser automation.
+    # Environment variables used: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID, MODEL_API_KEY
     client = AsyncStagehand()
 
     # Note: solveCaptchas setting needs to be configured at the Browserbase project level

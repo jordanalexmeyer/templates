@@ -8,15 +8,18 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from stagehand import AsyncStagehand
 
+# Load environment variables
 load_dotenv()
 
 # ============= CONFIGURATION =============
+# Update these values to customize your gift search
 CONFIG = {
-    "recipient": "Friend",
-    "description": "loves cooking and trying new recipes",
+    "recipient": "Friend",  # Options: "Mum", "Dad", "Sister", "Brother", "Friend", "Boss"
+    "description": "loves cooking and trying new recipes",  # Describe their interests, hobbies, age, etc.
 }
 # =========================================
 
+# Initialize OpenAI client for generating search queries and scoring products
 openai_client = OpenAI()
 
 

@@ -7,6 +7,7 @@ import os
 from dotenv import load_dotenv
 from stagehand import AsyncStagehand
 
+# Load environment variables
 load_dotenv()
 
 # License records to verify - add more records as needed
@@ -21,22 +22,31 @@ LICENSE_RECORDS = [
 
 
 async def main():
+    """
+    Automated nurse license verification using AI-powered browser automation.
+    Processes multiple license records and extracts verification results.
+    """
     print("Starting Nurse License Verification Automation...")
 
+    # Initialize Stagehand with Browserbase for cloud-based browser automation.
+    # Environment variables used: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID, MODEL_API_KEY
     client = AsyncStagehand()
     session = await client.sessions.create(model_name="openai/gpt-4.1")
 
     print("Initializing browser session...")
     print("Stagehand session started successfully")
+    # Provide live session URL for debugging and monitoring
     print(f"Session ID: {session.id}")
     print(f"Watch live: https://browserbase.com/sessions/{session.id}")
 
     try:
+        # Process each license record sequentially
         for license_record in LICENSE_RECORDS:
             print(
                 f"Verifying license for: {license_record['FirstName']} {license_record['LastName']}"
             )
 
+            # Navigate to license verification site
             print(f"Navigating to: {license_record['Site']}")
             await session.navigate(url=license_record["Site"])
             await asyncio.sleep(1)

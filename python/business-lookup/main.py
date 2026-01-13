@@ -7,14 +7,22 @@ import os
 from dotenv import load_dotenv
 from stagehand import AsyncStagehand
 
+# Load environment variables
 load_dotenv()
 
+# Business name to look up in the SF Business Registry
 business_name = "Jalebi Street"
 
 
 async def main():
+    """
+    Uses Computer Use Agent (CUA) to navigate SF Business Registry and extract business data.
+    Demonstrates autonomous browsing with the Gemini CUA model.
+    """
     print("Starting business lookup...")
 
+    # Initialize Stagehand with Browserbase for cloud-based browser automation.
+    # Environment variables used: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID, MODEL_API_KEY
     client = AsyncStagehand()
     session = await client.sessions.create(model_name="openai/gpt-4.1")
 
@@ -28,6 +36,7 @@ async def main():
             url="https://data.sfgov.org/stories/s/Registered-Business-Lookup/k6sk-2y6w/"
         )
 
+        # Use Computer Use Agent (CUA) to autonomously navigate and search the registry
         print(f"Searching for business: {business_name}")
         print("Creating Computer Use Agent...")
         result = await session.execute(

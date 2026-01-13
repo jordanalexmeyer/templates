@@ -11,6 +11,7 @@ load_dotenv()
 
 
 async def login_to_site(session, email: str, password: str) -> None:
+    """Authenticates user with email and password on the SF Rec & Park site."""
     print("Logging in...")
     await session.act(input="Click the Login button")
     await session.act(input=f'Fill in the email or username field with "{email}"')
@@ -21,6 +22,7 @@ async def login_to_site(session, email: str, password: str) -> None:
 
 
 async def select_filters(session, activity: str, time_of_day: str, selected_date: str) -> None:
+    """Applies filters for activity type, date, and time of day on the booking page."""
     print("Selecting the activity")
     await session.act(input="Click the activites drop down menu")
     await session.act(input=f"Select the {activity} activity")
@@ -52,6 +54,7 @@ async def select_filters(session, activity: str, time_of_day: str, selected_date
 
 
 async def check_and_extract_courts(session, time_of_day: str) -> None:
+    """Finds and displays available courts, trying alternative time periods if needed."""
     print("Checking for available courts...")
 
     available_courts = await session.observe(
@@ -160,6 +163,7 @@ async def check_and_extract_courts(session, time_of_day: str) -> None:
 
 
 async def book_court(session) -> None:
+    """Completes the court booking with participant selection and verification code."""
     print("Starting court booking process...")
 
     try:
@@ -279,6 +283,10 @@ async def select_date() -> str:
 
 
 async def book_tennis_paddle_court():
+    """
+    Main booking workflow: login, apply filters, find available courts, and complete reservation.
+    Uses interactive prompts for activity, date, and time selection.
+    """
     print("Starting tennis/paddle court booking automation in SF...")
 
     email = os.environ.get("SF_REC_PARK_EMAIL")
@@ -287,12 +295,15 @@ async def book_tennis_paddle_court():
     if not email or not password:
         raise ValueError("Missing SF_REC_PARK_EMAIL or SF_REC_PARK_PASSWORD environment variables")
 
+    # Interactive prompts for user preferences
     activity = await select_activity()
     selected_date = await select_date()
     time_of_day = await select_time_of_day()
 
     print(f"Booking {activity} courts in San Francisco for {time_of_day} on {selected_date}...")
 
+    # Initialize Stagehand with Browserbase for cloud-based browser automation.
+    # Environment variables used: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID, MODEL_API_KEY
     print("Initializing Stagehand with Browserbase")
     client = AsyncStagehand()
     session = await client.sessions.create(model_name="openai/gpt-4.1")

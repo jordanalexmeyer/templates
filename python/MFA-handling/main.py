@@ -54,8 +54,14 @@ def generate_totp(secret: str, window: int = 0) -> str:
 
 
 async def main():
+    """
+    Demonstrates automated TOTP (Time-based One-Time Password) handling.
+    Extracts credentials from test page, generates TOTP codes, and completes MFA login.
+    """
     print("Starting MFA Handling - TOTP Automation...")
 
+    # Initialize Stagehand with Browserbase for cloud-based browser automation.
+    # Environment variables used: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID, MODEL_API_KEY
     client = AsyncStagehand()
     session = await client.sessions.create(model_name="openai/gpt-4.1")
 

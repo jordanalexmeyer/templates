@@ -7,17 +7,25 @@ import os
 from dotenv import load_dotenv
 from stagehand import AsyncStagehand
 
+# Load environment variables
 load_dotenv()
 
 
 async def main():
+    """
+    Searches Philadelphia Council Events for 2025 and extracts event information.
+    Uses AI-powered browser automation to navigate and interact with the site.
+    """
     print("Starting Philadelphia Council Events automation...")
 
+    # Initialize Stagehand with Browserbase for cloud-based browser automation.
+    # Environment variables used: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID, MODEL_API_KEY
     client = AsyncStagehand()
     session = await client.sessions.create(model_name="openai/gpt-4.1")
 
     print("Initializing browser session...")
     print("Stagehand session started successfully")
+    # Provide live session URL for debugging and monitoring
     print(f"Session ID: {session.id}")
     print(f"Watch live: https://browserbase.com/sessions/{session.id}")
 
@@ -32,6 +40,7 @@ async def main():
         print("Selecting 2025 from the month dropdown")
         await session.act(input="select 2025 from the month dropdown")
 
+        # Extract event data using AI to parse the structured information
         print("Extracting event information...")
         results = await session.extract(
             instruction="Extract the table with the name, date and time of the events",

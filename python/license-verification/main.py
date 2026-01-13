@@ -6,6 +6,7 @@ import os
 from dotenv import load_dotenv
 from stagehand import AsyncStagehand
 
+# Load environment variables
 load_dotenv()
 
 # License verification variables
@@ -15,24 +16,31 @@ variables = {
 
 
 async def main():
+    # Initialize Stagehand with Browserbase for cloud-based browser automation.
+    # Environment variables used: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID, MODEL_API_KEY
     client = AsyncStagehand()
     session = await client.sessions.create(model_name="openai/gpt-4.1")
 
     print("Stagehand Session Started")
+    # Provide live session URL for debugging and monitoring extraction process.
     print(f"Session ID: {session.id}")
     print(f"Watch live: https://browserbase.com/sessions/{session.id}")
 
     try:
+        # Navigate to California DRE license verification website for data extraction.
         await session.navigate(url="https://www2.dre.ca.gov/publicasp/pplinfo.asp")
         print("Navigated to: https://www2.dre.ca.gov/publicasp/pplinfo.asp")
 
+        # Fill in license ID to search for specific real estate professional.
         print(f"Performing action: type {variables['input1']} into the License ID input field")
         await session.act(input=f"type {variables['input1']} into the License ID input field")
 
+        # Submit search form to retrieve license verification data.
         print("Performing action: click the Find button")
         await session.act(input="click the Find button")
 
-        # Extract structured license data using JSON schema
+        # Extract structured license data using JSON schema for type safety and validation.
+        # The schema defines the structure of data we want to extract from the page.
         print("Extracting: extract all the license verification details for DRE#02237476")
         extract_response = await session.extract(
             instruction="extract all the license verification details for DRE#02237476",

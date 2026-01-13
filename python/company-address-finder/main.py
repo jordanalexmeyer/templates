@@ -14,6 +14,7 @@ MAX_CONCURRENT = 1
 
 
 async def with_retry(fn, description: str, max_retries: int = 3, delay_ms: int = 2000):
+    """Executes an async function with exponential backoff retry logic."""
     last_error = None
 
     for attempt in range(1, max_retries + 1):
@@ -29,8 +30,13 @@ async def with_retry(fn, description: str, max_retries: int = 3, delay_ms: int =
 
 
 async def process_company(company_name: str) -> dict:
+    """
+    Finds a company's physical address by navigating to their website
+    and extracting address from Terms of Service or Privacy Policy pages.
+    """
     print(f"\nProcessing: {company_name}")
 
+    # Each company lookup gets its own isolated browser session
     client = AsyncStagehand()
     session = await client.sessions.create(model_name="google/gemini-2.5-pro")
 
@@ -178,6 +184,10 @@ async def process_company(company_name: str) -> dict:
 
 
 async def main():
+    """
+    Processes multiple companies to find their physical addresses.
+    Uses CUA (Computer Use Agent) to navigate websites autonomously.
+    """
     print("Starting Company Address Finder...")
 
     company_names = COMPANY_NAMES
