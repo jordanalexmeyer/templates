@@ -1,12 +1,13 @@
 # Stagehand + Browserbase: Polymarket prediction market research - See README.md for full documentation
 
-import asyncio
+import json
 import os
 
 from dotenv import load_dotenv
+from playwright.sync_api import sync_playwright
 from pydantic import BaseModel, Field
 
-from stagehand import Stagehand, StagehandConfig
+from stagehand import Stagehand
 
 # Load environment variables
 load_dotenv()
@@ -23,7 +24,7 @@ class MarketData(BaseModel):
     priceChange: str | None = Field(None, description="the recent price change")
 
 
-async def main():
+def main():
     """
     Searches Polymarket for a prediction market and extracts current odds, pricing, and volume data.
     Uses AI-powered browser automation to navigate and interact with the site.
@@ -31,70 +32,73 @@ async def main():
     print("Starting Polymarket research automation...")
 
     # Initialize Stagehand with Browserbase for cloud-based browser automation
-    # Using BROWSERBASE environment to run in cloud rather than locally
-    config = StagehandConfig(
-        env="BROWSERBASE",
-        api_key=os.environ.get("BROWSERBASE_API_KEY"),
-        project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
-        model_name="openai/gpt-4.1",
+    client = Stagehand(
+        browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
+        browserbase_project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
         model_api_key=os.environ.get("OPENAI_API_KEY"),
-        verbose=1,
-        # 0 = errors only, 1 = info, 2 = debug
-        # (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.)
-        # https://docs.stagehand.dev/configuration/logging
     )
 
+    # Start a new session
+    start_response = client.sessions.start(
+        model_name="openai/gpt-4.1",
+    )
+    session_id = start_response.data.session_id
+
     try:
-        # Use async context manager for automatic resource management
-        async with Stagehand(config) as stagehand:
-            print("Initializing browser session...")
-            print("Stagehand session started successfully")
+        print("Initializing browser session...")
+        print("Stagehand session started successfully")
+        print(f"Watch live: https://browserbase.com/sessions/{session_id}")
 
-            # Provide live session URL for debugging and monitoring
-            session_id = None
-            if hasattr(stagehand, "session_id"):
-                session_id = stagehand.session_id
-            elif hasattr(stagehand, "browserbase_session_id"):
-                session_id = stagehand.browserbase_session_id
-
-            if session_id:
-                print(f"Watch live: https://browserbase.com/sessions/{session_id}")
-
-            page = stagehand.page
+        # Connect to the browser via CDP
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.connect_over_cdp(
+                f"wss://connect.browserbase.com?apiKey={os.environ['BROWSERBASE_API_KEY']}&sessionId={session_id}"
+            )
+            context = browser.contexts[0]
+            page = context.pages[0] if context.pages else context.new_page()
 
             # Navigate to Polymarket
             print("Navigating to: https://polymarket.com/")
-            await page.goto("https://polymarket.com/")
+            page.goto("https://polymarket.com/")
             print("Page loaded successfully")
 
             # Click the search box to trigger search dropdown
             print("Clicking the search box at the top of the page")
-            await page.act("click the search box at the top of the page")
+            client.sessions.act(
+                id=session_id,
+                input="click the search box at the top of the page",
+            )
 
             # Type search query
             searchQuery = "Elon Musk unfollow Trump"
             print(f"Typing '{searchQuery}' into the search box")
-            await page.act(f"type '{searchQuery}' into the search box")
+            client.sessions.act(
+                id=session_id,
+                input=f"type '{searchQuery}' into the search box",
+            )
 
             # Click the first market result from the search dropdown
             print("Selecting first market result from search dropdown")
-            await page.act("click the first market result from the search dropdown")
+            client.sessions.act(
+                id=session_id,
+                input="click the first market result from the search dropdown",
+            )
             print("Market page loaded")
 
             # Extract market data using AI to parse the structured information
             print("Extracting market information...")
-            marketData = await page.extract(
-                "Extract the current odds and market information for the prediction market",
-                schema=MarketData,
+            extract_response = client.sessions.extract(
+                id=session_id,
+                instruction="Extract the current odds and market information for the prediction market",
+                schema=MarketData.model_json_schema(),
             )
 
             print("Market data extracted successfully:")
+            print(json.dumps(extract_response.data.result, indent=2))
 
-            # Display results in formatted JSON
-            import json
+            browser.close()
 
-            print(json.dumps(marketData.model_dump(), indent=2))
-
+        client.sessions.end(id=session_id)
         print("Session closed successfully")
 
     except Exception as error:
@@ -107,12 +111,13 @@ async def main():
         print("3. Ensure internet access and https://polymarket.com is accessible")
         print("4. Verify Browserbase account has sufficient credits")
 
+        client.sessions.end(id=session_id)
         raise
 
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        main()
     except Exception as err:
         print(f"Error in polymarket research: {err}")
         print("Common issues:")
