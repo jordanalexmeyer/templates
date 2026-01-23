@@ -17,6 +17,45 @@
 - TOTP: Time-based One-Time Password - a 6-digit code that changes every 30 seconds, generated using HMAC-SHA1 algorithm
 - RFC 6238: Standard specification for TOTP authentication codes used by Google Authenticator, Authy, and other authenticator apps
 
+## STAGEHAND VS PLAYWRIGHT
+
+This template uses **pure Playwright** for browser automation. The Stagehand version of this template uses AI-powered natural language commands instead. Here's how they compare:
+
+| Task          | Stagehand (AI)                                            | Playwright (Selectors)                                        |
+| ------------- | --------------------------------------------------------- | ------------------------------------------------------------- |
+| Fill email    | `await page.act("Type email into the email field")`       | `await page.locator('input[type="email"]').fill(email)`       |
+| Fill password | `await page.act("Type password into the password field")` | `await page.locator('input[type="password"]').fill(password)` |
+| Click submit  | `await page.act("Click the submit button")`               | `await page.locator('input[type="submit"]').click()`          |
+| Check result  | AI interprets page content                                | Explicit selectors required                                   |
+
+**Example - Filling the login form:**
+
+```python
+# Stagehand: Natural language, AI finds the elements
+await page.act(f"Type '{email}' into the email field")
+await page.act(f"Type '{password}' into the password field")
+await page.act(f"Type '{totp_code}' into the TOTP code field")
+
+# Playwright: Explicit selectors, you specify how to find elements
+await page.locator('input[type="email"]').fill(email)
+await page.locator('input[type="password"]').fill(password)
+await page.locator("form input").nth(2).fill(totp_code)
+```
+
+**Example - Checking authentication result:**
+
+```python
+# Stagehand: AI understands context and extracts structured data
+result = await page.extract(
+    instruction="Check if the login was successful or if there's an error message",
+    schema=AuthResult,
+)
+
+# Playwright: Must check for specific elements/text on the page
+has_success = await page.locator('text="Login Success"').is_visible()
+has_failure = await page.locator('text="Login Failure"').is_visible()
+```
+
 ## QUICKSTART
 
 1. cd playwright-mfa-handling
