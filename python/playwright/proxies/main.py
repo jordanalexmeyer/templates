@@ -4,13 +4,28 @@ import asyncio
 import json
 import os
 from dataclasses import dataclass
-from typing import Optional
 
 from browserbase import Browserbase
 from dotenv import load_dotenv
 from playwright.async_api import async_playwright
 
 load_dotenv()
+
+
+@dataclass
+class GeoInfo:  # noqa: F841
+    """IP and geolocation data from ipinfo.io (for reference)"""
+
+    ip: str | None = None
+    city: str | None = None
+    region: str | None = None
+    country: str | None = None
+    loc: str | None = None
+    timezone: str | None = None
+    org: str | None = None
+    postal: str | None = None
+    hostname: str | None = None
+
 
 BROWSERBASE_API_KEY = os.environ.get("BROWSERBASE_API_KEY")
 BROWSERBASE_PROJECT_ID = os.environ.get("BROWSERBASE_PROJECT_ID")
@@ -21,21 +36,6 @@ if not BROWSERBASE_PROJECT_ID:
     raise ValueError("BROWSERBASE_PROJECT_ID environment variable is required")
 
 bb = Browserbase(api_key=BROWSERBASE_API_KEY)
-
-
-@dataclass
-class GeoInfo:
-    """IP and geolocation data from ipinfo.io"""
-
-    ip: Optional[str] = None
-    city: Optional[str] = None
-    region: Optional[str] = None
-    country: Optional[str] = None
-    loc: Optional[str] = None
-    timezone: Optional[str] = None
-    org: Optional[str] = None
-    postal: Optional[str] = None
-    hostname: Optional[str] = None
 
 
 def create_session_with_built_in_proxies():
@@ -125,17 +125,6 @@ async def test_session_browserbase(session_function, session_name: str):
 
             try:
                 geo_data = json.loads(body_text)
-                geo_info = GeoInfo(
-                    ip=geo_data.get("ip"),
-                    city=geo_data.get("city"),
-                    region=geo_data.get("region"),
-                    country=geo_data.get("country"),
-                    loc=geo_data.get("loc"),
-                    timezone=geo_data.get("timezone"),
-                    org=geo_data.get("org"),
-                    postal=geo_data.get("postal"),
-                    hostname=geo_data.get("hostname"),
-                )
             except json.JSONDecodeError as parse_error:
                 raise RuntimeError(f"Failed to parse JSON response: {parse_error}")
 
@@ -152,15 +141,11 @@ async def test_session_browserbase(session_function, session_name: str):
 async def main():
     print("Browserbase Proxy Testing with Playwright")
     print("=========================================")
-    print(
-        "This template demonstrates proxy features with Playwright and Browserbase SDK."
-    )
+    print("This template demonstrates proxy features with Playwright and Browserbase SDK.")
     print("It uses pure Playwright + Browserbase SDK.\n")
 
     # Test 1: Built-in proxies - Verify default proxy rotation works and shows different IPs.
-    await test_session_browserbase(
-        create_session_with_built_in_proxies, "Built-in Proxies"
-    )
+    await test_session_browserbase(create_session_with_built_in_proxies, "Built-in Proxies")
 
     # Test 2: Geolocation proxies - Confirm traffic routes through specified location (New York).
     await test_session_browserbase(
@@ -179,9 +164,7 @@ if __name__ == "__main__":
     except Exception as err:
         print(f"Application error: {err}")
         print("\nCommon issues:")
-        print(
-            "  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY"
-        )
+        print("  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY")
         print("  - Verify your Browserbase plan supports proxies")
         print("Docs: https://docs.browserbase.com/features/proxies")
         exit(1)
