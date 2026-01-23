@@ -1,9 +1,12 @@
+// Browserbase Proxy Testing with Playwright - See README.md for full documentation
+
 import { chromium } from "playwright-core";
 import { Browserbase } from "@browserbasehq/sdk";
 import dotenv from "dotenv";
 
 dotenv.config({ path: "../../.env" });
 
+/** IP and geolocation data from ipinfo.io */
 interface GeoInfo {
   ip?: string;
   city?: string;
@@ -29,22 +32,24 @@ if (!BROWSERBASE_PROJECT_ID) {
 const bb = new Browserbase({ apiKey: BROWSERBASE_API_KEY });
 
 async function createSessionWithBuiltInProxies() {
+  // Use Browserbase's default proxy rotation for enhanced privacy and IP diversity.
   const session = await bb.sessions.create({
-    projectId: BROWSERBASE_PROJECT_ID,
-    proxies: true,
+    projectId: BROWSERBASE_PROJECT_ID!,
+    proxies: true, // Enables automatic proxy rotation across different IP addresses.
   });
   return session;
 }
 
 async function createSessionWithGeoLocation() {
+  // Route traffic through specific geographic location to test location-based restrictions.
   const session = await bb.sessions.create({
-    projectId: BROWSERBASE_PROJECT_ID,
+    projectId: BROWSERBASE_PROJECT_ID!,
     proxies: [
       {
-        type: "browserbase",
+        type: "browserbase", // Use Browserbase's managed proxy infrastructure.
         geolocation: {
-          city: "NEW_YORK",
-          state: "NY",
+          city: "NEW_YORK", // Simulate traffic from New York for testing geo-specific content.
+          state: "NY", // See https://docs.browserbase.com/features/proxies for more geolocation options.
           country: "US",
         },
       },
@@ -54,6 +59,8 @@ async function createSessionWithGeoLocation() {
 }
 
 async function createSessionWithCustomProxies() {
+  // Use external proxy servers for custom routing or specific proxy requirements.
+  // Credentials from CUSTOM_PROXY_SERVER, CUSTOM_PROXY_USERNAME, CUSTOM_PROXY_PASSWORD.
   const proxyServer = process.env.CUSTOM_PROXY_SERVER;
   const proxyUsername = process.env.CUSTOM_PROXY_USERNAME;
   const proxyPassword = process.env.CUSTOM_PROXY_PASSWORD;
@@ -65,13 +72,13 @@ async function createSessionWithCustomProxies() {
   }
 
   const session = await bb.sessions.create({
-    projectId: BROWSERBASE_PROJECT_ID,
+    projectId: BROWSERBASE_PROJECT_ID!,
     proxies: [
       {
-        type: "external",
-        server: proxyServer,
-        username: proxyUsername,
-        password: proxyPassword,
+        type: "external", // Connect to your own proxy server infrastructure.
+        server: proxyServer!,
+        username: proxyUsername!,
+        password: proxyPassword!,
       },
     ],
   });
@@ -84,9 +91,11 @@ async function testSessionBrowserbase(
 ) {
   console.log(`\n=== Testing ${sessionName} ===`);
 
+  // Create session with specific proxy configuration to test different routing scenarios.
   const session = await sessionFunction();
   console.log("Session URL: https://browserbase.com/sessions/" + session.id);
 
+  // Connect to browser via CDP to control the session programmatically.
   const browser = await chromium.connectOverCDP(session.connectUrl);
   const defaultContext = browser.contexts()[0];
   if (!defaultContext) {
@@ -98,11 +107,12 @@ async function testSessionBrowserbase(
   }
 
   try {
-    console.log("Navigating to ipinfo.io/json...");
+    // Navigate to IP info service to verify proxy location and IP address.
     await page.goto("https://ipinfo.io/json", {
       waitUntil: "domcontentloaded",
     });
 
+    // Parse JSON from page body (pure Playwright; no Stagehand).
     const bodyText = await page.textContent("body");
     if (!bodyText) {
       throw new Error("Failed to get page content");
@@ -125,6 +135,7 @@ async function testSessionBrowserbase(
     );
   }
 
+  // Close browser to release resources and end the test session.
   await browser.close();
   console.log(`${sessionName} test completed`);
 }
@@ -135,9 +146,14 @@ async function main() {
   console.log("This template demonstrates proxy features with Playwright and Browserbase SDK.");
   console.log("It uses pure Playwright + Browserbase SDK.\n");
 
+  // Test 1: Built-in proxies - Verify default proxy rotation works and shows different IPs.
   await testSessionBrowserbase(createSessionWithBuiltInProxies, "Built-in Proxies");
 
+  // Test 2: Geolocation proxies - Confirm traffic routes through specified location (New York).
   await testSessionBrowserbase(createSessionWithGeoLocation, "Geolocation Proxies (New York)");
+
+  // Test 3: Custom external proxies - Enable if you have CUSTOM_PROXY_* env vars set.
+  // await testSessionBrowserbase(createSessionWithCustomProxies, "Custom External Proxies");
 
   console.log("\n=== All tests completed ===");
 }
