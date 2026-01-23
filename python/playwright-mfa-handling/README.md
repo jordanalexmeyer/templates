@@ -21,7 +21,7 @@
 
 1. cd playwright-mfa-handling
 2. python -m venv venv && source venv/bin/activate
-3. pip install -r requirements.txt
+3. pip install .
 4. playwright install chromium
 5. cp .env.example .env
 6. Add required API keys/IDs to .env (BROWSERBASE_PROJECT_ID, BROWSERBASE_API_KEY)
@@ -41,7 +41,7 @@
 
 ## COMMON PITFALLS
 
-- Dependency install errors: ensure pip install -r requirements.txt completed
+- Dependency install errors: ensure pip install . completed
 - Missing Playwright browsers: run `playwright install chromium` after installing dependencies
 - Missing credentials: verify .env contains BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY
 - TOTP code expiration: codes are valid for 30 seconds - if authentication fails, the script automatically retries with a fresh code
