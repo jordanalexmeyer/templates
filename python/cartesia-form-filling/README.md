@@ -1,217 +1,143 @@
-# Form Filling
+# Voice Agent with Real-time Web Form Filling
 
-Voice agent that conducts structured questionnaires using YAML configuration with conditional logic and response validation.
+This project demonstrates an advanced voice agent that conducts phone questionnaires while automatically filling out web forms in real-time using Stagehand browser automation.
 
-## Template Information
+Here's what the system architecture looks like:
 
-### Prerequisites
+![Workflow](workflow_diagram.png)
 
-- [Cartesia account](https://play.cartesia.ai)
-- [Google Gemini API key](https://aistudio.google.com/app/apikey)
+## Features
 
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `GEMINI_API_KEY` | Google Gemini API key | - |
-
-### Use Cases
-
-Customer surveys, medical intake forms, registration processes, interview questionnaires, research data collection, onboarding workflows.
-
-### File Overview
-
-```
-├── main.py                 # Entry point and system configuration
-├── form_filling_node.py    # Core form-filling reasoning node
-├── form_manager.py         # Form state and logic management
-├── form_tools.py           # Gemini tools for answer recording
-├── config.py               # System prompts and configuration
-├── form.yaml               # Form question definitions
-├── cartesia.toml           # Cartesia deployment config
-├── requirements.txt        # Python dependencies (legacy)
-└── pyproject.toml          # Python project dependencies (if present)
-```
-
-## Local Setup
-
-Install the Cartesia CLI.
-```zsh
-curl -fsSL https://cartesia.sh | sh
-cartesia auth login
-cartesia auth status
-```
-
-### Run the Example
-
-1. Set up your environment variables.
-   ```zsh
-   export GEMINI_API_KEY=your_api_key_here
-   ```
-
-2. Install dependencies and run.
-
-   **uv (recommended)**
-   ```zsh
-   PORT=8000 uv run python main.py
-   ```
-
-   **pip**
-   ```zsh
-   python -m venv .venv
-   source .venv/bin/activate
-   pip install -r requirements.txt
-   PORT=8000 python main.py
-   ```
-
-   **conda**
-   ```zsh
-   conda create -n form-filling python=3.11 -y
-   conda activate form-filling
-   pip install -r requirements.txt
-   PORT=8000 python main.py
-   ```
-
-3. Chat locally by running in a different terminal.
-   ```zsh
-   cartesia chat 8000
-   ```
-
-## Remote Deployment
-
-Read the [Cartesia docs](https://docs.cartesia.ai/line/) to learn how to deploy templates to the Cartesia Line platform.
+- **Voice Conversations**: Natural voice interactions using Cartesia Line
+- **Real-time Form Filling**: Automatically fills web forms as answers are collected
+- **Browser Automation**: Uses Stagehand AI to interact with any web form
+- **Intelligent Mapping**: AI-powered mapping of voice answers to form fields
+- **Async Processing**: Non-blocking form filling maintains conversation flow - form fields are filled in background tasks without delaying voice responses
+- **Auto-submission**: Submits forms automatically when complete
 
 ## Architecture
 
-### Core Components
-
-1. **FormManager** (`form_manager.py`)
-   - Loads and parses YAML form configuration
-   - Manages question progression and conditional logic
-   - Validates and stores user responses
-   - Handles nested question groups
-
-2. **FormFillingNode** (`form_filling_node.py`)
-   - Extends ReasoningNode for form-specific logic
-   - Orchestrates conversation flow
-   - Manages context clearing between questions
-
-3. **RecordAnswerTool** (`form_tools.py`)
-   - Tool for capturing user responses
-   - Triggers form state management
-   - Enables structured data collection
-
-4. **Form Configuration** (`form.yaml`)
-   - YAML-based question definitions
-   - Supports multiple question types and conditional logic
-
-### Question Flow Logic
-
-1. **Initial Setup**: Form loads from `form.yaml` and presents first question
-2. **User Response**: User provides answer via voice
-3. **LLM Processing**: LLM processes response and calls `record_answer` tool if satisfactory
-4. **Answer Recording**: FormManager validates and stores the response
-5. **Context Clearing**: Conversation history is cleared to maintain focus
-6. **Next Question**: If more questions exist, present the next one
-7. **Completion**: When all questions are answered, end the call gracefully
-
-## Customization Guide
-
-### Modifying the Form (`form.yaml`)
-
-The form configuration supports various question types and features:
-
-```yaml
-questionnaire:
-  id: "your_form_id"
-  text: "Your Form Title"
-  type: "group"
-  questions:
-    - id: "question_id"
-      text: "Your question text?"
-      type: "string|number|boolean|select|date"
-      required: true|false
-
-      # For select questions
-      options:
-        - value: "option1"
-          text: "Option 1 Display Text"
-        - value: "option2"
-          text: "Option 2 Display Text"
-
-      # For conditional questions
-      dependsOn:
-        questionId: "previous_question_id"
-        value: expected_value
-        operator: "equals|not_equals|in|not_in"
-
-      # For number questions
-      min: min_value
-      max: max_value
+```
+Voice Call (Cartesia) → Form Filling Node → Records Answer
+                              ↓
+                     Stagehand Browser API
+                              ↓
+                     Fills Web Form Field
+                              ↓
+                     Continues Conversation
+                              ↓
+                     Submits Form on Completion
 ```
 
-#### Supported Question Types:
-- **string**: Free-text responses
-- **number**: Numeric values with optional min/max validation
-- **boolean**: Yes/No questions
-- **select**: Multiple choice with predefined options
-- **date**: Date responses (stored as strings)
+## Getting Started
 
-#### Conditional Logic:
-Questions can be shown/hidden based on previous answers using the `dependsOn` field with operators:
-- `equals`: Show if previous answer equals specified value
-- `not_equals`: Show if previous answer doesn't equal specified value
-- `in`: Show if previous answer is in specified list
-- `not_in`: Show if previous answer is not in specified list
+First things first, here is what you will need:
+- A [Cartesia](https://play.cartesia.ai/agents) account and API key
+- A [Gemini API Key](https://aistudio.google.com/apikey)
+- A [Browserbase API Key and Project ID](https://www.browserbase.com/overview)
 
-### Customizing the System Prompt (`config.py`)
+Make sure to add the API keys in your `.env` file or to the API keys section in your Cartesia account.
 
-Modify `SYSTEM_PROMPT` to change the agent's behavior. We've outlined a prompt that performs well, but feel free to substite in your own.
+- Required packages:
+  ```bash
+  cartesia-line
+  stagehand>=0.5.4
+  google-genai>=1.26.0
+  python-dotenv>=1.0.0
+  PyYAML>=6.0.0
+  loguru>=0.7.0
+  aiohttp>=3.12.0
+  pydantic>=2.0.0
+  ```
 
-```python
-SYSTEM_PROMPT = """
-### You and your role
-[Customize the agent's role and personality]
+## Setup
 
-IMPORTANT: When you receive a clear answer from the user, use the record_answer tool to record their response.
-
-### Your tone
-[Define how the agent should communicate]
-"""
+1. Install dependencies:
+```bash
+pip install -r requirements.txt
 ```
 
-### Adding Custom Question Types
-
-1. **Extend FormManager**: Add validation logic in `_process_answer()` method
-2. **Update Form Schema**: Define new question type in your YAML
-3. **Modify System Prompt**: Instruct the LLM on how to handle the new type
-
-### Customizing Response Validation
-
-Edit the `_process_answer()` method in `FormManager` to add custom validation:
-
-```python
-def _process_answer(self, answer: str, question_type: str, question: Dict[str, Any]) -> Any:
-    # Add your custom validation logic here
-    if question_type == "custom_type":
-        # Custom validation logic
-        return processed_answer
-    # ... existing logic
+2. Set up environment variables - create a `.env` file:
+```bash
+GEMINI_API_KEY=your_gemini_api_key_here
+BROWSERBASE_API_KEY=your_browserbase_api_key_here
+BROWSERBASE_PROJECT_ID=your_browserbase_project_id_here
 ```
 
-### Modifying Conversation Flow
+3. Run the agent:
+```bash
+python main.py
+```
 
-To customize how questions are presented or how the conversation flows:
+## Project Structure
 
-1. **Question Formatting**: Modify `format_question_for_llm()` in FormManager
-2. **Response Messages**: Update response templates in FormFillingNode
-3. **Context Management**: Adjust when and how context is cleared
-4. **Completion Behavior**: Customize the end-of-form experience
+### `main.py`
+Entry point for the voice agent. Handles call initialization with `VoiceAgentApp` class and orchestrates the conversation flow with form filling integration.
 
-### Adding Post-Processing
+### `form_filling_node.py`
+ReasoningNode subclass customized for voice-optimized form filling. Integrates Stagehand browser automation and manages async form filling during conversation without blocking the voice flow. Provides status updates and error handling.
 
-To process completed forms (save to database, send emails, etc.):
+### `stagehand_form_filler.py`
+Browser automation manager that handles all web interactions. Opens and controls web forms, maps conversation data to form fields using AI, transforms voice answers to form-compatible formats, and handles form submission. Supports different field types (text, select, checkbox, etc.).
 
-1. **Form Completion Hook**: Add logic in FormFillingNode when `form_manager.is_form_complete()` returns True
-2. **Data Export**: Use `form_manager.get_form_summary()` to access all collected data
-3. **Integration Points**: Add API calls or database saves as needed
+### `config.py`
+System configuration file including system prompts, model IDs, and temperature
+
+### `config.toml`
+Your Cartesia Line agent id.
+
+## Configuration
+
+The system can be configured through multiple files:
+
+- **`config.py`**: System prompts, model IDs (Gemini model selection), hyperparameters, and boolean flags for features
+- **`config.toml`** / **YAML files**: Questionnaire structure and questions flow
+- **`cartesia.toml`**: Deployment configuration for Cartesia platform (installs dependencies and runs the script)
+- **Variables**:
+  - `FORM_URL`: Target web form to fill
+
+## Example Flow
+
+1. User calls the voice agent
+2. Agent asks: "What type of voice agent are you building?"
+3. User responds: "A customer service agent"
+4. System:
+   - Records the answer
+   - Opens browser to form (if not already open)
+   - Fills "Customer Service" in the role selection field
+   - Takes screenshot for debugging
+5. Agent asks next question
+6. Process continues until all questions answered
+7. Form is automatically submitted
+
+## Advanced Features
+
+- **Background Processing**: Form filling happens asynchronously using background tasks - conversation remains smooth and responsive
+- **Error Recovery**: Continues conversation even if form filling fails
+- **Progress Tracking**: Monitor form completion status
+- **Screenshot Debugging**: Captures screenshots after each field
+- **Flexible Mapping**: AI interprets answers for different field types
+
+## Deploying the Agent
+
+The `cartesia.toml` file defines how your agent will be installed and run when deployed on the Cartesia platform. This file tells the platform to install dependencies from `requirements.txt` and execute `main.py`.
+
+You can clone this repository and add it to your [agents dashboard](https://play.cartesia.ai/agents) along with your API Keys (set them in the Cartesia Platform's API keys section).
+
+For detailed deployment instructions, see [how to deploy an agent from the Cartesia Docs](https://docs.cartesia.ai/line/start-building/talk-to-your-first-agent).
+
+## Testing
+
+Test with different scenarios:
+- Complete questionnaire flow
+- Interruptions and corrections
+- Various answer formats
+- Multi-page forms
+- Form validation errors
+
+## Production Considerations
+
+- Configure proper error logging
+- Add retry logic for form submission
+- Implement form validation checks
+- Consider rate limiting for API calls
