@@ -54,7 +54,7 @@ Make sure to add the API keys in your `.env` file or to the API keys section in 
 
 1. Install dependencies:
 ```bash
-pip install -r requirements.txt
+pip install .
 ```
 
 2. Set up environment variables - create a `.env` file:
