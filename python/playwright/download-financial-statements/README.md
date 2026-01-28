@@ -68,31 +68,38 @@
 
 ## STAGEHAND VS PLAYWRIGHT
 
-This template uses **pure Playwright** for browser automation. The Stagehand version of this template uses AI-powered natural language commands instead. Here's how they compare:
+This template uses **pure Playwright** for browser automation. The Stagehand v3 Python SDK uses a session-based API with **observe** (find actions) and **act** (execute an action), so you describe intent in natural language instead of writing selectors. Here's how they compare:
 
-| Task | Stagehand (AI) | Playwright (Selectors) |
-|------|----------------|------------------------|
-| Click link | `await page.act("Click 'Investors'")` | `await page.get_by_role("link", name="Investors").click()` |
-| Scroll | `await page.act("Scroll to Financial Data")` | `await page.evaluate("window.scrollTo(...)")` |
-| Find element | AI interprets intent | Explicit selectors required |
+| Task         | Stagehand v3 — natural language (you describe intent) | Playwright — specific selectors (you target exact elements)   |
+| ------------ | ------------------------------------------------------- | ------------------------------------------------------------- |
+| Click link   | *"Click the Investors link"*                             | `page.get_by_role("link", name="Investors").click()`          |
+| Scroll       | *"Scroll to the Financial Data section"*                 | `page.evaluate("window.scrollTo(...)")`                       |
+| Find element | *"Find the Financial Statements link under Q4"*         | `page.locator("text=Q4").locator("..").get_by_role("link", ...)` |
 
 **Example - Clicking a link:**
 
 ```python
-# Stagehand: Natural language, AI finds the element
-await page.act("Click the 'Investors' button at the bottom of the page")
+# Stagehand v3: natural language; observe finds the action, act runs it
+session = await client.sessions.create(model_name="openai/gpt-5-nano")
+await session.navigate(url="https://apple.com/investor")
+observe_resp = await session.observe(instruction="Click the Investors link at the bottom of the page")
+action = observe_resp.data.result[0].to_dict(exclude_none=True)
+await session.act(input=action)
 
-# Playwright: Explicit selector, you specify how to find it
+# Playwright: you specify the exact element
 await page.get_by_role("link", name="Investors").click()
 ```
 
 **Example - Downloading quarterly statements:**
 
 ```python
-# Stagehand: AI understands context
-await page.act("Click the 'Financial Statements' link under Q4")
+# Stagehand v3: describe what you want in plain language
+observe_resp = await session.observe(
+    instruction="Click the Financial Statements link under Q4"
+)
+await session.act(input=observe_resp.data.result[0].to_dict(exclude_none=True))
 
-# Playwright: Must build selector logic to find correct link
+# Playwright: build selector logic to find the right link
 link = (page.locator("text=Q4").locator("..").locator("..")
         .get_by_role("link", name="Financial Statements").first)
 await link.click()
