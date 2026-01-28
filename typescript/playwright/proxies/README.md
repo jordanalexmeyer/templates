@@ -45,6 +45,7 @@
 ## HELPFUL RESOURCES
 
 📚 Stagehand Docs: https://docs.stagehand.dev/v3/first-steps/introduction
+📚 Playwright Docs: https://playwright.dev/python/docs/intro
 🎮 Browserbase: https://www.browserbase.com
 💡 Try it out: https://www.browserbase.com/playground
 🔧 Templates: https://www.browserbase.com/templates

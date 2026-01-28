@@ -4,7 +4,7 @@ import { chromium } from "playwright-core";
 import { Browserbase } from "@browserbasehq/sdk";
 import dotenv from "dotenv";
 
-dotenv.config({ path: "../../.env" });
+dotenv.config();
 
 /** IP and geolocation data from ipinfo.io */
 interface GeoInfo {
@@ -112,7 +112,7 @@ async function testSessionBrowserbase(
       waitUntil: "domcontentloaded",
     });
 
-    // Parse JSON from page body (pure Playwright; no Stagehand).
+    // Parse JSON from page body.
     const bodyText = await page.textContent("body");
     if (!bodyText) {
       throw new Error("Failed to get page content");
