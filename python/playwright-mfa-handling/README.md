@@ -19,22 +19,29 @@
 
 ## STAGEHAND VS PLAYWRIGHT
 
-This template uses **pure Playwright** for browser automation. The Stagehand version of this template uses AI-powered natural language commands instead. Here's how they compare:
+This template uses **pure Playwright** for browser automation. The Stagehand v3 Python SDK uses a session-based API with **observe** (find actions) and **act** (execute an action) instead. Here's how they compare:
 
-| Task          | Stagehand (AI)                                            | Playwright (Selectors)                                        |
-| ------------- | --------------------------------------------------------- | ------------------------------------------------------------- |
-| Fill email    | `await page.act("Type email into the email field")`       | `await page.locator('input[type="email"]').fill(email)`       |
-| Fill password | `await page.act("Type password into the password field")` | `await page.locator('input[type="password"]').fill(password)` |
-| Click submit  | `await page.act("Click the submit button")`               | `await page.locator('input[type="submit"]').click()`          |
-| Check result  | AI interprets page content                                | Explicit selectors required                                   |
+| Task          | Stagehand v3 — natural language (you describe intent) | Playwright — specific selectors (you target exact elements)   |
+| ------------- | ------------------------------------------------------- | ------------------------------------------------------------- |
+| Fill email    | *"Find the email field and type the user's email"*       | `page.locator('input[type="email"]').fill(email)`              |
+| Fill password | *"Find the password field and enter the password"*      | `page.locator('input[type="password"]').fill(password)`       |
+| Click submit  | *"Click the submit or sign-in button"*                   | `page.locator('input[type="submit"]').click()`                |
+| Check result  | *"Did login succeed or fail? Return success and message"* | `page.locator('text="Login Success"').is_visible()`          |
 
 **Example - Filling the login form:**
 
 ```python
-# Stagehand: Natural language, AI finds the elements
-await page.act(f"Type '{email}' into the email field")
-await page.act(f"Type '{password}' into the password field")
-await page.act(f"Type '{totp_code}' into the TOTP code field")
+# Stagehand v3: session-based; observe finds actions, act executes one
+from stagehand import AsyncStagehand
+
+client = AsyncStagehand()
+session = await client.sessions.create(model_name="openai/gpt-5-nano")
+await session.navigate(url="https://example.com/login")
+
+observe_resp = await session.observe(instruction="find the email input and fill it")
+action = observe_resp.data.result[0].to_dict(exclude_none=True)
+await session.act(input=action)
+# repeat observe/act for password and TOTP field
 
 # Playwright: Explicit selectors, you specify how to find elements
 await page.locator('input[type="email"]').fill(email)
@@ -45,11 +52,16 @@ await page.locator("form input").nth(2).fill(totp_code)
 **Example - Checking authentication result:**
 
 ```python
-# Stagehand: AI understands context and extracts structured data
-result = await page.extract(
+# Stagehand v3: extract returns structured data via response.data.result
+extract_response = await session.extract(
     instruction="Check if the login was successful or if there's an error message",
-    schema=AuthResult,
+    schema={
+        "type": "object",
+        "properties": {"success": {"type": "boolean"}, "message": {"type": "string"}},
+        "required": ["success"],
+    },
 )
+result = extract_response.data.result
 
 # Playwright: Must check for specific elements/text on the page
 has_success = await page.locator('text="Login Success"').is_visible()

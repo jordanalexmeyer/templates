@@ -123,7 +123,7 @@ async def submit_form(page: Page) -> None:
     await submit_button.click()
     print("Clicked submit button")
 
-    await page.wait_for_load_state("domcontentloaded", timeout=15000)
+    await page.wait_for_load_state("domcontentloaded", timeout=20000)
 
 
 async def check_login_result(page: Page) -> dict:
