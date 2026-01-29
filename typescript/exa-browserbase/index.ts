@@ -2,7 +2,7 @@
 
 import "dotenv/config";
 import { Stagehand } from "@browserbasehq/stagehand";
-import { Exa } from "exa-js";
+import Exa from "exa-js";
 import { z } from "zod";
 import { chromium } from "playwright-core";
 
