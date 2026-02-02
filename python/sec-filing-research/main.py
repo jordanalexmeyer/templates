@@ -3,9 +3,52 @@
 import asyncio
 import json
 import os
+from typing import List, Optional
 
 from dotenv import load_dotenv
+from pydantic import BaseModel, Field
 from stagehand import AsyncStagehand
+
+
+class CompanyInfo(BaseModel):
+    """Schema for company information extraction."""
+
+    companyName: str = Field(description="Official company name")
+    cik: str = Field(description="Central Index Key (CIK) number")
+
+
+class Filing(BaseModel):
+    """Schema for a single SEC filing."""
+
+    type: str = Field(description="Filing type (e.g., 10-K, 10-Q, 8-K)")
+    date: str = Field(description="Filing date in YYYY-MM-DD format")
+    description: str = Field(description="Full description of the filing")
+    accessionNumber: str = Field(description="SEC accession number")
+    fileNumber: Optional[str] = Field(default=None, description="File/Film number")
+
+
+class FilingsList(BaseModel):
+    """Schema for extracting a list of SEC filings."""
+
+    filings: List[Filing] = Field(description="List of SEC filings")
+
+
+def dereference_schema(schema: dict) -> dict:
+    """Inline all $ref references in a JSON schema for Gemini compatibility."""
+    defs = schema.pop("$defs", {})
+
+    def resolve_refs(obj):
+        if isinstance(obj, dict):
+            if "$ref" in obj:
+                ref_path = obj["$ref"].split("/")[-1]
+                return resolve_refs(defs.get(ref_path, {}))
+            return {k: resolve_refs(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [resolve_refs(item) for item in obj]
+        return obj
+
+    return resolve_refs(schema)
+
 
 # Load environment variables from .env file
 # Required: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID, MODEL_API_KEY
@@ -17,60 +60,6 @@ SEARCH_QUERY = "Apple Inc"
 
 # Number of filings to retrieve
 NUM_FILINGS = 5
-
-# JSON schema for company info extraction
-COMPANY_INFO_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "companyName": {
-            "type": "string",
-            "description": "Official company name",
-        },
-        "cik": {
-            "type": "string",
-            "description": "Central Index Key (CIK) number",
-        },
-    },
-    "required": ["companyName", "cik"],
-}
-
-# JSON schema for extracted filing data
-FILING_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "filings": {
-            "type": "array",
-            "description": "List of SEC filings",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": "string",
-                        "description": "Filing type (e.g., 10-K, 10-Q, 8-K)",
-                    },
-                    "date": {
-                        "type": "string",
-                        "description": "Filing date in YYYY-MM-DD format",
-                    },
-                    "description": {
-                        "type": "string",
-                        "description": "Full description of the filing",
-                    },
-                    "accessionNumber": {
-                        "type": "string",
-                        "description": "SEC accession number",
-                    },
-                    "fileNumber": {
-                        "type": "string",
-                        "description": "File/Film number",
-                    },
-                },
-                "required": ["type", "date", "description", "accessionNumber"],
-            },
-        },
-    },
-    "required": ["filings"],
-}
 
 
 async def main():
@@ -136,7 +125,7 @@ async def main():
             extract_response = await client.sessions.extract(
                 id=session_id,
                 instruction="Extract the company name and CIK number from the page header or company information section. The CIK should be a numeric identifier.",
-                schema=COMPANY_INFO_SCHEMA,
+                schema=dereference_schema(CompanyInfo.model_json_schema()),
             )
             extracted = extract_response.data.result
             if extracted and isinstance(extracted, dict) and extracted.get("companyName"):
@@ -151,7 +140,7 @@ async def main():
         filings_response = await client.sessions.extract(
             id=session_id,
             instruction=f"Extract the {NUM_FILINGS} most recent SEC filings from the filings table. For each filing, get: the filing type (column: Filings, like 10-K, 10-Q, 8-K), the filing date (column: Filing Date), description, accession number (from the link or description), and file/film number if shown.",
-            schema=FILING_SCHEMA,
+            schema=dereference_schema(FilingsList.model_json_schema()),
         )
         filings_data = filings_response.data.result
 

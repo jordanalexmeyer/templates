@@ -5,6 +5,7 @@ description = "SEC Filing Research: Extract company and filing metadata from SEC
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
+    "pydantic",
     "python-dotenv",
     "stagehand",
 ]
