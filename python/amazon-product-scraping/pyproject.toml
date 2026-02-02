@@ -5,6 +5,7 @@ description = "Scrape Amazon product search results using Stagehand and Browserb
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
+    "pydantic",
     "python-dotenv",
     "stagehand",
 ]

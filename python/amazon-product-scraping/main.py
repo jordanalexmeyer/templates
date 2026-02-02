@@ -2,10 +2,47 @@
 # See README.md for full documentation
 
 import asyncio
+import json
 import os
+from typing import List
 
 from dotenv import load_dotenv
+from pydantic import BaseModel, Field
 from stagehand import AsyncStagehand
+
+
+class Product(BaseModel):
+    """Schema for a single Amazon product."""
+
+    name: str = Field(description="The full product title/name")
+    price: str = Field(description="The product price including currency symbol (e.g., '$29.99')")
+    rating: str = Field(description="The star rating (e.g., '4.5 out of 5 stars')")
+    reviews_count: str = Field(description="The number of customer reviews (e.g., '1,234')")
+    product_url: str = Field(description="The URL link to the product detail page on Amazon")
+
+
+class ProductsList(BaseModel):
+    """Schema for extracting a list of Amazon products."""
+
+    products: List[Product] = Field(description="Array of the first 3 products from search results")
+
+
+def dereference_schema(schema: dict) -> dict:
+    """Inline all $ref references in a JSON schema for Gemini compatibility."""
+    defs = schema.pop("$defs", {})
+
+    def resolve_refs(obj):
+        if isinstance(obj, dict):
+            if "$ref" in obj:
+                ref_path = obj["$ref"].split("/")[-1]
+                return resolve_refs(defs.get(ref_path, {}))
+            return {k: resolve_refs(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [resolve_refs(item) for item in obj]
+        return obj
+
+    return resolve_refs(schema)
+
 
 # Load environment variables from .env file
 # Required: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID, MODEL_API_KEY (or GOOGLE_API_KEY)
@@ -15,46 +52,6 @@ load_dotenv()
 # Update this value to search for different products
 SEARCH_QUERY = "Seiko 5"
 # =========================================
-
-# JSON Schema for extracting multiple products from search results
-# Equivalent to the Zod schema in the TypeScript version
-PRODUCTS_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "products": {
-            "type": "array",
-            "description": "Array of the first 3 products from search results",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "description": "The full product title/name",
-                    },
-                    "price": {
-                        "type": "string",
-                        "description": "The product price including currency symbol (e.g., '$29.99')",
-                    },
-                    "rating": {
-                        "type": "string",
-                        "description": "The star rating (e.g., '4.5 out of 5 stars')",
-                    },
-                    "reviews_count": {
-                        "type": "string",
-                        "description": "The number of customer reviews (e.g., '1,234')",
-                    },
-                    "product_url": {
-                        "type": "string",
-                        "format": "uri",
-                        "description": "The URL link to the product detail page on Amazon",
-                    },
-                },
-                "required": ["name", "price", "rating", "reviews_count", "product_url"],
-            },
-        }
-    },
-    "required": ["products"],
-}
 
 
 async def main():
@@ -110,15 +107,12 @@ async def main():
                 "Get the product name, price, star rating, number of reviews, "
                 "and the URL link to the product page."
             ),
-            schema=PRODUCTS_SCHEMA,
+            schema=dereference_schema(ProductsList.model_json_schema()),
         )
 
         # Display extracted products as formatted JSON
         products = extract_response.data.result
         print("Products found:")
-
-        import json
-
         print(json.dumps(products, indent=2))
 
     except Exception as error:
