@@ -5,6 +5,7 @@ description = "Extract trending keywords from Google Trends using Stagehand and 
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
+    "pydantic",
     "python-dotenv",
     "stagehand",
 ]

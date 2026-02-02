@@ -3,9 +3,44 @@
 import asyncio
 import json
 import os
+from typing import List
 
 from dotenv import load_dotenv
+from pydantic import BaseModel, Field
 from stagehand import AsyncStagehand
+
+
+class TrendingKeyword(BaseModel):
+    """Schema for a single trending keyword from Google Trends."""
+
+    rank: int = Field(description="Position in the trending list (1, 2, 3, etc.)")
+    keyword: str = Field(description="The main trending search term or keyword")
+
+
+class TrendingKeywordsList(BaseModel):
+    """Schema for extracting a list of trending keywords."""
+
+    trending_keywords: List[TrendingKeyword] = Field(
+        description="List of trending keywords extracted from Google Trends"
+    )
+
+
+def dereference_schema(schema: dict) -> dict:
+    """Inline all $ref references in a JSON schema for Gemini compatibility."""
+    defs = schema.pop("$defs", {})
+
+    def resolve_refs(obj):
+        if isinstance(obj, dict):
+            if "$ref" in obj:
+                ref_path = obj["$ref"].split("/")[-1]
+                return resolve_refs(defs.get(ref_path, {}))
+            return {k: resolve_refs(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [resolve_refs(item) for item in obj]
+        return obj
+
+    return resolve_refs(schema)
+
 
 # Load environment variables
 load_dotenv()
@@ -62,24 +97,8 @@ async def main():
             # No dialog present, continue
             print("No consent dialog found, continuing...")
 
-        # Define JSON schema for structured data extraction
-        schema = {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "rank": {
-                        "type": "number",
-                        "description": "Position in the trending list (1, 2, 3, etc.)",
-                    },
-                    "keyword": {
-                        "type": "string",
-                        "description": "The main trending search term or keyword",
-                    },
-                },
-                "required": ["rank", "keyword"],
-            },
-        }
+        # Generate JSON schema from Pydantic model for structured extraction
+        schema = dereference_schema(TrendingKeywordsList.model_json_schema())
 
         # Extract trending keywords using Stagehand's structured extraction
         print("Extracting trending keywords from table...")
@@ -95,9 +114,10 @@ async def main():
             schema=schema,
         )
 
-        # Parse extraction results
-        extracted_keywords = extract_response.data.result
-        if isinstance(extracted_keywords, list):
+        # Parse extraction results from wrapper model
+        extraction_result = extract_response.data.result
+        if isinstance(extraction_result, dict) and "trending_keywords" in extraction_result:
+            extracted_keywords = extraction_result["trending_keywords"]
             limited_keywords = extracted_keywords[:limit]
         else:
             limited_keywords = []
