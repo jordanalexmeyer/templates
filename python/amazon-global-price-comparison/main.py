@@ -305,7 +305,7 @@ def display_comparison_table(results: list[CountryResult]) -> None:
     print("\n" + "=" * 100)
 
 
-async def main() -> None:
+async def main():
     """
     Main application entry point.
 
