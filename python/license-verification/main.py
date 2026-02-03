@@ -3,7 +3,6 @@
 import os
 
 from dotenv import load_dotenv
-from playwright.sync_api import sync_playwright
 from pydantic import BaseModel, Field
 
 from stagehand import Stagehand
@@ -54,51 +53,41 @@ def main():
         print("Stagehand Session Started")
         print(f"Watch live: https://browserbase.com/sessions/{session_id}")
 
-        # Connect to the browser via CDP
-        with sync_playwright() as playwright:
-            browser = playwright.chromium.connect_over_cdp(
-                f"wss://connect.browserbase.com?apiKey={os.environ['BROWSERBASE_API_KEY']}&sessionId={session_id}"
-            )
-            context = browser.contexts[0]
-            page = context.pages[0] if context.pages else context.new_page()
+        # Navigate to California DRE license verification website for data extraction.
+        print("Navigating to: https://www2.dre.ca.gov/publicasp/pplinfo.asp")
+        client.sessions.navigate(id=session_id, url="https://www2.dre.ca.gov/publicasp/pplinfo.asp")
 
-            # Navigate to California DRE license verification website for data extraction.
-            print("Navigating to: https://www2.dre.ca.gov/publicasp/pplinfo.asp")
-            page.goto("https://www2.dre.ca.gov/publicasp/pplinfo.asp")
+        # Fill in license ID to search for specific real estate professional.
+        print(f"Performing action: type {variables['input1']} into the License ID input field")
+        client.sessions.act(
+            id=session_id,
+            input=f"type {variables['input1']} into the License ID input field",
+        )
 
-            # Fill in license ID to search for specific real estate professional.
-            print(f"Performing action: type {variables['input1']} into the License ID input field")
-            client.sessions.act(
-                id=session_id,
-                input=f"type {variables['input1']} into the License ID input field",
-            )
+        # Submit search form to retrieve license verification data.
+        print("Performing action: click the Find button")
+        client.sessions.act(
+            id=session_id,
+            input="click the Find button",
+        )
 
-            # Submit search form to retrieve license verification data.
-            print("Performing action: click the Find button")
-            client.sessions.act(
-                id=session_id,
-                input="click the Find button",
-            )
-
-            # Extract structured license data using Pydantic schema for type safety and validation.
-            print("Extracting: extract all the license verification details for DRE#02237476")
-            extract_response = client.sessions.extract(
-                id=session_id,
-                instruction="extract all the license verification details for DRE#02237476",
-                schema=LicenseData.model_json_schema(),
-            )
-            extracted_data = extract_response.data.result
-            print(f"Extracted: {extracted_data}")
-
-            browser.close()
-
-        client.sessions.end(id=session_id)
-        print("Session closed successfully")
+        # Extract structured license data using Pydantic schema for type safety and validation.
+        print("Extracting: extract all the license verification details for DRE#02237476")
+        extract_response = client.sessions.extract(
+            id=session_id,
+            instruction="extract all the license verification details for DRE#02237476",
+            schema=LicenseData.model_json_schema(),
+        )
+        extracted_data = extract_response.data.result
+        print(f"Extracted: {extracted_data}")
 
     except Exception as error:
         print(f"Error: {error}")
-        client.sessions.end(id=session_id)
         raise
+
+    finally:
+        client.sessions.end(id=session_id)
+        print("Session closed successfully")
 
 
 if __name__ == "__main__":

@@ -1,9 +1,9 @@
 # Stagehand + Browserbase: Form Filling Automation - See README.md for full documentation
 
 import os
+import time
 
 from dotenv import load_dotenv
-from playwright.sync_api import sync_playwright
 
 from stagehand import Stagehand
 
@@ -40,81 +40,66 @@ def main():
     print(f"Live View Link: https://browserbase.com/sessions/{session_id}")
 
     try:
-        # Connect to the browser via CDP
-        with sync_playwright() as playwright:
-            browser = playwright.chromium.connect_over_cdp(
-                f"wss://connect.browserbase.com?apiKey={os.environ['BROWSERBASE_API_KEY']}&sessionId={session_id}"
-            )
-            context = browser.contexts[0]
-            page = context.pages[0] if context.pages else context.new_page()
+        print("Stagehand initialized successfully!")
 
-            print("Stagehand initialized successfully!")
+        # Navigate to contact page
+        print("Navigating to Browserbase contact page...")
+        client.sessions.navigate(id=session_id, url="https://www.browserbase.com/contact")
 
-            # Navigate to contact page with extended timeout for slow-loading sites.
-            print("Navigating to Browserbase contact page...")
-            page.goto(
-                "https://www.browserbase.com/contact",
-                wait_until="domcontentloaded",  # Wait for DOM to be ready before proceeding.
-                timeout=60000,  # Extended timeout for reliable page loading.
-            )
+        # Fill form using individual act() calls for reliability
+        print("Filling in contact form...")
 
-            # Fill form using individual act() calls for reliability
-            print("Filling in contact form...")
+        # Fill each field individually for better reliability
+        client.sessions.act(
+            id=session_id,
+            input=f'Fill in the first name field with "{first_name}"',
+        )
+        client.sessions.act(
+            id=session_id,
+            input=f'Fill in the last name field with "{last_name}"',
+        )
+        client.sessions.act(
+            id=session_id,
+            input=f'Fill in the company field with "{company}"',
+        )
+        client.sessions.act(
+            id=session_id,
+            input=f'Fill in the job title field with "{job_title}"',
+        )
+        client.sessions.act(
+            id=session_id,
+            input=f'Fill in the email field with "{email}"',
+        )
+        client.sessions.act(
+            id=session_id,
+            input=f'Fill in the message field with "{message}"',
+        )
 
-            # Fill each field individually for better reliability
-            client.sessions.act(
-                id=session_id,
-                input=f'Fill in the first name field with "{first_name}"',
-            )
-            client.sessions.act(
-                id=session_id,
-                input=f'Fill in the last name field with "{last_name}"',
-            )
-            client.sessions.act(
-                id=session_id,
-                input=f'Fill in the company field with "{company}"',
-            )
-            client.sessions.act(
-                id=session_id,
-                input=f'Fill in the job title field with "{job_title}"',
-            )
-            client.sessions.act(
-                id=session_id,
-                input=f'Fill in the email field with "{email}"',
-            )
-            client.sessions.act(
-                id=session_id,
-                input=f'Fill in the message field with "{message}"',
-            )
+        # Language choice in Stagehand act() is crucial for reliable automation.
+        # Use "click" for dropdown interactions rather than "select"
+        client.sessions.act(
+            id=session_id,
+            input="Click on the How Can we help? dropdown",
+        )
+        time.sleep(0.5)
+        client.sessions.act(
+            id=session_id,
+            input="Click on the first option from the dropdown",
+        )
 
-            # Language choice in Stagehand act() is crucial for reliable automation.
-            # Use "click" for dropdown interactions rather than "select"
-            client.sessions.act(
-                id=session_id,
-                input="Click on the How Can we help? dropdown",
-            )
-            page.wait_for_timeout(500)
-            client.sessions.act(
-                id=session_id,
-                input="Click on the first option from the dropdown",
-            )
-            # client.sessions.act(id=session_id, input="Select the first option from the dropdown")  # Less reliable than "click"
+        # Uncomment the line below if you want to submit the form
+        # client.sessions.act(id=session_id, input="Click the submit button")
 
-            # Uncomment the line below if you want to submit the form
-            # client.sessions.act(id=session_id, input="Click the submit button")
-
-            print("Form filled successfully! Waiting 3 seconds...")
-            page.wait_for_timeout(30000)
-
-            browser.close()
-
-        client.sessions.end(id=session_id)
-        print("Session closed successfully")
+        print("Form filled successfully! Waiting 30 seconds...")
+        time.sleep(30)
 
     except Exception as error:
         print(f"Error during form filling: {error}")
-        client.sessions.end(id=session_id)
         raise
+
+    finally:
+        client.sessions.end(id=session_id)
+        print("Session closed successfully")
 
 
 if __name__ == "__main__":

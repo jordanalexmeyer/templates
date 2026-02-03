@@ -4,7 +4,6 @@ import json
 import os
 
 from dotenv import load_dotenv
-from playwright.sync_api import sync_playwright
 from pydantic import BaseModel, Field
 
 from stagehand import Stagehand
@@ -49,57 +48,44 @@ def main():
         print("Stagehand session started successfully")
         print(f"Watch live: https://browserbase.com/sessions/{session_id}")
 
-        # Connect to the browser via CDP
-        with sync_playwright() as playwright:
-            browser = playwright.chromium.connect_over_cdp(
-                f"wss://connect.browserbase.com?apiKey={os.environ['BROWSERBASE_API_KEY']}&sessionId={session_id}"
-            )
-            context = browser.contexts[0]
-            page = context.pages[0] if context.pages else context.new_page()
+        # Navigate to Polymarket
+        print("Navigating to: https://polymarket.com/")
+        client.sessions.navigate(id=session_id, url="https://polymarket.com/")
+        print("Page loaded successfully")
 
-            # Navigate to Polymarket
-            print("Navigating to: https://polymarket.com/")
-            page.goto("https://polymarket.com/")
-            print("Page loaded successfully")
+        # Click the search box to trigger search dropdown
+        print("Clicking the search box at the top of the page")
+        client.sessions.act(
+            id=session_id,
+            input="click the search box at the top of the page",
+        )
 
-            # Click the search box to trigger search dropdown
-            print("Clicking the search box at the top of the page")
-            client.sessions.act(
-                id=session_id,
-                input="click the search box at the top of the page",
-            )
+        # Type search query
+        searchQuery = "Elon Musk unfollow Trump"
+        print(f"Typing '{searchQuery}' into the search box")
+        client.sessions.act(
+            id=session_id,
+            input=f"type '{searchQuery}' into the search box",
+        )
 
-            # Type search query
-            searchQuery = "Elon Musk unfollow Trump"
-            print(f"Typing '{searchQuery}' into the search box")
-            client.sessions.act(
-                id=session_id,
-                input=f"type '{searchQuery}' into the search box",
-            )
+        # Click the first market result from the search dropdown
+        print("Selecting first market result from search dropdown")
+        client.sessions.act(
+            id=session_id,
+            input="click the first market result from the search dropdown",
+        )
+        print("Market page loaded")
 
-            # Click the first market result from the search dropdown
-            print("Selecting first market result from search dropdown")
-            client.sessions.act(
-                id=session_id,
-                input="click the first market result from the search dropdown",
-            )
-            print("Market page loaded")
+        # Extract market data using AI to parse the structured information
+        print("Extracting market information...")
+        extract_response = client.sessions.extract(
+            id=session_id,
+            instruction="Extract the current odds and market information for the prediction market",
+            schema=MarketData.model_json_schema(),
+        )
 
-            # Extract market data using AI to parse the structured information
-            print("Extracting market information...")
-            extract_response = client.sessions.extract(
-                id=session_id,
-                instruction="Extract the current odds and market information for the prediction market",
-                schema=MarketData.model_json_schema(),
-            )
-
-            print("Market data extracted successfully:")
-            print(json.dumps(extract_response.data.result, indent=2))
-
-            browser.close()
-
-        client.sessions.end(id=session_id)
-        print("Session closed successfully")
+        print("Market data extracted successfully:")
+        print(json.dumps(extract_response.data.result, indent=2))
 
     except Exception as error:
         print(f"Error during market research: {error}")
@@ -110,9 +96,11 @@ def main():
         print("2. Verify OPENAI_API_KEY is set in environment")
         print("3. Ensure internet access and https://polymarket.com is accessible")
         print("4. Verify Browserbase account has sufficient credits")
-
-        client.sessions.end(id=session_id)
         raise
+
+    finally:
+        client.sessions.end(id=session_id)
+        print("Session closed successfully")
 
 
 if __name__ == "__main__":

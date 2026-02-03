@@ -4,7 +4,6 @@ import json
 import os
 
 from dotenv import load_dotenv
-from playwright.sync_api import sync_playwright
 from pydantic import BaseModel, Field
 
 from stagehand import Stagehand
@@ -51,70 +50,56 @@ def main():
         # Provide live session URL for debugging and monitoring
         print(f"Watch live: https://browserbase.com/sessions/{session_id}")
 
-        # Connect to the browser via CDP
-        with sync_playwright() as playwright:
-            browser = playwright.chromium.connect_over_cdp(
-                f"wss://connect.browserbase.com?apiKey={os.environ['BROWSERBASE_API_KEY']}&sessionId={session_id}"
-            )
-            context = browser.contexts[0]
-            page = context.pages[0] if context.pages else context.new_page()
+        # Navigate to Philadelphia Council
+        print("Navigating to: https://phila.legistar.com/")
+        client.sessions.navigate(id=session_id, url="https://phila.legistar.com/")
+        print("Page loaded successfully")
 
-            # Navigate to Philadelphia Council
-            print("Navigating to: https://phila.legistar.com/")
-            page.goto("https://phila.legistar.com/")
-            print("Page loaded successfully")
+        # Click calendar from the navigation menu
+        print("Clicking calendar from the navigation menu")
+        client.sessions.act(
+            id=session_id,
+            input="click calendar from the navigation menu",
+        )
 
-            # Click calendar from the navigation menu
-            print("Clicking calendar from the navigation menu")
-            client.sessions.act(
-                id=session_id,
-                input="click calendar from the navigation menu",
-            )
+        # Select 2025 from the month dropdown
+        print("Selecting 2025 from the month dropdown")
+        client.sessions.act(
+            id=session_id,
+            input="select 2025 from the month dropdown",
+        )
 
-            # Select 2025 from the month dropdown
-            print("Selecting 2025 from the month dropdown")
-            client.sessions.act(
-                id=session_id,
-                input="select 2025 from the month dropdown",
-            )
-
-            # Extract event data using AI to parse the structured information
-            print("Extracting event information...")
-            # Inline schema without $ref to avoid API validation issues
-            events_schema = {
-                "type": "object",
-                "properties": {
-                    "results": {
-                        "type": "array",
-                        "description": "array of events",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "name": {"type": "string", "description": "the name of the event"},
-                                "date": {"type": "string", "description": "the date of the event"},
-                                "time": {"type": "string", "description": "the time of the event"},
-                            },
-                            "required": ["name", "date", "time"],
+        # Extract event data using AI to parse the structured information
+        print("Extracting event information...")
+        events_schema = {
+            "type": "object",
+            "properties": {
+                "results": {
+                    "type": "array",
+                    "description": "array of events",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string", "description": "the name of the event"},
+                            "date": {"type": "string", "description": "the date of the event"},
+                            "time": {"type": "string", "description": "the time of the event"},
                         },
-                    }
-                },
-                "required": ["results"],
-            }
-            extract_response = client.sessions.extract(
-                id=session_id,
-                instruction="Extract the table with the name, date and time of the events",
-                schema=events_schema,
-            )
+                        "required": ["name", "date", "time"],
+                    },
+                }
+            },
+            "required": ["results"],
+        }
+        extract_response = client.sessions.extract(
+            id=session_id,
+            instruction="Extract the table with the name, date and time of the events",
+            schema=events_schema,
+        )
 
-            results = extract_response.data.result
-            print(f"Found {len(results.get('results', []))} events")
-            print("Event data extracted successfully:")
-            print(json.dumps(results, indent=2))
-
-            browser.close()
-
-        client.sessions.end(id=session_id)
-        print("Session closed successfully")
+        results = extract_response.data.result
+        print(f"Found {len(results.get('results', []))} events")
+        print("Event data extracted successfully:")
+        print(json.dumps(results, indent=2))
 
     except Exception as error:
         print(f"Error during event extraction: {error}")
@@ -126,9 +111,11 @@ def main():
         print("3. Ensure internet access and https://phila.legistar.com is accessible")
         print("4. Verify Browserbase account has sufficient credits")
         print("5. Check if the calendar page structure has changed")
-
-        client.sessions.end(id=session_id)
         raise
+
+    finally:
+        client.sessions.end(id=session_id)
+        print("Session closed successfully")
 
 
 if __name__ == "__main__":
