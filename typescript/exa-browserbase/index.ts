@@ -55,6 +55,7 @@ interface CareersPage {
 const agentSystemPrompt = `You are an intelligent job application assistant with decision-making power.
 
 Your responsibilities:
+- First, navigate to find a job posting and click through to its application page before filling out the form
 - Analyze the job description to understand what the company is looking for
 - Tailor responses to align with job requirements when available
 - Craft thoughtful responses that highlight relevant experience/skills
@@ -357,7 +358,7 @@ main().catch((err) => {
   console.error("Error in Exa + Browserbase job application:", err);
   console.error("Common issues:");
   console.error(
-    "  - Check .env file has BROWSERBASE_PROJECT_ID, BROWSERBASE_API_KEY, and EXA_API_KEY",
+    "  - Check .env file has BROWSERBASE_PROJECT_ID, BROWSERBASE_API_KEY, MODEL_API_KEY, and EXA_API_KEY",
   );
   console.error("  - Verify companies exist for the search query");
   console.error("  - Ensure careers pages are accessible");

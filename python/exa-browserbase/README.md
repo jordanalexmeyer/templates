@@ -53,7 +53,7 @@
 ## HELPFUL RESOURCES
 
 📚 Stagehand Docs: https://docs.stagehand.dev/v3/first-steps/introduction
-📚 Stagehand Python SDK: https://docs.stagehand.dev/reference/python/overview
+📚 Stagehand Python SDK: https://docs.stagehand.dev/v3/sdk/python
 📚 Stagehand Agent: https://docs.stagehand.dev/basics/agent
 📚 Exa API Key: https://dashboard.exa.ai/api-keys
 🎮 Browserbase: https://www.browserbase.com

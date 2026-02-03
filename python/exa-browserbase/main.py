@@ -73,6 +73,7 @@ JOB_DESCRIPTION_SCHEMA = {
 AGENT_SYSTEM_PROMPT = """You are an intelligent job application assistant with decision-making power.
 
 Your responsibilities:
+- First, navigate to find a job posting and click through to its application page before filling out the form
 - Analyze the job description to understand what the company is looking for
 - Tailor responses to align with job requirements when available
 - Craft thoughtful responses that highlight relevant experience/skills
@@ -291,12 +292,8 @@ async def apply_to_job(careers_page: dict, index: int) -> dict:
         model_api_key=model_api_key,
     )
 
-    from stagehand.resources.sessions import AsyncSessionsResource
-
-    # Start session (proxies require Developer plan or higher; pass if SDK supports it, e.g. browserbase_session_create_params={"proxies": SEARCH_CONFIG["use_proxy"]})
-    start_response = await AsyncSessionsResource.start(
-        client.sessions, model_name="google/gemini-2.5-pro"
-    )
+    # Start session (proxies require Developer plan or higher)
+    start_response = await client.sessions.start(model_name="google/gemini-2.5-pro")
     session_id = start_response.data.session_id
     session_url = f"https://browserbase.com/sessions/{session_id}"
     print(f"{log_prefix}Session started: {session_url}")
@@ -442,5 +439,5 @@ if __name__ == "__main__":
         )
         print("  - Verify companies exist for the search query")
         print("  - Ensure careers pages are accessible")
-        print("Docs: https://docs.stagehand.dev/reference/python/overview")
+        print("Docs: https://docs.stagehand.dev/v3/sdk/python")
         exit(1)
