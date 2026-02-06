@@ -1,0 +1,23 @@
+{
+  "name": "extend-browserbase-partnership-template",
+  "version": "1.0.0",
+  "description": "Stagehand + Browserbase + Extend: Download receipts from expense portal and extract structured data with Extend AI",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "start": "tsx index.ts"
+  },
+  "dependencies": {
+    "@browserbasehq/sdk": "latest",
+    "@browserbasehq/stagehand": "latest",
+    "adm-zip": "latest",
+    "dotenv": "latest",
+    "extend-ai": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "tsx": "latest",
+    "typescript": "latest"
+  },
+  "packageManager": "pnpm@9.0.0"
+}
