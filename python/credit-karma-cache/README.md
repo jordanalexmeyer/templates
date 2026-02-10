@@ -12,48 +12,19 @@
 
 ## GLOSSARY
 
-- **Caching**: Stagehand stores DOM snapshots in a local cache directory to dramatically speed up repeat automations. On subsequent runs, Stagehand uses cached DOM state instead of re-analyzing pages from scratch. Docs → [Caching Guide](https://docs.stagehand.dev/guides/caching)
-- **Variables**: Parameterize your `act()` instructions with `%variableName%` syntax to make automations reusable and dynamic. Docs → [Variables Guide](https://docs.stagehand.dev/guides/variables)
-- **act()**: Stagehand's natural language instruction method that performs UI actions (clicking, typing, selecting) without selectors. Docs → [act() Method](https://docs.stagehand.dev/api/act)
+- **Caching**: Stagehand stores DOM snapshots in a local cache directory to dramatically speed up repeat automations. On subsequent runs, Stagehand uses cached DOM state instead of re-analyzing pages from scratch. Docs → [Caching Guide](https://docs.stagehand.dev/v3/best-practices/caching)
+- **Variables**: Parameterize your `act()` instructions with `%variableName%` syntax to make automations reusable and dynamic. Docs → [act() with Variables](https://docs.stagehand.dev/v3/basics/act)
+- **act()**: Stagehand's natural language instruction method that performs UI actions (clicking, typing, selecting) without selectors. Docs → [act() Method](https://docs.stagehand.dev/v3/basics/act)
 - **Browserbase**: Cloud browser infrastructure for reliable, scalable web automation with stealth mode and CAPTCHA solving. Docs → [Browserbase Platform](https://docs.browserbase.com)
 
 ## QUICKSTART
 
-1. **Clone and install dependencies**:
-   ```bash
-   cd python/credit-karma-cache
-   uv venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   uv pip install -r requirements.txt
-   ```
-
-2. **Set up environment variables**:
-   ```bash
-   cp .env.example .env
-   ```
-   Edit `.env` and add your Browserbase credentials:
-   ```
-   BROWSERBASE_PROJECT_ID=your_project_id
-   BROWSERBASE_API_KEY=your_api_key
-   ```
-   Get your credentials at [Browserbase Dashboard](https://browserbase.com/dashboard)
-
-3. **Customize user configuration** (optional):
-   Edit the `USER_CONFIG` dictionary in `main.py`:
-   ```python
-   USER_CONFIG = {
-       "credit_score": "Above 760",
-       "zipcode": "10001",
-       "loan_balance": "100000",
-       "home_value": "150000",
-       "cash_out": "0",
-   }
-   ```
-
-4. **Run the automation**:
-   ```bash
-   python main.py
-   ```
+1. cd python/credit-karma-cache
+2. uv venv venv
+3. source venv/bin/activate # On Windows: venv\Scripts\activate
+4. uv pip install .
+5. cp .env.example .env # Add your Browserbase API key and Project ID to .env
+6. python main.py
 
 ## EXPECTED OUTPUT
 
@@ -115,10 +86,10 @@ Find more information on your Browserbase dashboard → [Sessions](https://brows
 
 - 📚 [Stagehand Documentation](https://docs.stagehand.dev)
 - 📚 [Browserbase Documentation](https://docs.browserbase.com)
-- 📚 [Caching Guide](https://docs.stagehand.dev/guides/caching)
-- 📚 [Variables Guide](https://docs.stagehand.dev/guides/variables)
+- 📚 [Caching Guide](https://docs.stagehand.dev/v3/best-practices/caching)
+- 📚 [act() with Variables](https://docs.stagehand.dev/v3/basics/act)
 - 🎮 [Browserbase Dashboard](https://browserbase.com/dashboard)
-- 🎮 [Stagehand Playground](https://stagehand.dev/playground)
+- 🎮 [Browserbase Playground](https://www.browserbase.com/playground)
 - 💡 [Try it out: Credit Karma Mortgage Rates](https://www.creditkarma.com/home-loans/mortgage-rates)
 - 📧 [Browserbase Support](mailto:support@browserbase.com)
 - 💬 [Join the Discord](https://discord.gg/browserbase)

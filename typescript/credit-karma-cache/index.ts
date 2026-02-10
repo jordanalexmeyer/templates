@@ -1,36 +1,10 @@
+// Stagehand + Browserbase: Credit Karma Mortgage Rates with Caching - See README.md for full documentation
+
 import "dotenv/config";
-import { Stagehand, type ConstructorParams, type LogLine } from "@browserbasehq/stagehand";
-import chalk from "chalk";
-import boxen from "boxen";
+import { Stagehand } from "@browserbasehq/stagehand";
 
-/**
- * Stagehand + Browserbase: Credit Karma Mortgage Rates with Caching & Variables
- *
- * This template demonstrates:
- * - Using Stagehand's caching feature for faster subsequent runs
- * - Parameterizing actions with variables for flexible automation
- * - Automating Credit Karma mortgage rate comparisons
- *
- * See README.md for full documentation
- */
-
-// Configuration
-const StagehandConfig: ConstructorParams = {
-  env: "BROWSERBASE",
-  apiKey: process.env.BROWSERBASE_API_KEY,
-  projectId: process.env.BROWSERBASE_PROJECT_ID,
-  debugDom: undefined,
-  headless: false,
-  logger: (message: LogLine) => console.log(logLineToString(message)),
-  domSettleTimeoutMs: 30_000,
-  browserbaseSessionCreateParams: {
-    projectId: process.env.BROWSERBASE_PROJECT_ID!
-  },
-  model: "google/gemini-2.5-flash",
-  cacheDir: "credit-karma-cache", // Enable caching for faster subsequent runs
-};
-
-// User configuration - modify these values as needed
+// User configuration for mortgage rate lookup
+// Modify these values to customize the mortgage rate search
 const USER_CONFIG = {
   creditScore: "Above 760",
   zipcode: "94109",
@@ -39,144 +13,107 @@ const USER_CONFIG = {
   cashOut: "200000",
 };
 
-/**
- * Format log lines for console output
- */
-function logLineToString(logLine: LogLine): string {
-  const HIDE_AUXILIARY = true;
+async function main() {
+  console.log("Starting Credit Karma Mortgage Rate Automation...");
 
-  try {
-    const timestamp = logLine.timestamp || new Date().toISOString();
-    if (logLine.auxiliary?.error) {
-      return `${timestamp}::[stagehand:${logLine.category}] ${logLine.message}\n ${logLine.auxiliary.error.value}\n ${logLine.auxiliary.trace.value}`;
-    }
-
-    return `${timestamp}::[stagehand:${logLine.category}] ${logLine.message} ${
-      logLine.auxiliary && !HIDE_AUXILIARY ? JSON.stringify(logLine.auxiliary) : ""
-    }`;
-  } catch (error) {
-    console.error(`Error logging line:`, error);
-    return "error logging line";
-  }
-}
-
-/**
- * Main automation function
- */
-async function run() {
   const stagehand = new Stagehand({
-    ...StagehandConfig,
+    env: "BROWSERBASE",
+    verbose: 0,
+    // 0 = errors only, 1 = info, 2 = debug
+    // (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.)
+    // https://docs.stagehand.dev/configuration/logging
+    model: "google/gemini-2.5-flash",
+    enableCaching: true,
+    cacheDir: "credit-karma-cache",
+    browserbaseSessionCreateParams: {
+      projectId: process.env.BROWSERBASE_PROJECT_ID!,
+    },
   });
-  await stagehand.init();
-
-  // Display Browserbase session link
-  if (StagehandConfig.env === "BROWSERBASE" && stagehand.browserbaseSessionID) {
-    console.log(
-      boxen(
-        `View this session live in your browser: \n${chalk.blue(
-          `https://browserbase.com/sessions/${stagehand.browserbaseSessionID}`
-        )}`,
-        {
-          title: "Browserbase",
-          padding: 1,
-          margin: 3,
-        }
-      )
-    );
-  }
-
-  const page = stagehand.context.pages()[0];
 
   try {
-    console.log(chalk.cyan("\n🏠 Starting Credit Karma mortgage rate automation...\n"));
-
-    // Navigate to Credit Karma mortgage rates page
-    await page.goto("https://www.creditkarma.com/home-loans/mortgage-rates");
-    console.log(chalk.green("✓ Successfully navigated to Credit Karma mortgage rates page"));
-
-    // Click on Refinance tab
-    await stagehand.act("click on the Refinance tab");
-    await page.waitForTimeout(2000);
-    console.log(chalk.green("✓ Selected Refinance tab"));
-
-    // Select credit score using variables
-    await stagehand.act("select %creditScore% from the credit score dropdown", {
-      variables: { creditScore: USER_CONFIG.creditScore },
-    });
-    await page.waitForTimeout(1000);
-    console.log(chalk.green(`✓ Selected credit score: ${USER_CONFIG.creditScore}`));
-
-    // Input ZIP code using variables
-    await stagehand.act("input the ZIP code as %zipcode%", {
-      variables: { zipcode: USER_CONFIG.zipcode },
-    });
-    await page.waitForTimeout(1000);
-    console.log(chalk.green(`✓ Entered ZIP code: ${USER_CONFIG.zipcode}`));
-
-    // Input loan balance using variables
-    await stagehand.act("input the loan balance as %loanBalance%", {
-      variables: { loanBalance: USER_CONFIG.loanBalance },
-    });
-    await page.waitForTimeout(1000);
-    console.log(chalk.green(`✓ Entered loan balance: $${USER_CONFIG.loanBalance}`));
-
-    // Input estimated home value using variables
-    await stagehand.act("input the estimated home value as %homeValue%", {
-      variables: { homeValue: USER_CONFIG.homeValue },
-    });
-    await page.waitForTimeout(1000);
-    console.log(chalk.green(`✓ Entered home value: $${USER_CONFIG.homeValue}`));
-
-    // Input cash-out amount using variables
-    await stagehand.act("input the cash-out amount as %cashOut%", {
-      variables: { cashOut: USER_CONFIG.cashOut },
-    });
-    await page.waitForTimeout(1000);
-    console.log(chalk.green(`✓ Entered cash-out amount: $${USER_CONFIG.cashOut}`));
-
-    // Click Get my rates button
-    await stagehand.act("click on the 'Get my rates' button");
-    console.log(chalk.green("✓ Clicked 'Get my rates' button"));
-
-    // Wait for results to load
-    await page.waitForTimeout(5000);
-    console.log(chalk.green("\n✓ Mortgage rates loaded successfully!\n"));
-
+    await stagehand.init();
+    console.log("Stagehand initialized successfully!");
     console.log(
-      boxen(
-        `${chalk.bold("Summary")}\n\n` +
-          `Credit Score: ${chalk.cyan(USER_CONFIG.creditScore)}\n` +
-          `ZIP Code: ${chalk.cyan(USER_CONFIG.zipcode)}\n` +
-          `Loan Balance: ${chalk.cyan("$" + USER_CONFIG.loanBalance)}\n` +
-          `Home Value: ${chalk.cyan("$" + USER_CONFIG.homeValue)}\n` +
-          `Cash Out: ${chalk.cyan("$" + USER_CONFIG.cashOut)}`,
-        {
-          title: "Credit Karma Refinance Query",
-          padding: 1,
-          margin: 1,
-          borderStyle: "round",
-          borderColor: "green",
-        }
-      )
+      `Live View Link: https://browserbase.com/sessions/${stagehand.browserbaseSessionId}`
     );
-  } catch (error) {
-    console.error(chalk.red("\n✗ Navigation failed:"), error);
-    // Take a screenshot on failure
-    await page.screenshot({
-      path: "error-screenshot.png",
-      fullPage: true,
+
+    const page = stagehand.context.pages()[0];
+
+    console.log("Navigating to Credit Karma mortgage rates page...");
+    await page.goto("https://www.creditkarma.com/home-loans/mortgage-rates", {
+      waitUntil: "domcontentloaded",
     });
-    console.log(chalk.yellow("📸 Screenshot saved to error-screenshot.png"));
+
+    await stagehand.act(
+      "click on the 'Refinance' tab button in the mortgage rate calculator form (not a navigation link)"
+    );
+    console.log("Selected Refinance tab");
+
+    await stagehand.act(
+      "in the mortgage calculator form, select %creditScore% from the credit score dropdown",
+      { variables: { creditScore: USER_CONFIG.creditScore } }
+    );
+    console.log(`Selected credit score: ${USER_CONFIG.creditScore}`);
+
+    await stagehand.act(
+      "in the mortgage calculator form, enter %zipcode% in the ZIP code field",
+      { variables: { zipcode: USER_CONFIG.zipcode } }
+    );
+    console.log(`Entered ZIP code: ${USER_CONFIG.zipcode}`);
+
+    await stagehand.act(
+      "in the mortgage calculator form, enter %loanBalance% in the current loan balance field",
+      { variables: { loanBalance: USER_CONFIG.loanBalance } }
+    );
+    console.log(`Entered loan balance: $${USER_CONFIG.loanBalance}`);
+
+    await stagehand.act(
+      "in the mortgage calculator form, enter %homeValue% in the estimated home value field",
+      { variables: { homeValue: USER_CONFIG.homeValue } }
+    );
+    console.log(`Entered home value: $${USER_CONFIG.homeValue}`);
+
+    await stagehand.act(
+      "in the mortgage calculator form, enter %cashOut% in the cash out amount field",
+      { variables: { cashOut: USER_CONFIG.cashOut } }
+    );
+    console.log(`Entered cash-out amount: $${USER_CONFIG.cashOut}`);
+
+    await stagehand.act(
+      "click the 'Get my rates' or 'See rates' submit button in the mortgage calculator form"
+    );
+    console.log("Clicked 'Get my rates' button");
+
+    const mortgageRates = await stagehand.extract(
+      "Extract all mortgage rate offers shown on the page. For each offer, include: lender name, interest rate, APR, and monthly payment. Format as a list."
+    );
+
+    console.log("\n=== Credit Karma Refinance Query Summary ===");
+    console.log(`Credit Score: ${USER_CONFIG.creditScore}`);
+    console.log(`ZIP Code: ${USER_CONFIG.zipcode}`);
+    console.log(`Loan Balance: $${USER_CONFIG.loanBalance}`);
+    console.log(`Home Value: $${USER_CONFIG.homeValue}`);
+    console.log(`Cash Out: $${USER_CONFIG.cashOut}`);
+    console.log("=============================================\n");
+
+    console.log("=== Mortgage Rate Results ===");
+    console.log(mortgageRates.extraction || "No rates found");
+    console.log("\n=============================\n");
+  } catch (error) {
+    console.error("Error during mortgage rate lookup:", error);
     throw error;
   } finally {
     await stagehand.close();
+    console.log("Session closed successfully");
   }
-
-  console.log(
-    `\n🤘 Thanks for using Stagehand! Create an issue if you have any feedback: ${chalk.blue(
-      "https://github.com/browserbase/stagehand/issues/new"
-    )}\n`
-  );
 }
 
-run().catch(console.error);
+main().catch((err) => {
+  console.error("Error in credit karma automation:", err);
+  console.error("Common issues:");
+  console.error("  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY");
+  console.error("  - Verify GOOGLE_API_KEY is set for the model");
+  console.error("  - Credit Karma page structure may have changed");
+  console.error("Docs: https://docs.stagehand.dev/v3/first-steps/introduction");
+  process.exit(1);
+});
