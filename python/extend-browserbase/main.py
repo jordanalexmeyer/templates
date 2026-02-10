@@ -10,7 +10,7 @@ import webbrowser
 import zipfile
 from pathlib import Path
 
-from browserbase import Browserbase
+from browserbase import APIStatusError, Browserbase
 from dotenv import load_dotenv
 from extend_ai import Extend
 from stagehand import AsyncStagehand
@@ -222,17 +222,16 @@ async def save_downloads_with_retry(
                 return len(download_buffer)
             else:
                 print("Downloads not ready yet, retrying...")
-        except Exception as e:
-            error_message = str(e)
-            # Handle session not found errors gracefully (session may have expired)
-            if (
-                "Session with given id not found" in error_message
-                or "-32001" in error_message
-                or "Invalid Session ID" in error_message
-            ):
+        except APIStatusError as e:
+            # Handle 404 (session not found) gracefully
+            if e.status_code == 404:
                 print("Session not found, returning empty result")
                 return 0
+            print(f"Error fetching downloads: {e}")
+            raise
+        except Exception as e:
             # HTML error response - session may not be ready yet, keep retrying
+            error_message = str(e)
             if "Unexpected token '<'" in error_message or "<html" in error_message:
                 print("Session not ready yet, retrying...")
                 await asyncio.sleep(2)

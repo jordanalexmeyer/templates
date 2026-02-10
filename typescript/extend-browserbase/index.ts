@@ -7,105 +7,51 @@ import fs from "fs";
 import path from "path";
 import AdmZip from "adm-zip";
 import { ExtendClient } from "extend-ai";
-import { exec } from "child_process";
+import open from "open";
 
-// Opens a URL in the default browser (macOS) for live view and dashboard links
+// Opens a URL in the default browser (cross-platform)
 function openInBrowser(url: string): void {
-  exec(`open "${url}"`, (error) => {
-    if (error) {
-      console.log(`Could not auto-open: ${url}`);
-    }
+  open(url).catch(() => {
+    console.log(`Could not auto-open: ${url}`);
   });
 }
 
 // Polls Browserbase API for completed downloads with retry logic.
 // Retries every 2 seconds until downloads are ready or timeout is reached.
-function saveDownloadsWithRetry(
+async function saveDownloadsWithRetry(
   bb: Browserbase,
   sessionId: string,
-  retryForSeconds: number = 60,
-): { promise: Promise<number>; stopPolling: () => void } {
-  // Track polling intervals and timeout for cleanup
-  const intervals = {
-    poller: undefined as NodeJS.Timeout | undefined,
-    timeout: undefined as NodeJS.Timeout | undefined,
-    isStopped: false,
-  };
+  timeoutSecs: number = 60,
+): Promise<number> {
+  console.log(`Waiting up to ${timeoutSecs} seconds for downloads to complete...`);
+  const deadline = Date.now() + timeoutSecs * 1000;
 
-  // Cleanup function to stop all polling and timeouts
-  const stopPolling = (): void => {
-    if (intervals.isStopped) return;
-    intervals.isStopped = true;
-    if (intervals.poller) {
-      clearInterval(intervals.poller);
-      intervals.poller = undefined;
-    }
-    if (intervals.timeout) {
-      clearTimeout(intervals.timeout);
-      intervals.timeout = undefined;
-    }
-  };
+  while (Date.now() < deadline) {
+    try {
+      console.log("Checking for downloads...");
+      const response = await bb.sessions.downloads.list(sessionId);
+      const buf = Buffer.from(await response.arrayBuffer());
 
-  const promise = new Promise<number>((resolve, reject) => {
-    console.log(`Waiting up to ${retryForSeconds} seconds for downloads to complete...`);
-
-    // Fetch downloads from Browserbase API and save to disk when ready
-    async function fetchDownloads(): Promise<void> {
-      if (intervals.isStopped) return;
-
-      try {
-        console.log("Checking for downloads...");
-        const response = await bb.sessions.downloads.list(sessionId);
-        const downloadBuffer: ArrayBuffer = await response.arrayBuffer();
-
-        // Save downloads to disk when file size indicates content is available
-        if (downloadBuffer.byteLength > 100) {
-          console.log(`Downloads ready! File size: ${downloadBuffer.byteLength} bytes`);
-          fs.writeFileSync("downloaded_files.zip", Buffer.from(downloadBuffer));
-          console.log("Files saved as: downloaded_files.zip");
-          stopPolling();
-          resolve(downloadBuffer.byteLength);
-        } else {
-          console.log("Downloads not ready yet, retrying...");
-        }
-      } catch (e: unknown) {
-        if (intervals.isStopped) return;
-        // Handle session not found errors gracefully (session may have expired)
-        const errorMessage = e instanceof Error ? e.message : String(e);
-        if (
-          errorMessage.includes("Session with given id not found") ||
-          errorMessage.includes("-32001") ||
-          errorMessage.includes("Invalid Session ID")
-        ) {
-          stopPolling();
-          resolve(0);
-          return;
-        }
-        // HTML error response - session may not be ready yet, keep retrying
-        if (errorMessage.includes("Unexpected token '<'") || errorMessage.includes("<html")) {
-          console.log("Session not ready yet, retrying...");
-          return;
-        }
+      if (buf.byteLength > 100) {
+        console.log(`Downloads ready! File size: ${buf.byteLength} bytes`);
+        fs.writeFileSync("downloaded_files.zip", buf);
+        console.log("Files saved as: downloaded_files.zip");
+        return buf.byteLength;
+      }
+      console.log("Downloads not ready yet, retrying...");
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      // HTML error response - session may not be ready yet, keep retrying
+      if (errorMessage.includes("Unexpected token '<'") || errorMessage.includes("<html")) {
+        console.log("Session not ready yet, retrying...");
+      } else {
         console.error("Error fetching downloads:", e);
-        stopPolling();
-        reject(e);
+        throw e;
       }
     }
-
-    // Set timeout to fail if downloads don't complete within retry window
-    intervals.timeout = setTimeout(() => {
-      if (!intervals.isStopped) {
-        stopPolling();
-        reject(new Error("Download timeout exceeded"));
-      }
-    }, retryForSeconds * 1000);
-
-    // Poll every 2 seconds to check if downloads are ready
-    intervals.poller = setInterval(fetchDownloads, 2000);
-    fetchDownloads();
-  });
-
-  return { promise, stopPolling };
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+  throw new Error("Download timeout exceeded");
 }
 
 // Extracts receipt files from downloaded zip archive into output directories
@@ -338,6 +284,7 @@ async function parseReceiptsWithExtend(filePaths: string[]): Promise<void> {
   console.log("\n=== Parsing Receipts with Extend AI ===\n");
 
   // Initialize Extend AI client and get or create the receipt processor
+  // SDK auto-retries 429s and 5xx errors with exponential backoff
   const client = new ExtendClient({ token: process.env.EXTEND_API_KEY });
   const processorId = await getOrCreateProcessor(client);
 
@@ -346,65 +293,51 @@ async function parseReceiptsWithExtend(filePaths: string[]): Promise<void> {
   console.log(`View all runs: ${runsUrl}\n`);
   openInBrowser(runsUrl);
 
-  // Process all files with retry on rate limiting (429 errors)
+  // Process all files - SDK handles retries automatically with exponential backoff
   const results: { file: string; runId?: string; runUrl?: string; data: unknown }[] = [];
-
-  // Uploads a single file to Extend and runs extraction with exponential backoff retry
-  async function processWithRetry(filePath: string, maxRetries = 3): Promise<(typeof results)[0]> {
-    const fileName = path.basename(filePath);
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        // Upload the file to Extend
-        const fileBuffer = fs.readFileSync(filePath);
-        const blob = new Blob([fileBuffer]);
-        const uploadResponse = await client.file.upload(
-          blob as Parameters<typeof client.file.upload>[0],
-        );
-        const fileId = uploadResponse.file.id;
-
-        // Run extraction on the uploaded file
-        const extractionResponse = await client.processorRun.create({
-          processorId,
-          file: { fileId },
-          sync: true,
-          config: receiptExtractionConfig as Parameters<
-            typeof client.processorRun.create
-          >[0]["config"],
-        });
-
-        const parsedData = extractionResponse.processorRun;
-        const runId = parsedData.id;
-        const runUrl = `https://dashboard.extend.app/studio/processors/${processorId}/runs/${runId}`;
-        console.log(`  Parsed ${fileName}`);
-        console.log(`    → ${runUrl}`);
-        return { file: fileName, runId, runUrl, data: parsedData };
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        const isRetryable =
-          errorMsg.includes("429") ||
-          errorMsg.includes("rate") ||
-          errorMsg.includes("disturbed or locked");
-
-        if (isRetryable && attempt < maxRetries) {
-          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 2s, 4s, 8s
-          console.log(
-            `  Rate limited on ${fileName}, retrying in ${delay / 1000}s (attempt ${attempt}/${maxRetries})`,
-          );
-          await new Promise((resolve) => setTimeout(resolve, delay));
-        } else {
-          console.error(`  Failed to parse ${fileName}:`, errorMsg);
-          return { file: fileName, data: { error: errorMsg } };
-        }
-      }
-    }
-    return { file: fileName, data: { error: "Max retries exceeded" } };
-  }
 
   // Process in batches of 9 to balance speed and reliability
   for (let i = 0; i < filePaths.length; i += 9) {
     const batch = filePaths.slice(i, i + 9);
-    const batchResults = await Promise.all(batch.map((fp) => processWithRetry(fp)));
+    const batchResults = await Promise.all(
+      batch.map(async (filePath) => {
+        const fileName = path.basename(filePath);
+        try {
+          // Upload the file to Extend
+          const fileBuffer = fs.readFileSync(filePath);
+          const blob = new Blob([fileBuffer]);
+          const uploadResponse = await client.file.upload(
+            blob as Parameters<typeof client.file.upload>[0],
+            { maxRetries: 4 },
+          );
+          const fileId = uploadResponse.file.id;
+
+          // Run extraction on the uploaded file
+          const extractionResponse = await client.processorRun.create(
+            {
+              processorId,
+              file: { fileId },
+              sync: true,
+              config: receiptExtractionConfig as Parameters<
+                typeof client.processorRun.create
+              >[0]["config"],
+            },
+            { maxRetries: 4 },
+          );
+
+          const parsedData = extractionResponse.processorRun;
+          const runId = parsedData.id;
+          const runUrl = `https://dashboard.extend.app/studio/processors/${processorId}/runs/${runId}`;
+          console.log(`  Parsed ${fileName}`);
+          console.log(`    → ${runUrl}`);
+          return { file: fileName, runId, runUrl, data: parsedData };
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          console.error(`  Failed to parse ${fileName}:`, errorMsg);
+          return { file: fileName, data: { error: errorMsg } };
+        }
+      }),
+    );
     results.push(...batchResults);
   }
 
@@ -555,10 +488,8 @@ async function main(): Promise<void> {
       // Wait for session to finalize downloads before polling
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      const { promise: downloadPromise, stopPolling } = saveDownloadsWithRetry(bb, sessionId, 60);
-
       try {
-        const downloadSize = await downloadPromise;
+        const downloadSize = await saveDownloadsWithRetry(bb, sessionId, 60);
 
         if (downloadSize > 0) {
           // Extract receipt files from downloaded zip archive
@@ -574,7 +505,6 @@ async function main(): Promise<void> {
           console.log("No downloads were captured");
         }
       } catch (downloadError) {
-        stopPolling();
         console.error("Download retrieval failed:", downloadError);
       }
     }

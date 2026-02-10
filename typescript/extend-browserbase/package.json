@@ -12,7 +12,8 @@
     "@browserbasehq/stagehand": "latest",
     "adm-zip": "latest",
     "dotenv": "latest",
-    "extend-ai": "latest"
+    "extend-ai": "latest",
+    "open": "^11.0.0"
   },
   "devDependencies": {
     "@types/node": "latest",
