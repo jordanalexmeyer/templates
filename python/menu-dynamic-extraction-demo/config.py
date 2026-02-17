@@ -6,7 +6,6 @@
 import os
 import logging
 from dotenv import load_dotenv
-from browserbase import Browserbase
 
 # Load environment variables from .env file
 load_dotenv()
@@ -39,6 +38,3 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
-
-# Initialize Browserbase client
-bb = Browserbase(api_key=BROWSERBASE_API_KEY)

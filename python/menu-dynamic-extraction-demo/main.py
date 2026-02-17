@@ -15,14 +15,12 @@ Usage:
     python main.py --batch      # Batch mode - processes URLs from websites.txt
 """
 
-from playwright.sync_api import sync_playwright
 from stagehand import Stagehand
 from config import (
     BROWSERBASE_API_KEY,
     BROWSERBASE_PROJECT_ID,
     MODEL_API_KEY,
     NO_MENU_LINK_FOUND,
-    bb,
     logger
 )
 from models import MENU_SCHEMA
@@ -32,10 +30,6 @@ from scraper import close_popups, find_menu_link, extract_menu_from_sections, pr
 
 def main():
     """Main function for interactive single-restaurant extraction."""
-    # Create Browserbase session
-    session = bb.sessions.create(project_id=BROWSERBASE_PROJECT_ID)
-    session_id = session.id
-
     # Initialize Stagehand client
     client = Stagehand(
         browserbase_api_key=BROWSERBASE_API_KEY,
@@ -43,59 +37,56 @@ def main():
         model_api_key=MODEL_API_KEY,
     )
 
+    stagehand_session = client.sessions.start(
+        model_name="google/gemini-2.5-flash",
+    )
+    session_id = stagehand_session.data.session_id
     logger.info(f"Session started: {session_id}")
     logger.info(f"Watch live: https://browserbase.com/sessions/{session_id}")
 
     try:
-        # Connect Playwright to Browserbase
-        with sync_playwright() as p:
-            browser = p.chromium.connect_over_cdp(
-                f"wss://connect.browserbase.com?apiKey={BROWSERBASE_API_KEY}&sessionId={session_id}"
+        # Get website URL from user
+        website_url = normalize_url(get_website_from_user())
+        logger.info(f"Navigating to {website_url} ...")
+
+        # Navigate to website using Stagehand
+        client.sessions.navigate(
+            id=session_id,
+            url=website_url,
+        )
+        
+        # Close any popups
+        close_popups(client, session_id)
+
+        # Locate menu link with retries
+        all_menu_sections = []
+        menu_link = find_menu_link(client, session_id)
+        if menu_link == NO_MENU_LINK_FOUND:
+            logger.error("Could not find menu link after multiple attempts.")
+        else:
+            logger.info(f"Menu link found: {menu_link}")
+
+            # Navigate to menu
+            client.sessions.act(
+                id=session_id,
+                input=f"Click on: {menu_link[0] if isinstance(menu_link, list) else menu_link}",
             )
-            ctx = browser.contexts[0]
-            page = ctx.pages[0] if ctx.pages else ctx.new_page()
 
-            # Get website URL from user
-            website_url = normalize_url(get_website_from_user())
-            logger.info(f"Navigating to {website_url} ...")
-            page.goto(website_url, wait_until="domcontentloaded")
+            # Find menu subsections
+            sections_response = client.sessions.observe(
+                id=session_id,
+                instruction="Find all subsections on the current menu page, i.e. 'Lunch', 'Dinner', 'Happy Hour', etc. "
+                           "Return them as a list of links. If none found, return the current page link only in a list. "
+                           "Do not return duplicates if a link appears multiple times.",
+            )
+            sections = sections_response.data.result
 
-            # Close any popups
-            close_popups(client, session_id)
+            # Extract menu from all sections
+            all_menu_sections = extract_menu_from_sections(client, session_id, sections)
 
-            # Locate menu link with retries
-            all_menu_sections = []
-            menu_link = find_menu_link(client, session_id)
-            if menu_link == NO_MENU_LINK_FOUND:
-                logger.error("Could not find menu link after multiple attempts.")
-            else:
-                logger.info(f"Menu link found: {menu_link}")
-
-                # Navigate to menu
-                client.sessions.act(
-                    id=session_id,
-                    input=f"Click on: {menu_link[0] if isinstance(menu_link, list) else menu_link}",
-                )
-
-                page.wait_for_load_state("load", timeout=20000)
-
-                # Find menu subsections
-                sections_response = client.sessions.observe(
-                    id=session_id,
-                    instruction="Find all subsections on the current menu page, i.e. 'Lunch', 'Dinner', 'Happy Hour', etc. "
-                               "Return them as a list of links. If none found, return the current page link only in a list. "
-                               "Do not return duplicates if a link appears multiple times.",
-                )
-                sections = sections_response.data.result
-
-                # Extract menu from all sections
-                all_menu_sections = extract_menu_from_sections(client, session_id, page, sections)
-
-            # Save combined menu data to JSON file
-            if all_menu_sections:
-                save_menu_to_json(website_url, all_menu_sections)
-
-            browser.close()
+        # Save combined menu data to JSON file
+        if all_menu_sections:
+            save_menu_to_json(website_url, all_menu_sections)
 
     finally:
         # End session

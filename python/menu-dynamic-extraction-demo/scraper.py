@@ -7,7 +7,6 @@ import time
 import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime
-from playwright.sync_api import sync_playwright, Page
 from stagehand import Stagehand
 from config import (
     BROWSERBASE_API_KEY,
@@ -15,7 +14,6 @@ from config import (
     MODEL_API_KEY,
     NO_MENU_LINK_FOUND,
     MAX_RETRIES,
-    bb,
     logger
 )
 from models import MENU_SCHEMA
@@ -80,7 +78,6 @@ def find_menu_link(client: Stagehand, session_id: str, max_retries: int = MAX_RE
 def extract_menu_from_sections(
     client: Stagehand,
     session_id: str,
-    page: Page,
     sections: List[Any]
 ) -> List[Dict[str, Any]]:
     """
@@ -89,7 +86,6 @@ def extract_menu_from_sections(
     Args:
         client: Stagehand client instance
         session_id: Active session ID
-        page: Playwright page instance
         sections: List of menu sections to extract
 
     Returns:
@@ -111,8 +107,6 @@ def extract_menu_from_sections(
             id=session_id,
             input=f"Navigate to: {section_desc}",
         )
-
-        page.wait_for_load_state("load", timeout=20000)
 
         # Extract menu data
         extract_response = client.sessions.extract(
@@ -157,10 +151,6 @@ def process_restaurant(website_url: str, agent_id: int) -> Dict[str, Any]:
         "error": None,
     }
 
-    # Create Browserbase session
-    session = bb.sessions.create(project_id=BROWSERBASE_PROJECT_ID)
-    session_id = session.id
-
     # Initialize Stagehand client
     client = Stagehand(
         browserbase_api_key=BROWSERBASE_API_KEY,
@@ -168,57 +158,54 @@ def process_restaurant(website_url: str, agent_id: int) -> Dict[str, Any]:
         model_api_key=MODEL_API_KEY,
     )
 
+    # Start Stagehand session
+    stagehand_session = client.sessions.start(
+        model_name="google/gemini-2.5-flash",
+    )
+    session_id = stagehand_session.data.session_id
+
     agent_logger.info(f"Session started: {session_id}")
     agent_logger.info(f"Watch live: https://browserbase.com/sessions/{session_id}")
 
     try:
-        # Connect Playwright to Browserbase
-        with sync_playwright() as p:
-            browser = p.chromium.connect_over_cdp(
-                f"wss://connect.browserbase.com?apiKey={BROWSERBASE_API_KEY}&sessionId={session_id}"
+        # Navigate to website using Stagehand
+        agent_logger.info(f"Navigating to {website_url}")
+        client.sessions.act(
+            id=session_id,
+            input=f"Go to {website_url}",
+        )
+
+        # Close any popups on initial page load
+        close_popups(client, session_id, agent_logger)
+
+        # Extract menu data
+        all_menu_sections = []
+        menu_link = find_menu_link(client, session_id)
+        if menu_link == NO_MENU_LINK_FOUND:
+            agent_logger.warning("Could not find menu link")
+        else:
+            agent_logger.info(f"Menu link: {menu_link}")
+
+            # Navigate to menu link
+            client.sessions.act(
+                id=session_id,
+                input=f"Click on: {menu_link[0] if isinstance(menu_link, list) else menu_link}",
             )
-            ctx = browser.contexts[0]
-            page = ctx.pages[0] if ctx.pages else ctx.new_page()
 
-            # Navigate to website
-            agent_logger.info(f"Navigating to {website_url}")
-            page.goto(website_url, wait_until="domcontentloaded")
-
-            # Close any popups on initial page load
+            # Close any popups after navigating to menu page
             close_popups(client, session_id, agent_logger)
 
-            # Extract menu data
-            all_menu_sections = []
-            menu_link = find_menu_link(client, session_id)
-            if menu_link == NO_MENU_LINK_FOUND:
-                agent_logger.warning("Could not find menu link")
-            else:
-                agent_logger.info(f"Menu link: {menu_link}")
+            # Extract menu sections
+            sections_response = client.sessions.observe(
+                id=session_id,
+                instruction="Find all subsections on the current menu page, i.e. 'Lunch', 'Dinner', 'Happy Hour', etc. "
+                           "Return them as a list of links. If none found, return the current page link only in a list. "
+                           "Do not return duplicates if a link appears multiple times.",
+            )
+            sections = sections_response.data.result
 
-                # Navigate to menu link
-                client.sessions.act(
-                    id=session_id,
-                    input=f"Click on: {menu_link[0] if isinstance(menu_link, list) else menu_link}",
-                )
-
-                page.wait_for_load_state("load", timeout=20000)
-
-                # Close any popups after navigating to menu page
-                close_popups(client, session_id, agent_logger)
-
-                # Extract menu sections
-                sections_response = client.sessions.observe(
-                    id=session_id,
-                    instruction="Find all subsections on the current menu page, i.e. 'Lunch', 'Dinner', 'Happy Hour', etc. "
-                               "Return them as a list of links. If none found, return the current page link only in a list. "
-                               "Do not return duplicates if a link appears multiple times.",
-                )
-                sections = sections_response.data.result
-
-                # Extract menu from all sections
-                all_menu_sections = extract_menu_from_sections(client, session_id, page, sections)
-
-            browser.close()
+            # Extract menu from all sections
+            all_menu_sections = extract_menu_from_sections(client, session_id, sections)
 
         result["status"] = "success"
         end_time = datetime.now()

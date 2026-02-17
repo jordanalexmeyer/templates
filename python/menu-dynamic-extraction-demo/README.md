@@ -84,7 +84,7 @@ INFO: Session closed successfully
 
 ## COMMON PITFALLS
 
-- "ModuleNotFoundError: No module named 'stagehand'": Ensure you installed dependencies with `uv pip install -e .` or `pip install -e .`
+- "ModuleNotFoundError: No module named 'stagehand'": Ensure you installed dependencies with `uv pip install -e .` or `pip install -e .`. Note: Playwright is not required as Stagehand manages the browser automatically.
 - Missing API keys: Verify .env contains BROWSERBASE_PROJECT_ID, BROWSERBASE_API_KEY, and MODEL_API_KEY
 - "Could not find menu link after multiple attempts": The restaurant website may have an unusual structure. Try manually checking if there's a clear "Menu" link. Increase MAX_RETRIES in config.py if needed.
 - Popup/modal blocking: The script attempts to close popups automatically, but some sites have persistent overlays. Check the Browserbase live view link to debug.
