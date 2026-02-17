@@ -1,5 +1,5 @@
 [project]
-name = "restaurant-demo"
+name = "menu-dynamic-extraction-demo"
 version = "0.1.0"
 description = "Restaurant menu extraction using Stagehand and Browserbase"
 readme = "README.md"

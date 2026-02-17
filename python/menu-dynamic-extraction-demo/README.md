@@ -4,6 +4,7 @@
 
 - **Goal**: Automate restaurant menu extraction from websites using AI-powered browser automation to scrape menu items, prices, descriptions, and categories.
 - **Pattern Template**: Demonstrates web scraping with Stagehand's observe/act/extract pattern for navigating complex restaurant websites and parsing menu structures.
+- **One script, many websites**: Stagehand can adapt to different webpage layouts with same core script thanks to its LLM-powered primitives.
 - **Workflow**: Stagehand navigates to restaurant website, finds menu links using observe, extracts structured data with Pydantic schemas, handles multi-section menus (lunch/dinner/drinks), and outputs JSON results.
 - **Multi-Section Support**: Automatically detects menu subsections (Lunch, Dinner, Happy Hour, etc.) and extracts each separately for comprehensive coverage.
 - **Production-Ready**: Includes retry logic, popup handling, logging, error recovery, and parallel processing capabilities for batch extraction.
@@ -24,14 +25,14 @@
 
 ## QUICKSTART
 
-1. cd python/restaurant-demo
+1. cd menu-dynamic-extraction-demo
 2. Install dependencies with uv:
 
    ```bash
    uv pip install -e .
    ```
 
-   Alternatively, use pip:
+   Alternatively, use pip/ pip3:
 
    ```bash
    python -m venv venv
@@ -49,6 +50,13 @@
    python main.py
    ```
    The script will prompt you for a restaurant website URL.
+   Some of our favorites here in SF include https://www.thetailorssonsf.com/, https://www.thegrovesf.com/, and https://www.nopalitosf.com/.
+
+   For batch processing multiple restaurants:
+   ```bash
+   python main.py --batch
+   ```
+   Create a `websites.txt` file with one URL per line (see websites.txt.example). 
 
 ## EXPECTED OUTPUT
 
@@ -61,7 +69,7 @@
 - For each subsection:
   - Navigates to that section
   - Extracts structured menu data: sections → categories → items (name, description, price)
-- All extraction results are stored in the Stagehand session (can be extended to write JSON files)
+- Saves all extraction results to timestamped JSON files in the `results/` directory
 - Session closes cleanly after extraction completes
 
 Example log output:
@@ -78,10 +86,10 @@ INFO: Session closed successfully
 
 - "ModuleNotFoundError: No module named 'stagehand'": Ensure you installed dependencies with `uv pip install -e .` or `pip install -e .`
 - Missing API keys: Verify .env contains BROWSERBASE_PROJECT_ID, BROWSERBASE_API_KEY, and GOOGLE_API_KEY
-- "Could not find menu link after multiple attempts": The restaurant website may have an unusual structure. Try manually checking if there's a clear "Menu" link. Increase MAX_RETRIES in config if needed.
+- "Could not find menu link after multiple attempts": The restaurant website may have an unusual structure. Try manually checking if there's a clear "Menu" link. Increase MAX_RETRIES in config.py if needed.
 - Popup/modal blocking: The script attempts to close popups automatically, but some sites have persistent overlays. Check the Browserbase live view link to debug.
 - Empty extraction results: Some restaurant sites load menus dynamically or via iframes. The script skips iframe links automatically but may need manual adjustment for special cases.
-- Stagehand verbose=2 logging: Produces detailed output for debugging. Set LOG_LEVEL=WARNING in .env for quieter output.
+- Detailed logging: The script logs INFO level by default. Set LOG_LEVEL=WARNING in .env for quieter output, or LOG_LEVEL=DEBUG for more verbose logging.
 - Find more information on your Browserbase dashboard → https://www.browserbase.com/sign-in
 
 ## USE CASES
@@ -96,10 +104,11 @@ INFO: Session closed successfully
 
 ## NEXT STEPS
 
-• **Batch processing**: Modify to accept a list of restaurant URLs from a file and process them in parallel using asyncio workers (see scraper.py for agent pattern).
+• **Parallel batch processing**: Enhance batch processing to use asyncio workers for concurrent extraction across multiple restaurants (currently processes sequentially).
 • **Output to database**: Extend the script to save extracted menus to PostgreSQL, MongoDB, or Airtable for persistent storage and querying.
 • **Restaurant info extraction**: Expand to extract contact details (phone, email, hours, address) in addition to menu data.
 • **Incremental updates**: Track previously extracted menus and only re-scrape when website content has changed (use checksums or last-modified headers).
+• **PDF menu support**: Add support for restaurants that use PDF menus instead of web pages.
 
 ## HELPFUL RESOURCES
 

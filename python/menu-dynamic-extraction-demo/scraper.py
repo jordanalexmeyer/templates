@@ -192,6 +192,7 @@ def process_restaurant(website_url: str, agent_id: int) -> Dict[str, Any]:
             close_popups(client, session_id, agent_logger)
 
             # Extract menu data
+            all_menu_sections = []
             menu_link = find_menu_link(client, session_id)
             if menu_link == NO_MENU_LINK_FOUND:
                 agent_logger.warning("Could not find menu link")

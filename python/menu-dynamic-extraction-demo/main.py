@@ -64,6 +64,7 @@ def main():
             close_popups(client, session_id)
 
             # Locate menu link with retries
+            all_menu_sections = []
             menu_link = find_menu_link(client, session_id)
             if menu_link == NO_MENU_LINK_FOUND:
                 logger.error("Could not find menu link after multiple attempts.")
@@ -91,9 +92,9 @@ def main():
                 # Extract menu from all sections
                 all_menu_sections = extract_menu_from_sections(client, session_id, page, sections)
 
-                # Save combined menu data to JSON file
-                if all_menu_sections:
-                    save_menu_to_json(website_url, all_menu_sections)
+            # Save combined menu data to JSON file
+            if all_menu_sections:
+                save_menu_to_json(website_url, all_menu_sections)
 
             browser.close()
 

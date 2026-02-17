@@ -12,9 +12,18 @@ from browserbase import Browserbase
 load_dotenv()
 
 # API Keys
-MODEL_API_KEY = os.getenv("GOOGLE_API_KEY")  # Google API key for Gemini models
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")  # Google API key for Gemini models
+MODEL_API_KEY = GOOGLE_API_KEY  # Alias for compatibility
 BROWSERBASE_API_KEY = os.getenv("BROWSERBASE_API_KEY")
 BROWSERBASE_PROJECT_ID = os.getenv("BROWSERBASE_PROJECT_ID")
+
+# Validate required environment variables
+if not GOOGLE_API_KEY:
+    raise ValueError("GOOGLE_API_KEY environment variable is required. Get one at https://aistudio.google.com/apikey")
+if not BROWSERBASE_API_KEY:
+    raise ValueError("BROWSERBASE_API_KEY environment variable is required. Get one at https://www.browserbase.com/settings")
+if not BROWSERBASE_PROJECT_ID:
+    raise ValueError("BROWSERBASE_PROJECT_ID environment variable is required. Get one at https://www.browserbase.com/settings")
 
 # File paths
 WEBSITES_FILE = os.getenv("WEBSITES_FILE", "websites.txt")
