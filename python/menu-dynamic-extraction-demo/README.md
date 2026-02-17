@@ -44,7 +44,7 @@
 4. Add required API keys to .env:
    - `BROWSERBASE_PROJECT_ID` - Get from https://www.browserbase.com/settings
    - `BROWSERBASE_API_KEY` - Get from https://www.browserbase.com/settings
-   - `GOOGLE_API_KEY` - Get from https://aistudio.google.com/apikey
+   - `MODEL_API_KEY` - Get from https://aistudio.google.com/apikey (for Google Gemini)
 5. Run the script:
    ```bash
    python main.py
@@ -85,7 +85,7 @@ INFO: Session closed successfully
 ## COMMON PITFALLS
 
 - "ModuleNotFoundError: No module named 'stagehand'": Ensure you installed dependencies with `uv pip install -e .` or `pip install -e .`
-- Missing API keys: Verify .env contains BROWSERBASE_PROJECT_ID, BROWSERBASE_API_KEY, and GOOGLE_API_KEY
+- Missing API keys: Verify .env contains BROWSERBASE_PROJECT_ID, BROWSERBASE_API_KEY, and MODEL_API_KEY
 - "Could not find menu link after multiple attempts": The restaurant website may have an unusual structure. Try manually checking if there's a clear "Menu" link. Increase MAX_RETRIES in config.py if needed.
 - Popup/modal blocking: The script attempts to close popups automatically, but some sites have persistent overlays. Check the Browserbase live view link to debug.
 - Empty extraction results: Some restaurant sites load menus dynamically or via iframes. The script skips iframe links automatically but may need manual adjustment for special cases.

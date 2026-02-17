@@ -12,14 +12,13 @@ from browserbase import Browserbase
 load_dotenv()
 
 # API Keys
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")  # Google API key for Gemini models
-MODEL_API_KEY = GOOGLE_API_KEY  # Alias for compatibility
+MODEL_API_KEY = os.getenv("MODEL_API_KEY")  # API key for LLM provider (e.g., Google Gemini)
 BROWSERBASE_API_KEY = os.getenv("BROWSERBASE_API_KEY")
 BROWSERBASE_PROJECT_ID = os.getenv("BROWSERBASE_PROJECT_ID")
 
 # Validate required environment variables
-if not GOOGLE_API_KEY:
-    raise ValueError("GOOGLE_API_KEY environment variable is required. Get one at https://aistudio.google.com/apikey")
+if not MODEL_API_KEY:
+    raise ValueError("MODEL_API_KEY environment variable is required. For Google Gemini, get one at https://aistudio.google.com/apikey")
 if not BROWSERBASE_API_KEY:
     raise ValueError("BROWSERBASE_API_KEY environment variable is required. Get one at https://www.browserbase.com/settings")
 if not BROWSERBASE_PROJECT_ID:
