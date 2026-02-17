@@ -75,7 +75,6 @@ def main():
                 client.sessions.act(
                     id=session_id,
                     input=f"Click on: {menu_link[0] if isinstance(menu_link, list) else menu_link}",
-                    options={"model": {"modelName": "google/gemini-2.5-flash"}},
                 )
 
                 page.wait_for_load_state("load", timeout=20000)

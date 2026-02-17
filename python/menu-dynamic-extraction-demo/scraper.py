@@ -38,7 +38,6 @@ def close_popups(client: Stagehand, session_id: str, log: logging.Logger = logge
         client.sessions.act(
             id=session_id,
             input="Close any popups, modals, or cookie notices that are blocking the page",
-            options={"model": {"modelName": "google/gemini-2.5-flash"}},
         )
         log.info("Successfully closed popups/modals")
         return True
@@ -70,7 +69,6 @@ def find_menu_link(client: Stagehand, session_id: str, max_retries: int = MAX_RE
             response = client.sessions.observe(
                 id=session_id,
                 instruction=instruction,
-                options={"model": {"modelName": "google/gemini-2.5-flash"}},
             )
             return response.data.result
         except Exception as e:
@@ -112,7 +110,6 @@ def extract_menu_from_sections(
         client.sessions.act(
             id=session_id,
             input=f"Navigate to: {section_desc}",
-            options={"model": {"modelName": "google/gemini-2.5-flash"}},
         )
 
         page.wait_for_load_state("load", timeout=20000)
@@ -125,7 +122,6 @@ def extract_menu_from_sections(
                        "For each item, extract the name, description, and price. "
                        "Preserve price formatting exactly as written.",
             schema=MENU_SCHEMA,
-            options={"model": {"modelName": "google/gemini-2.5-flash"}},
         )
         logger.info(f"Menu data extracted for {section_desc}")
 
@@ -203,7 +199,6 @@ def process_restaurant(website_url: str, agent_id: int) -> Dict[str, Any]:
                 client.sessions.act(
                     id=session_id,
                     input=f"Click on: {menu_link[0] if isinstance(menu_link, list) else menu_link}",
-                    options={"model": {"modelName": "google/gemini-2.5-flash"}},
                 )
 
                 page.wait_for_load_state("load", timeout=20000)
