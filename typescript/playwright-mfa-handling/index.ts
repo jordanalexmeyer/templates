@@ -79,9 +79,7 @@ async function createBrowserbaseSession(): Promise<BrowserSession> {
 
   const bb = new Browserbase({ apiKey: process.env.BROWSERBASE_API_KEY });
 
-  const session = await bb.sessions.create({
-    projectId: process.env.BROWSERBASE_PROJECT_ID,
-  });
+  const session = await bb.sessions.create({});
 
   console.log(`Session created: https://browserbase.com/sessions/${session.id}`);
 
