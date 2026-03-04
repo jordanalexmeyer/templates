@@ -58,7 +58,6 @@ async function main(): Promise<void> {
   const stagehand = new Stagehand({
     env: "BROWSERBASE",
     apiKey: process.env.BROWSERBASE_API_KEY,
-    projectId: process.env.BROWSERBASE_PROJECT_ID,
     verbose: 1,
     // 0 = errors only, 1 = info, 2 = debug
     // (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.)
