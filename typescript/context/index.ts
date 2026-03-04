@@ -10,7 +10,7 @@ async function createSessionContextID() {
   console.log("Creating new Browserbase context...");
   // First create a context using Browserbase SDK to get a context ID.
   const bb = new Browserbase({ apiKey: process.env.BROWSERBASE_API_KEY! });
-  const context = await bb.contexts.create({});
+  const context = await bb.contexts.create();
 
   console.log("Created context ID:", context.id);
 
