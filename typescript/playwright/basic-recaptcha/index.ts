@@ -138,7 +138,7 @@ async function main() {
 main().catch((err) => {
   console.error("Application error:", err);
   console.error("\nCommon issues:");
-  console.error("  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY");
+  console.error("  - Check .env file has BROWSERBASE_API_KEY");
   console.error("  - Verify solveCaptchas is enabled (true by default)");
   console.error("  - Allow up to 60 seconds for CAPTCHA solving to complete");
   console.error("  - Enable proxies for higher success rates");

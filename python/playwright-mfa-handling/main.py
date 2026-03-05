@@ -241,7 +241,7 @@ if __name__ == "__main__":
     except Exception as err:
         print(f"\nError in MFA handling: {err}")
         print("\nCommon issues:")
-        print("  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY")
+        print("  - Check .env file has BROWSERBASE_API_KEY")
         print("  - TOTP code may have expired (try running again)")
         print("  - Page structure may have changed")
         exit(1)
