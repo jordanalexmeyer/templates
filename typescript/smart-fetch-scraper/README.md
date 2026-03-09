@@ -23,8 +23,9 @@
 2. npm install
 3. cp .env.example .env (or create .env with required keys)
 4. Add BROWSERBASE_PROJECT_ID, BROWSERBASE_API_KEY, and GOOGLE_API_KEY to .env
-5. Optionally edit TARGET_URL in index.ts
-6. npm start
+5. npm start <url>
+
+Example: `npm start https://news.ycombinator.com`
 
 ## HOW IT WORKS
 
@@ -54,6 +55,8 @@
 - Fetch API access: the Fetch API may require enablement on your account — contact support if you get a 404
 - Google API access: GOOGLE_API_KEY is only needed for the browser fallback path
 - Content threshold: adjust MIN_CONTENT_LENGTH if server-rendered pages are incorrectly triggering the browser fallback
+- Text density: adjust MIN_TEXT_DENSITY if pages with lots of inline scripts/styles are incorrectly triggering the browser fallback
+- JS-challenge detection: JS_REQUIRED_PATTERNS covers common bot-detection pages (Cloudflare, etc.) — extend the array for other patterns you encounter
 - Timeout: the Fetch API has a 10-second timeout and 1MB max response — very large or slow pages will need the browser path
 
 ## USE CASES

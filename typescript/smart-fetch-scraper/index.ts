@@ -8,13 +8,22 @@ import "dotenv/config";
 import { Stagehand } from "@browserbasehq/stagehand";
 import { z } from "zod";
 
-// ============= CONFIGURATION =============
-const TARGET_URL = "https://news.ycombinator.com";
-
 // Minimum character threshold — if Fetch API returns less than this,
 // the page is likely JS-rendered and we fall back to a browser session.
 const MIN_CONTENT_LENGTH = 500;
-// =========================================
+
+// Minimum ratio of visible text to raw HTML — pages below this are likely shells.
+const MIN_TEXT_DENSITY = 0.05;
+
+// Patterns that indicate the page requires JavaScript to render real content.
+const JS_REQUIRED_PATTERNS = [
+  /enable javascript/i,
+  /javascript is (required|disabled|not enabled)/i,
+  /please enable javascript/i,
+  /this (site|page|app) requires javascript/i,
+  /checking your browser/i, // Cloudflare challenge
+  /<noscript>[^<]{200,}/i, // large noscript block = JS-gated content
+];
 
 // Schema for structured page data extracted via Stagehand
 const PageDataSchema = z.object({
@@ -29,6 +38,41 @@ const PageDataSchema = z.object({
     )
     .describe("The main list of items, articles, or entries on the page"),
 });
+
+/**
+ * Returns the reason the Fetch API result should trigger a browser fallback,
+ * or null if the content looks usable.
+ */
+function needsBrowserFallback(
+  content: string,
+  statusCode: number,
+): string | null {
+  // Non-2xx status: the page didn't load successfully
+  if (statusCode < 200 || statusCode >= 300) {
+    return `non-2xx status code (${statusCode})`;
+  }
+
+  // Too short: likely a JS shell
+  if (content.length < MIN_CONTENT_LENGTH) {
+    return `content too short (${content.length} < ${MIN_CONTENT_LENGTH} chars)`;
+  }
+
+  // JS-challenge / bot-detection page
+  for (const pattern of JS_REQUIRED_PATTERNS) {
+    if (pattern.test(content)) {
+      return `JS-required pattern matched: ${pattern}`;
+    }
+  }
+
+  // Low text density: strip all HTML tags and measure how much real text remains
+  const textOnly = content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  const density = textOnly.length / content.length;
+  if (density < MIN_TEXT_DENSITY) {
+    return `text density too low (${(density * 100).toFixed(1)}% < ${MIN_TEXT_DENSITY * 100}%)`;
+  }
+
+  return null;
+}
 
 /**
  * Attempt to fetch a page using the Browserbase Fetch API.
@@ -73,11 +117,9 @@ async function tryFetchApi(
 
     console.log(`[Fetch API] Got response: status=${data.status_code}, length=${data.content.length} chars`);
 
-    // Check if we got enough content to be useful
-    if (data.content.length < MIN_CONTENT_LENGTH) {
-      console.log(
-        `[Fetch API] Content too short (${data.content.length} < ${MIN_CONTENT_LENGTH}), likely JS-rendered`,
-      );
+    const fallbackReason = needsBrowserFallback(data.content, data.status_code);
+    if (fallbackReason) {
+      console.log(`[Fetch API] Content not usable — ${fallbackReason}`);
       return null;
     }
 
@@ -112,6 +154,15 @@ async function extractWithBrowser(url: string) {
     env: "BROWSERBASE",
     verbose: 1,
     model: "google/gemini-2.5-flash",
+    browserbaseSessionCreateParams: {
+      projectId: process.env.BROWSERBASE_PROJECT_ID!,
+      proxies: true,
+      browserSettings: {
+        advancedStealth: true,
+        blockAds: true,
+        solveCaptchas: true
+      }
+    },
   });
 
   try {
@@ -138,11 +189,18 @@ async function extractWithBrowser(url: string) {
 }
 
 async function main(): Promise<void> {
-  console.log(`Smart Fetch Scraper — target: ${TARGET_URL}`);
+  const targetUrl = process.argv[2];
+  if (!targetUrl) {
+    console.error("Usage: npm start <url>");
+    console.error("Example: npm start https://news.ycombinator.com");
+    process.exit(1);
+  }
+
+  console.log(`Smart Fetch Scraper — target: ${targetUrl}`);
   console.log("Strategy: Fetch API first, browser fallback if needed\n");
 
   // Step 1: Try the fast path
-  const fetchResult = await tryFetchApi(TARGET_URL);
+  const fetchResult = await tryFetchApi(targetUrl);
 
   if (fetchResult) {
     console.log("\n[Fetch API] Success! Parsing HTML content...");
@@ -155,7 +213,7 @@ async function main(): Promise<void> {
     console.log("For richer structured extraction, the browser fallback is also available.\n");
 
     // Optionally, you can still use the browser for richer extraction:
-    // const structured = await extractWithBrowser(TARGET_URL);
+    // const structured = await extractWithBrowser(targetUrl);
     // console.log(JSON.stringify(structured, null, 2));
 
     console.log("Preview (first 500 chars):");
@@ -164,7 +222,7 @@ async function main(): Promise<void> {
     // Step 2: Fetch API didn't return enough — use a real browser
     console.log("\n[Fetch API] Insufficient content, falling back to browser...\n");
 
-    const structured = await extractWithBrowser(TARGET_URL);
+    const structured = await extractWithBrowser(targetUrl);
     console.log("\nExtracted data:");
     console.log(JSON.stringify(structured, null, 2));
   }
