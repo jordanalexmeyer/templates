@@ -8,6 +8,8 @@ import "dotenv/config";
 import { Stagehand } from "@browserbasehq/stagehand";
 import { z } from "zod";
 
+// ============= CONFIGURATION =============
+
 // Minimum character threshold — if Fetch API returns less than this,
 // the page is likely JS-rendered and we fall back to a browser session.
 const MIN_CONTENT_LENGTH = 500;
@@ -25,7 +27,8 @@ const JS_REQUIRED_PATTERNS = [
   /<noscript>[^<]{200,}/i, // large noscript block = JS-gated content
 ];
 
-// Schema for structured page data extracted via Stagehand
+// Schema for the structured data extracted by the browser fallback.
+// Adapt this to match the content you want to pull from the target page.
 const PageDataSchema = z.object({
   title: z.string().describe("The page title"),
   items: z
@@ -39,14 +42,13 @@ const PageDataSchema = z.object({
     .describe("The main list of items, articles, or entries on the page"),
 });
 
+// =========================================
+
 /**
  * Returns the reason the Fetch API result should trigger a browser fallback,
  * or null if the content looks usable.
  */
-function needsBrowserFallback(
-  content: string,
-  statusCode: number,
-): string | null {
+function needsBrowserFallback(content: string, statusCode: number): string | null {
   // Non-2xx status: the page didn't load successfully
   if (statusCode < 200 || statusCode >= 300) {
     return `non-2xx status code (${statusCode})`;
@@ -77,11 +79,9 @@ function needsBrowserFallback(
 /**
  * Attempt to fetch a page using the Browserbase Fetch API.
  * This is a lightweight HTTP request — no browser spins up.
- * Returns the raw HTML content or null if the response is too small / fails.
+ * Returns the raw HTML content or null if the content fails usability checks.
  */
-async function tryFetchApi(
-  url: string,
-): Promise<{ content: string; statusCode: number } | null> {
+async function tryFetchApi(url: string): Promise<{ content: string; statusCode: number } | null> {
   const apiKey = process.env.BROWSERBASE_API_KEY;
   if (!apiKey) {
     throw new Error("BROWSERBASE_API_KEY is required");
@@ -96,16 +96,11 @@ async function tryFetchApi(
         "Content-Type": "application/json",
         "x-bb-api-key": apiKey,
       },
-      body: JSON.stringify({
-        url,
-        allowRedirects: true,
-      }),
+      body: JSON.stringify({ url, allowRedirects: true }),
     });
 
     if (!response.ok) {
-      console.log(
-        `[Fetch API] Request failed with status ${response.status}: ${response.statusText}`,
-      );
+      console.log(`[Fetch API] Request failed with status ${response.status}: ${response.statusText}`);
       return null;
     }
 
@@ -133,8 +128,7 @@ async function tryFetchApi(
 
 /**
  * Parse basic data from raw HTML without a browser.
- * This is a simple regex-based extraction for demonstration.
- * For production use, consider a proper HTML parser like cheerio.
+ * Uses simple regex-based extraction — swap in cheerio for richer parsing.
  */
 function parseFromHtml(html: string): { title: string; linkCount: number } {
   const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
@@ -160,16 +154,14 @@ async function extractWithBrowser(url: string) {
       browserSettings: {
         advancedStealth: true,
         blockAds: true,
-        solveCaptchas: true
-      }
+        solveCaptchas: true,
+      },
     },
   });
 
   try {
     await stagehand.init();
-    console.log(
-      `[Browser] Live View: https://browserbase.com/sessions/${stagehand.browserbaseSessionID}`,
-    );
+    console.log(`[Browser] Live View: https://browserbase.com/sessions/${stagehand.browserbaseSessionID}`);
 
     const page = stagehand.context.pages()[0];
     await page.goto(url);
@@ -199,32 +191,37 @@ async function main(): Promise<void> {
   console.log(`Smart Fetch Scraper — target: ${targetUrl}`);
   console.log("Strategy: Fetch API first, browser fallback if needed\n");
 
-  // Step 1: Try the fast path
-  const fetchResult = await tryFetchApi(targetUrl);
+  try {
+    // Step 1: Try the fast path
+    const fetchResult = await tryFetchApi(targetUrl);
 
-  if (fetchResult) {
-    console.log("\n[Fetch API] Success! Parsing HTML content...");
-    const parsed = parseFromHtml(fetchResult.content);
-    console.log(`  Title: ${parsed.title}`);
-    console.log(`  Links found: ${parsed.linkCount}`);
-    console.log(`  Status code: ${fetchResult.statusCode}`);
-    console.log(`  Content length: ${fetchResult.content.length} chars`);
-    console.log("\nThe Fetch API returned sufficient content.");
-    console.log("For richer structured extraction, the browser fallback is also available.\n");
+    if (fetchResult) {
+      console.log("\n[Fetch API] Success! Parsing HTML content...");
+      const parsed = parseFromHtml(fetchResult.content);
+      console.log(`  Title: ${parsed.title}`);
+      console.log(`  Links found: ${parsed.linkCount}`);
+      console.log(`  Status code: ${fetchResult.statusCode}`);
+      console.log(`  Content length: ${fetchResult.content.length} chars`);
+      console.log("\nThe Fetch API returned sufficient content.");
+      console.log("For richer structured extraction, the browser fallback is also available.\n");
 
-    // Optionally, you can still use the browser for richer extraction:
-    // const structured = await extractWithBrowser(targetUrl);
-    // console.log(JSON.stringify(structured, null, 2));
+      // Optionally, you can still use the browser for richer extraction:
+      // const structured = await extractWithBrowser(targetUrl);
+      // console.log(JSON.stringify(structured, null, 2));
 
-    console.log("Preview (first 500 chars):");
-    console.log(fetchResult.content.slice(0, 500));
-  } else {
-    // Step 2: Fetch API didn't return enough — use a real browser
-    console.log("\n[Fetch API] Insufficient content, falling back to browser...\n");
+      console.log("Preview (first 500 chars):");
+      console.log(fetchResult.content.slice(0, 500));
+    } else {
+      // Step 2: Fetch API didn't return usable content — use a real browser
+      console.log("\n[Fetch API] Insufficient content, falling back to browser...\n");
 
-    const structured = await extractWithBrowser(targetUrl);
-    console.log("\nExtracted data:");
-    console.log(JSON.stringify(structured, null, 2));
+      const structured = await extractWithBrowser(targetUrl);
+      console.log("\nExtracted data:");
+      console.log(JSON.stringify(structured, null, 2));
+    }
+  } catch (error) {
+    console.error("Error during scrape:", error);
+    throw error;
   }
 }
 
