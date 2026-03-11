@@ -12,7 +12,7 @@
 ## GLOSSARY
 
 - Fetch API: Browserbase's lightweight HTTP fetching endpoint — fetches page content through Browserbase infrastructure without spinning up a browser.
-  Endpoint → `POST https://api.browserbase.com/v1/fetch`
+  Docs → https://docs.browserbase.com/features/fetch
 - extract: pull structured data from pages using schemas and AI.
   Docs → https://docs.stagehand.dev/basics/extract
 - Stagehand: AI browser automation framework.
@@ -25,6 +25,18 @@
 3. cp .env.example .env
 4. Add BROWSERBASE_PROJECT_ID, BROWSERBASE_API_KEY, and GOOGLE_API_KEY to .env
 5. npm start \<url\> — e.g. `npm start https://news.ycombinator.com`
+
+## EXAMPLE URLS
+
+Fetch API fast-path (server-rendered, returns usable HTML directly):
+- `npm start https://news.ycombinator.com` — server-rendered, lightweight HTML
+- `npm start https://en.wikipedia.org/wiki/Web_scraping` — static content, no JS required
+- `npm start https://www.bbc.com/news` — server-rendered news page
+
+Browser fallback (JS-rendered, blocked, or low text density):
+- `npm start https://www.reddit.com` — returns a 403, triggers fallback
+- `npm start https://x.com` — returns an "Enable JavaScript" shell page
+- `npm start https://github.com/trending` — HTML is mostly inline scripts (3.6% text density), triggers fallback
 
 ## EXPECTED OUTPUT
 

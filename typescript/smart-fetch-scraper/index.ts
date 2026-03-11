@@ -5,6 +5,7 @@
 // a full Stagehand browser session with AI-powered extraction.
 
 import "dotenv/config";
+import Browserbase from "@browserbasehq/sdk";
 import { Stagehand } from "@browserbasehq/stagehand";
 import { z } from "zod";
 
@@ -82,43 +83,22 @@ function needsBrowserFallback(content: string, statusCode: number): string | nul
  * Returns the raw HTML content or null if the content fails usability checks.
  */
 async function tryFetchApi(url: string): Promise<{ content: string; statusCode: number } | null> {
-  const apiKey = process.env.BROWSERBASE_API_KEY;
-  if (!apiKey) {
-    throw new Error("BROWSERBASE_API_KEY is required");
-  }
+  const bb = new Browserbase({ apiKey: process.env.BROWSERBASE_API_KEY! });
 
   console.log("[Fetch API] Attempting lightweight fetch...");
 
   try {
-    const response = await fetch("https://api.browserbase.com/v1/fetch", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-bb-api-key": apiKey,
-      },
-      body: JSON.stringify({ url, allowRedirects: true }),
-    });
+    const data = await bb.fetchAPI.create({ url, allowRedirects: true });
 
-    if (!response.ok) {
-      console.log(`[Fetch API] Request failed with status ${response.status}: ${response.statusText}`);
-      return null;
-    }
+    console.log(`[Fetch API] Got response: status=${data.statusCode}, length=${data.content.length} chars`);
 
-    const data = (await response.json()) as {
-      status_code: number;
-      content: string;
-      content_type: string;
-    };
-
-    console.log(`[Fetch API] Got response: status=${data.status_code}, length=${data.content.length} chars`);
-
-    const fallbackReason = needsBrowserFallback(data.content, data.status_code);
+    const fallbackReason = needsBrowserFallback(data.content, data.statusCode);
     if (fallbackReason) {
       console.log(`[Fetch API] Content not usable — ${fallbackReason}`);
       return null;
     }
 
-    return { content: data.content, statusCode: data.status_code };
+    return { content: data.content, statusCode: data.statusCode };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.log(`[Fetch API] Failed: ${message}`);
