@@ -70,8 +70,7 @@ Browser fallback (JS-rendered, blocked, or low text density):
 
 ## HELPFUL RESOURCES
 
-📚 Stagehand Docs: https://docs.stagehand.dev
-🎮 Browserbase: https://www.browserbase.com
+📚 Browserbase Fetch Docs: https://docs.browserbase.com/features/fetch
 💡 Try it out: https://www.browserbase.com/playground
 🔧 Templates: https://www.browserbase.com/templates
 📧 Need help? support@browserbase.com
