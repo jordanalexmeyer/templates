@@ -20,7 +20,7 @@
 
 ## QUICKSTART
 
-1. cd typescript/smart-fetch-scraper
+1. cd smart-fetch-scraper
 2. npm install
 3. cp .env.example .env
 4. Add BROWSERBASE_PROJECT_ID, BROWSERBASE_API_KEY, and GOOGLE_API_KEY to .env
