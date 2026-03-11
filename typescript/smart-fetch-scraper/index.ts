@@ -1,13 +1,12 @@
-// Stagehand + Browserbase: Smart Fetch Scraper - See README.md for full documentation
+// Browserbase: Smart Fetch Scraper — See README.md for full documentation
 //
 // Tries the Browserbase Fetch API first (fast, no browser session needed).
 // If the page is JS-rendered or the content is insufficient, falls back to
-// a full Stagehand browser session with AI-powered extraction.
+// a Playwright browser session connected via Browserbase CDP.
 
 import "dotenv/config";
 import Browserbase from "@browserbasehq/sdk";
-import { Stagehand } from "@browserbasehq/stagehand";
-import { z } from "zod";
+import { chromium } from "playwright";
 
 // ============= CONFIGURATION =============
 
@@ -27,21 +26,6 @@ const JS_REQUIRED_PATTERNS = [
   /checking your browser/i, // Cloudflare challenge
   /<noscript>[^<]{200,}/i, // large noscript block = JS-gated content
 ];
-
-// Schema for the structured data extracted by the browser fallback.
-// Adapt this to match the content you want to pull from the target page.
-const PageDataSchema = z.object({
-  title: z.string().describe("The page title"),
-  items: z
-    .array(
-      z.object({
-        title: z.string().describe("The headline or item title"),
-        url: z.string().describe("The link URL"),
-        metadata: z.string().describe("Any subtitle, score, author, or timestamp info"),
-      }),
-    )
-    .describe("The main list of items, articles, or entries on the page"),
-});
 
 // =========================================
 
@@ -118,44 +102,37 @@ function parseFromHtml(html: string): { title: string; linkCount: number } {
 }
 
 /**
- * Fall back to a full Stagehand browser session for JS-heavy pages.
- * Uses AI-powered extraction to pull structured data from the rendered DOM.
+ * Fall back to a full Playwright browser session for JS-heavy pages.
+ * Connects to Browserbase via CDP, renders the page, and returns the HTML content.
  */
-async function extractWithBrowser(url: string) {
-  console.log("\n[Browser] Starting Stagehand session...");
+async function extractWithBrowser(url: string): Promise<string> {
+  const bb = new Browserbase({ apiKey: process.env.BROWSERBASE_API_KEY! });
 
-  const stagehand = new Stagehand({
-    env: "BROWSERBASE",
-    verbose: 1,
-    model: "google/gemini-2.5-flash",
-    browserbaseSessionCreateParams: {
-      projectId: process.env.BROWSERBASE_PROJECT_ID!,
-      proxies: true,
-      browserSettings: {
-        advancedStealth: true,
-        blockAds: true,
-        solveCaptchas: true,
-      },
+  console.log("\n[Browser] Creating Browserbase session...");
+
+  const session = await bb.sessions.create({
+    projectId: process.env.BROWSERBASE_PROJECT_ID!,
+    proxies: true,
+    browserSettings: {
+      advancedStealth: true,
+      blockAds: true,
+      solveCaptchas: true,
     },
   });
 
+  console.log(`[Browser] Live View: https://browserbase.com/sessions/${session.id}`);
+
+  const browser = await chromium.connectOverCDP(session.connectUrl);
+
   try {
-    await stagehand.init();
-    console.log(`[Browser] Live View: https://browserbase.com/sessions/${stagehand.browserbaseSessionID}`);
+    const page = browser.contexts()[0].pages()[0];
+    await page.goto(url, { waitUntil: "domcontentloaded" });
 
-    const page = stagehand.context.pages()[0];
-    await page.goto(url);
+    console.log("[Browser] Page loaded, extracting content...");
 
-    console.log("[Browser] Page loaded, extracting structured data with AI...");
-
-    const data = await stagehand.extract(
-      "Extract the page title and all the main items/articles/entries visible on this page. For each item get its title, URL, and any metadata like score, author, or timestamp.",
-      PageDataSchema,
-    );
-
-    return data;
+    return await page.content();
   } finally {
-    await stagehand.close();
+    await browser.close();
     console.log("[Browser] Session closed");
   }
 }
@@ -175,30 +152,18 @@ async function main(): Promise<void> {
     // Step 1: Try the fast path
     const fetchResult = await tryFetchApi(targetUrl);
 
-    if (fetchResult) {
-      console.log("\n[Fetch API] Success! Parsing HTML content...");
-      const parsed = parseFromHtml(fetchResult.content);
-      console.log(`  Title: ${parsed.title}`);
-      console.log(`  Links found: ${parsed.linkCount}`);
-      console.log(`  Status code: ${fetchResult.statusCode}`);
-      console.log(`  Content length: ${fetchResult.content.length} chars`);
-      console.log("\nThe Fetch API returned sufficient content.");
-      console.log("For richer structured extraction, the browser fallback is also available.\n");
+    // Step 2: Fetch API didn't return usable content — use a real browser
+    const content = fetchResult?.content ?? await extractWithBrowser(targetUrl);
+    const source = fetchResult ? "Fetch API" : "browser";
 
-      // Optionally, you can still use the browser for richer extraction:
-      // const structured = await extractWithBrowser(targetUrl);
-      // console.log(JSON.stringify(structured, null, 2));
+    console.log(`\n[${source}] Parsing HTML content...`);
+    const parsed = parseFromHtml(content);
+    console.log(`  Title: ${parsed.title}`);
+    console.log(`  Links found: ${parsed.linkCount}`);
+    console.log(`  Content length: ${content.length} chars`);
 
-      console.log("Preview (first 500 chars):");
-      console.log(fetchResult.content.slice(0, 500));
-    } else {
-      // Step 2: Fetch API didn't return usable content — use a real browser
-      console.log("\n[Fetch API] Insufficient content, falling back to browser...\n");
-
-      const structured = await extractWithBrowser(targetUrl);
-      console.log("\nExtracted data:");
-      console.log(JSON.stringify(structured, null, 2));
-    }
+    console.log("\nPreview (first 500 chars):");
+    console.log(content.slice(0, 500));
   } catch (error) {
     console.error("Error during scrape:", error);
     throw error;
@@ -209,8 +174,7 @@ main().catch((err) => {
   console.error("Error:", err);
   console.error("Common issues:");
   console.error("  - Check .env has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY");
-  console.error("  - Verify GOOGLE_API_KEY is set for the model (browser fallback)");
   console.error("  - Verify network connectivity");
-  console.error("Docs: https://docs.stagehand.dev");
+  console.error("Docs: https://docs.browserbase.com/features/fetch");
   process.exit(1);
 });
