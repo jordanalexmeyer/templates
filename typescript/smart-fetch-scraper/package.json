@@ -10,8 +10,9 @@
   },
   "dependencies": {
     "@browserbasehq/sdk": "^2.8.0",
+    "@browserbasehq/stagehand": "^3.0.0",
     "dotenv": "^16.4.5",
-    "playwright": "^1.49.0"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
