@@ -1,0 +1,26 @@
+[project]
+name = "agent-screenshot"
+version = "0.1.0"
+description = "LinkedIn banner screenshot using Stagehand CUA agent and Browserbase"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "playwright>=1.40.0",
+    "python-dotenv>=1.2.1",
+    "pydantic>=2.0.0",
+    "stagehand>=3.5.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "ruff>=0.1.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
