@@ -5,7 +5,7 @@
 - Goal: Given a company name, find its LinkedIn page via Google and extract a screenshot of its banner image.
 - Uses a Stagehand CUA agent to autonomously search Google and navigate to the correct LinkedIn result.
 - Falls back to `stagehand.extract` to locate the banner image URL, then screenshots it with pixel-perfect clipping.
-- Runs with advanced stealth and proxies enabled for reliable LinkedIn access.
+- Runs with advanced stealth (only available on Scale plans) and proxies enabled for reliable LinkedIn access. 
   Docs → https://docs.stagehand.dev/basics/agent
 
 ## GLOSSARY
