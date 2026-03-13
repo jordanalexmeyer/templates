@@ -86,132 +86,131 @@ async function main() {
     `Live View Link: https://browserbase.com/sessions/${stagehand.browserbaseSessionID}`,
   );
 
-  // Get a reference to the active browser page (the Playwright Page object).
-  // This lets us call Playwright methods directly when needed (e.g., page.goto, page.screenshot).
-  const page = stagehand.context.pages()[0];
+  try {
+    // Get a reference to the active browser page (the Playwright Page object).
+    // This lets us call Playwright methods directly when needed (e.g., page.goto, page.screenshot).
+    const page = stagehand.context.pages()[0];
 
-  // Navigate to Google as the starting point for the agent.
-  // The agent will take over from here to find the LinkedIn page.
-  await page.goto("https://google.com");
+    // Navigate to Google as the starting point for the agent.
+    // The agent will take over from here to find the LinkedIn page.
+    await page.goto("https://google.com");
 
-  // ---------------------------------------------------------------------------
-  // CREATE THE CUA AGENT
-  // ---------------------------------------------------------------------------
-  // A "CUA" (Computer Use Agent) is different from Stagehand's act/observe/extract:
-  //
-  //   act/observe/extract — you describe ONE specific action or data point at a time;
-  //                         Stagehand executes it and returns control to your code.
-  //
-  //   agent              — you give a HIGH-LEVEL GOAL in plain English; the agent
-  //                         autonomously plans and executes however many steps it needs
-  //                         to complete that goal, using computer vision to navigate.
-  //
-  // Use agent when the navigation path is dynamic or hard to pre-script
-  // (e.g., Google results can vary; the agent handles whatever it sees).
-  const agent = stagehand.agent({
-    // mode: "cua" activates the Computer Use Agent mode, which uses vision models
-    // to interact with the browser by analyzing screenshots of the screen.
-    mode: "cua",
+    // ---------------------------------------------------------------------------
+    // CREATE THE CUA AGENT
+    // ---------------------------------------------------------------------------
+    // A "CUA" (Computer Use Agent) is different from Stagehand's act/observe/extract:
+    //
+    //   act/observe/extract — you describe ONE specific action or data point at a time;
+    //                         Stagehand executes it and returns control to your code.
+    //
+    //   agent              — you give a HIGH-LEVEL GOAL in plain English; the agent
+    //                         autonomously plans and executes however many steps it needs
+    //                         to complete that goal, using computer vision to navigate.
+    //
+    // Use agent when the navigation path is dynamic or hard to pre-script
+    // (e.g., Google results can vary; the agent handles whatever it sees).
+    const agent = stagehand.agent({
+      // mode: "cua" activates the Computer Use Agent mode, which uses vision models
+      // to interact with the browser by analyzing screenshots of the screen.
+      mode: "cua",
 
-    // The vision model powering the agent's decision-making.
-    // Must be a computer-use capable model (see DEFAULT_MODEL above).
-    model: DEFAULT_MODEL,
+      // The vision model powering the agent's decision-making.
+      // Must be a computer-use capable model (see DEFAULT_MODEL above).
+      model: DEFAULT_MODEL,
 
-    // System prompt shapes the agent's behavior and persona.
-    // Telling it not to ask follow-up questions makes it act autonomously
-    // without pausing to check in with the user.
-    systemPrompt: "You are a helpful assistant that can use a web browser. Do not ask follow up questions, use your best judgement.",
-  });
+      // System prompt shapes the agent's behavior and persona.
+      // Telling it not to ask follow-up questions makes it act autonomously
+      // without pausing to check in with the user.
+      systemPrompt: "You are a helpful assistant that can use a web browser. Do not ask follow up questions, use your best judgement.",
+    });
 
-  // ---------------------------------------------------------------------------
-  // EXECUTE THE AGENT TASK
-  // ---------------------------------------------------------------------------
-  // agent.execute() hands the agent a goal and lets it run.
-  // It will search Google, evaluate results, click links, and navigate
-  // until it lands on the correct LinkedIn company page.
-  await agent.execute({
-    // The full task described in natural language.
-    instruction: `Search for '${companyName} LinkedIn' on Google, click on the most likely LinkedIn result for ${companyName}, and wait for the page to fully load.
+    // ---------------------------------------------------------------------------
+    // EXECUTE THE AGENT TASK
+    // ---------------------------------------------------------------------------
+    // agent.execute() hands the agent a goal and lets it run.
+    // It will search Google, evaluate results, click links, and navigate
+    // until it lands on the correct LinkedIn company page.
+    await agent.execute({
+      // The full task described in natural language.
+      instruction: `Search for '${companyName} LinkedIn' on Google, click on the most likely LinkedIn result for ${companyName}, and wait for the page to fully load.
     Do not get to the LinkedIn page any other way than via the Google search result.`,
 
-    // maxSteps is the upper bound on how many individual browser actions the agent
-    // can take. Once this limit is reached, execution stops even if the task isn't done.
-    maxSteps: DEFAULT_MAX_STEPS,
-  });
+      // maxSteps is the upper bound on how many individual browser actions the agent
+      // can take. Once this limit is reached, execution stops even if the task isn't done.
+      maxSteps: DEFAULT_MAX_STEPS,
+    });
 
-  // ---------------------------------------------------------------------------
-  // EXTRACT THE BANNER IMAGE URL
-  // ---------------------------------------------------------------------------
-  // The agent has landed on the LinkedIn page. Now we switch to Stagehand's
-  // structured extract() to precisely pull a single value from the current page.
-  //
-  // Why not let the agent do this too?
-  // extract() is more reliable for structured data — it uses the LLM specifically
-  // for data extraction and validates the output against a schema.
-  //
-  // zod.string().url() is a Zod schema that tells Stagehand:
-  //   "return a string, and it must be a valid URL"
-  // If the extracted value isn't a URL, Stagehand will throw an error.
-  const bannerImageLink = await stagehand.extract(
-    "extract the banner image URL",
-    zod.string().url(),
-  );
+    // ---------------------------------------------------------------------------
+    // EXTRACT THE BANNER IMAGE URL
+    // ---------------------------------------------------------------------------
+    // The agent has landed on the LinkedIn page. Now we switch to Stagehand's
+    // structured extract() to precisely pull a single value from the current page.
+    //
+    // Why not let the agent do this too?
+    // extract() is more reliable for structured data — it uses the LLM specifically
+    // for data extraction and validates the output against a schema.
+    //
+    // zod.string().url() is a Zod schema that tells Stagehand:
+    //   "return a string, and it must be a valid URL"
+    // If the extracted value isn't a URL, Stagehand will throw an error.
+    const bannerImageLink = await stagehand.extract(
+      "extract the banner image URL",
+      zod.string().url(),
+    );
 
-  // ---------------------------------------------------------------------------
-  // NAVIGATE DIRECTLY TO THE IMAGE
-  // ---------------------------------------------------------------------------
-  // By navigating to the raw image URL, we strip away all LinkedIn page chrome
-  // (headers, sidebars, etc.) and get a page showing only the image.
-  // This makes it trivial to screenshot just the banner without any surrounding UI.
-  await page.goto(bannerImageLink);
+    // ---------------------------------------------------------------------------
+    // NAVIGATE DIRECTLY TO THE IMAGE
+    // ---------------------------------------------------------------------------
+    // By navigating to the raw image URL, we strip away all LinkedIn page chrome
+    // (headers, sidebars, etc.) and get a page showing only the image.
+    // This makes it trivial to screenshot just the banner without any surrounding UI.
+    await page.goto(bannerImageLink);
 
-  // ---------------------------------------------------------------------------
-  // PREPARE THE OUTPUT DIRECTORY
-  // ---------------------------------------------------------------------------
-  const imagesDir = path.join(process.cwd(), "images");
-  // recursive: true means mkdirSync won't throw an error if the "images/" folder
-  // already exists — safe to call every run.
-  fs.mkdirSync(imagesDir, { recursive: true });
+    // ---------------------------------------------------------------------------
+    // PREPARE THE OUTPUT DIRECTORY
+    // ---------------------------------------------------------------------------
+    const imagesDir = path.join(process.cwd(), "images");
+    // recursive: true means mkdirSync won't throw an error if the "images/" folder
+    // already exists — safe to call every run.
+    fs.mkdirSync(imagesDir, { recursive: true });
 
-  // ---------------------------------------------------------------------------
-  // GET THE IMAGE ELEMENT'S BOUNDING BOX
-  // ---------------------------------------------------------------------------
-  // page.evaluate() runs JavaScript code inside the actual browser (not in Node.js).
-  // We use it to locate the <img> element and read its exact screen coordinates
-  // using getBoundingClientRect(), which returns { x, y, width, height } in pixels.
-  //
-  // This lets us crop the screenshot precisely to the image bounds —
-  // no blank whitespace, no browser UI, just the banner pixels.
-  const boundingBox = await page.evaluate(() => {
-    const img = document.querySelector("img");
-    if (!img) return null;
-    const rect = img.getBoundingClientRect();
-    return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
-  });
+    // ---------------------------------------------------------------------------
+    // GET THE IMAGE ELEMENT'S BOUNDING BOX
+    // ---------------------------------------------------------------------------
+    // page.evaluate() runs JavaScript code inside the actual browser (not in Node.js).
+    // We use it to locate the <img> element and read its exact screen coordinates
+    // using getBoundingClientRect(), which returns { x, y, width, height } in pixels.
+    //
+    // This lets us crop the screenshot precisely to the image bounds —
+    // no blank whitespace, no browser UI, just the banner pixels.
+    const boundingBox = await page.evaluate(() => {
+      const img = document.querySelector("img");
+      if (!img) return null;
+      const rect = img.getBoundingClientRect();
+      return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+    });
 
-  // ---------------------------------------------------------------------------
-  // TAKE AND SAVE THE SCREENSHOT
-  // ---------------------------------------------------------------------------
-  // Build a filesystem-safe filename from the company name.
-  // e.g., "Acme Corp" → "acme-corp-banner.png"
-  const screenshotPath = path.join(imagesDir, `${companyName.toLowerCase().replace(/\s+/g, "-")}-banner.png`);
+    // ---------------------------------------------------------------------------
+    // TAKE AND SAVE THE SCREENSHOT
+    // ---------------------------------------------------------------------------
+    // Build a filesystem-safe filename from the company name.
+    // e.g., "Acme Corp" → "acme-corp-banner.png"
+    const screenshotPath = path.join(imagesDir, `${companyName.toLowerCase().replace(/\s+/g, "-")}-banner.png`);
 
-  // page.screenshot() captures the current browser viewport as a PNG buffer.
-  // The `clip` option crops to the bounding box we measured above — if we couldn't
-  // find a bounding box, we fall back to a full-page screenshot.
-  const buffer = await page.screenshot(boundingBox ? { clip: boundingBox } : {});
+    // page.screenshot() captures the current browser viewport as a PNG buffer.
+    // The `clip` option crops to the bounding box we measured above — if we couldn't
+    // find a bounding box, we fall back to a full-page screenshot.
+    const buffer = await page.screenshot(boundingBox ? { clip: boundingBox } : {});
 
-  // Write the PNG buffer to disk.
-  fs.writeFileSync(screenshotPath, buffer);
-  console.log(`Screenshot saved to ${screenshotPath}`);
-
-  // ---------------------------------------------------------------------------
-  // CLOSE THE SESSION
-  // ---------------------------------------------------------------------------
-  // Always call stagehand.close() when done. This gracefully ends the Browserbase
-  // session and releases the cloud browser resources. Forgetting to close will
-  // leave the session running and continue consuming your plan's session minutes.
-  await stagehand.close();
+    // Write the PNG buffer to disk.
+    fs.writeFileSync(screenshotPath, buffer);
+    console.log(`Screenshot saved to ${screenshotPath}`);
+  } finally {
+    // Always call stagehand.close() when done. This gracefully ends the Browserbase
+    // session and releases the cloud browser resources. Forgetting to close will
+    // leave the session running and continue consuming your plan's session minutes.
+    await stagehand.close();
+  }
 }
 
 main().catch((err) => {
