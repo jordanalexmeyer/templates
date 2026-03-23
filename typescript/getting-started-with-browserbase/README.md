@@ -4,7 +4,6 @@
 
 - Goal: demo all three core Browserbase capabilities in one script — Search API, Fetch API, and Browser Sessions.
 - No AI required: uses Playwright and the Browserbase SDK directly — no model API key needed.
-- Project ID optional: the API infers your project from your API key, so free-tier accounts only need `BROWSERBASE_API_KEY`.
 - Three demos in one: web search, lightweight HTTP fetch, and full cloud browser automation.
   Docs → https://docs.browserbase.com
 
@@ -27,7 +26,7 @@
 
 1. cd python/getting-started-with-browserbase
 2. cp .env.example .env
-3. Add BROWSERBASE_API_KEY to .env (get it from https://browserbase.com/overview)
+3. Add BROWSERBASE_API_KEY to .env (get it from https://browserbase.com/settings)
 4. `uv run python main.py`
 
 ### TypeScript
@@ -35,7 +34,7 @@
 1. cd typescript/getting-started-with-browserbase
 2. npm install
 3. cp .env.example .env
-4. Add BROWSERBASE_API_KEY to .env (get it from https://browserbase.com/overview)
+4. Add BROWSERBASE_API_KEY to .env (get it from https://browserbase.com/settings)
 5. npm start
 
 ## EXPECTED OUTPUT
@@ -53,8 +52,8 @@
 - Search API not enabled: if you get a 403, the Search API may need to be enabled on your account — check your dashboard
 - Fetch API size limit: responses over 1 MB return a 502 — use a browser session for large pages
 - Fetch API no JS: the Fetch API returns raw HTML without executing JavaScript — JS-rendered pages will be empty shells
-- Connection timeout: if CDP connection fails, check that your API key is valid at https://browserbase.com/overview
-- Wikipedia layout changes: if selectors like `input[name="search"]` stop working, Wikipedia may have updated their HTML — inspect the page and update selectors
+- Connection timeout: if CDP connection fails, check that your API key is valid at https://browserbase.com/settings
+- Wikipedia layout changes: if selectors like `input[name="search"]` stop working, Wikipedia may have updated their HTML — consider using Stagehand for self-healing selectors via AI
 - Playwright version mismatch: use `playwright-core` (not `playwright`) in TypeScript to avoid downloading unnecessary browser binaries — Browserbase provides the browser
 - Session not closing: always close the browser in a `finally` block to avoid leaked sessions
 - Find more information on your Browserbase dashboard → https://www.browserbase.com/sign-in

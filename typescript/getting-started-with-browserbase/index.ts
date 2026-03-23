@@ -14,17 +14,6 @@ import "dotenv/config";
 const SEARCH_QUERY = "Browser automation";
 // =========================================
 
-function getApiKey(): string {
-  const apiKey = process.env.BROWSERBASE_API_KEY;
-  if (!apiKey) {
-    throw new Error(
-      "Missing BROWSERBASE_API_KEY environment variable.\n" +
-        "Get your API key from: https://www.browserbase.com/overview",
-    );
-  }
-  return apiKey;
-}
-
 // ---------------------------------------------------------------------------
 // 1. Search API — run a web search, no browser needed
 // ---------------------------------------------------------------------------
@@ -57,7 +46,7 @@ async function demoFetchApi(bb: Browserbase): Promise<void> {
   console.log("=".repeat(50));
 
   const targetUrl = "https://en.wikipedia.org/wiki/Browser_automation";
-  console.log(`Fetching ${targetUrl} (no browser...`);
+  console.log(`Fetching ${targetUrl} (no browser)...`);
 
   const response = await bb.fetchAPI.create({ url: targetUrl, allowRedirects: true });
 
@@ -146,7 +135,7 @@ async function main(): Promise<void> {
   console.log("=".repeat(50));
   console.log("Demos: Search API, Fetch API, and Browser Sessions\n");
 
-  const bb = new Browserbase({ apiKey: getApiKey() });
+  const bb = new Browserbase({ apiKey: process.env.BROWSERBASE_API_KEY });
 
   await demoSearchApi(bb);
   await demoFetchApi(bb);
@@ -161,7 +150,7 @@ main().catch((error) => {
   console.error("Error:", error.message);
   console.error("\nTroubleshooting:");
   console.error("  1. Check your .env file has BROWSERBASE_API_KEY");
-  console.error("  2. Verify your API key at https://browserbase.com/overview");
+  console.error("  2. Verify your API key at https://browserbase.com/settings");
   console.error("  3. View session logs at https://browserbase.com/sessions");
   console.error("Docs: https://docs.browserbase.com");
   process.exit(1);

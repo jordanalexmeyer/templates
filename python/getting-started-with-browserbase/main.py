@@ -21,17 +21,6 @@ SEARCH_QUERY = "Browser automation"
 # =========================================
 
 
-def get_api_key() -> str:
-    """Validate that BROWSERBASE_API_KEY is set."""
-    api_key = os.environ.get("BROWSERBASE_API_KEY")
-    if not api_key:
-        raise RuntimeError(
-            "Missing BROWSERBASE_API_KEY environment variable.\n"
-            "Get your API key from: https://www.browserbase.com/overview"
-        )
-    return api_key
-
-
 # ---------------------------------------------------------------------------
 # 1. Search API — run a web search, no browser needed
 # ---------------------------------------------------------------------------
@@ -97,7 +86,7 @@ def demo_browser_session(bb: Browserbase) -> None:
     with sync_playwright() as pw:
         browser = pw.chromium.connect_over_cdp(session.connect_url)
         context = browser.contexts[0]
-        page = context.pages[0] if context else None
+        page = context.pages[0] if context.pages else None
 
         if not page:
             browser.close()
@@ -147,7 +136,7 @@ def main() -> None:
     print("=" * 50)
     print("Demos: Search API, Fetch API, and Browser Sessions\n")
 
-    bb = Browserbase(api_key=get_api_key())
+    bb = Browserbase(api_key=os.environ.get("BROWSERBASE_API_KEY"))
 
     demo_search_api(bb)
     demo_fetch_api(bb)
@@ -165,7 +154,7 @@ if __name__ == "__main__":
         print(f"Error: {err}")
         print("\nTroubleshooting:")
         print("  1. Check your .env file has BROWSERBASE_API_KEY")
-        print("  2. Verify your API key at https://browserbase.com/overview")
+        print("  2. Verify your API key at https://browserbase.com/settings")
         print("  3. View session logs at https://browserbase.com/sessions")
         print("Docs: https://docs.browserbase.com")
         exit(1)
