@@ -57,7 +57,7 @@ async function demoFetchApi(bb: Browserbase): Promise<void> {
   console.log("=".repeat(50));
 
   const targetUrl = "https://en.wikipedia.org/wiki/Browser_automation";
-  console.log(`Fetching ${targetUrl} (no browser...`);
+  console.log(`Fetching ${targetUrl} (no browser)...`);
 
   const response = await bb.fetchAPI.create({ url: targetUrl, allowRedirects: true });
 

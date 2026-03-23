@@ -97,7 +97,7 @@ def demo_browser_session(bb: Browserbase) -> None:
     with sync_playwright() as pw:
         browser = pw.chromium.connect_over_cdp(session.connect_url)
         context = browser.contexts[0]
-        page = context.pages[0] if context else None
+        page = context.pages[0] if context.pages else None
 
         if not page:
             browser.close()
