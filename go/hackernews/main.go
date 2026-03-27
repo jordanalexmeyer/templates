@@ -16,7 +16,6 @@ func main() {
 	client := stagehand.NewClient(
 		option.WithBrowserbaseAPIKey(os.Getenv("BROWSERBASE_API_KEY")),
 		option.WithBrowserbaseProjectID(os.Getenv("BROWSERBASE_PROJECT_ID")),
-		option.WithModelAPIKey(os.Getenv("MODEL_API_KEY")),
 	)
 
 	ctx := context.Background()
@@ -139,7 +138,7 @@ func main() {
 			Model: stagehand.ModelConfigUnionParam{
 				OfModelConfigModelConfigObject: &stagehand.ModelConfigModelConfigObjectParam{
 					ModelName: "openai/gpt-4o-mini",
-					APIKey:    stagehand.String(os.Getenv("MODEL_API_KEY")),
+		
 				},
 			},
 			Cua: stagehand.Bool(false),

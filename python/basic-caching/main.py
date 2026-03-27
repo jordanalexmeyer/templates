@@ -116,7 +116,7 @@ def run_without_cache():
     client = Stagehand(
         browserbase_api_key=os.getenv("BROWSERBASE_API_KEY"),
         browserbase_project_id=os.getenv("BROWSERBASE_PROJECT_ID"),
-        model_api_key=os.getenv("GOOGLE_API_KEY"),
+
     )
 
     start_response = client.sessions.start(model_name="google/gemini-2.5-flash")
@@ -170,7 +170,7 @@ def run_with_cache():
     client = Stagehand(
         browserbase_api_key=os.getenv("BROWSERBASE_API_KEY"),
         browserbase_project_id=os.getenv("BROWSERBASE_PROJECT_ID"),
-        model_api_key=os.getenv("GOOGLE_API_KEY"),
+
     )
 
     start_response = client.sessions.start(model_name="google/gemini-2.5-flash")

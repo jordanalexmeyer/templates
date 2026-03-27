@@ -157,7 +157,7 @@ main().catch((err) => {
   console.error("Error in caching demo:", err);
   console.error("Common issues:");
   console.error("  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY");
-  console.error("  - Verify GOOGLE_API_KEY is set for the model");
+  console.error("  - Verify your Browserbase plan supports the model gateway");
   console.error("Docs: https://docs.stagehand.dev/v3/first-steps/introduction");
   process.exit(1);
 });

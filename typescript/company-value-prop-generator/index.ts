@@ -130,7 +130,7 @@ async function main() {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`\n❌ Error: ${errorMessage}`);
     console.error("\nCommon issues:");
-    console.error("  - Check .env file has OPENAI_API_KEY set (required for LLM generation)");
+    console.error("  - Verify your Browserbase plan supports the model gateway");
     console.error(
       "  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY set (required for browser automation)",
     );

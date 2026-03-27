@@ -73,12 +73,10 @@ async def main():
     print(f"Retrieving {NUM_FILINGS} most recent filings\n")
 
     # Initialize AsyncStagehand client (v3 architecture)
-    # Uses environment variables: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID, MODEL_API_KEY
+    # Uses environment variables: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID
     client = AsyncStagehand(
         browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
         browserbase_project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
-        model_api_key=os.environ.get("MODEL_API_KEY")
-        or os.environ.get("GOOGLE_GENERATIVE_AI_API_KEY"),
     )
 
     # Start a new browser session

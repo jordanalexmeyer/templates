@@ -442,7 +442,6 @@ async def main() -> None:
 
     browserbase_api_key = os.environ.get("BROWSERBASE_API_KEY")
     browserbase_project_id = os.environ.get("BROWSERBASE_PROJECT_ID")
-    google_api_key = os.environ.get("GOOGLE_API_KEY")
 
     if not browserbase_api_key or not browserbase_project_id:
         raise ValueError("BROWSERBASE_API_KEY and BROWSERBASE_PROJECT_ID are required")
@@ -450,11 +449,10 @@ async def main() -> None:
     # Initialize Browserbase SDK for session management and download retrieval
     bb = Browserbase(api_key=browserbase_api_key)
 
-    # Initialize AsyncStagehand client (v3 BYOB architecture)
+    # Initialize AsyncStagehand client (v3 API)
     client = AsyncStagehand(
         browserbase_api_key=browserbase_api_key,
         browserbase_project_id=browserbase_project_id,
-        model_api_key=google_api_key,
     )
 
     # Start a Stagehand session (returns a response with session_id)

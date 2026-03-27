@@ -281,15 +281,9 @@ async def apply_to_job(careers_page: dict, index: int) -> dict:
     log_prefix = f"[{index + 1}/{num_companies}] {company_name}: "
     print(f"\n{log_prefix}Starting application...")
 
-    model_api_key = (
-        os.environ.get("MODEL_API_KEY")
-        or os.environ.get("GOOGLE_API_KEY")
-        or os.environ.get("GOOGLE_GENERATIVE_AI_API_KEY")
-    )
     client = AsyncStagehand(
         browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
         browserbase_project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
-        model_api_key=model_api_key,
     )
 
     # Start session (proxies require Developer plan or higher)
