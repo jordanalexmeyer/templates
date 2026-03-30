@@ -1,0 +1,44 @@
+name: Build JavaScript Templates
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "typescript/**"
+      - "scripts/build-javascript.mjs"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/build-javascript.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-javascript:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build javascript templates
+        run: pnpm run build:javascript
+
+      - name: Commit generated javascript files
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: regenerate javascript templates"
+          file_pattern: javascript/**
