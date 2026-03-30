@@ -52,7 +52,6 @@ def main():
     client = Stagehand(
         browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
         browserbase_project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
-        model_api_key=os.environ.get("OPENAI_API_KEY"),
     )
 
     # Start a new session
@@ -167,9 +166,8 @@ def main():
         # Provide helpful troubleshooting information
         print("\nCommon issues:")
         print("1. Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY")
-        print("2. Verify OPENAI_API_KEY is set in environment")
-        print("3. Ensure internet access and license verification site is accessible")
-        print("4. Verify Browserbase account has sufficient credits")
+        print("2. Ensure internet access and license verification site is accessible")
+        print("3. Verify Browserbase account has sufficient credits")
 
         client.sessions.end(id=session_id)
         raise

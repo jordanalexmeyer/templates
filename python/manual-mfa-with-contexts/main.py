@@ -41,7 +41,6 @@ def create_session_with_context():
     client = Stagehand(
         browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
         browserbase_project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
-        model_api_key=os.environ.get("GOOGLE_GENERATIVE_AI_API_KEY"),
     )
 
     print(f"Watch live: https://browserbase.com/sessions/{session_id}")
@@ -151,7 +150,6 @@ def reuse_context(context_id: str):
     client = Stagehand(
         browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
         browserbase_project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
-        model_api_key=os.environ.get("GOOGLE_GENERATIVE_AI_API_KEY"),
     )
 
     print(f"Watch live: https://browserbase.com/sessions/{session_id}")
@@ -266,6 +264,5 @@ if __name__ == "__main__":
         print(f"Application error: {err}")
         print("Common issues:")
         print("  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY")
-        print("  - Verify GOOGLE_GENERATIVE_AI_API_KEY is set in environment")
         print("Docs: https://docs.stagehand.dev/v3/first-steps/introduction")
         exit(1)

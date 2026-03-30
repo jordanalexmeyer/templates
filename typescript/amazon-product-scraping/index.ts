@@ -85,7 +85,6 @@ main().catch((err) => {
   console.error("Error in Amazon product scraping:", err);
   console.error("Common issues:");
   console.error("  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY");
-  console.error("  - Verify GOOGLE_API_KEY is set for the model");
   console.error("  - Verify network connectivity");
   console.error("Docs: https://docs.stagehand.dev");
   process.exit(1);

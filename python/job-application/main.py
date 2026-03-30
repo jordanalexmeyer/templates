@@ -71,7 +71,6 @@ def apply_to_job(job_info: JobInfo):
     client = Stagehand(
         browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
         browserbase_project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
-        model_api_key=os.environ.get("GOOGLE_GENERATIVE_AI_API_KEY"),
     )
 
     # Start a new session
@@ -205,7 +204,6 @@ def main():
     client = Stagehand(
         browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
         browserbase_project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
-        model_api_key=os.environ.get("GOOGLE_GENERATIVE_AI_API_KEY"),
     )
 
     # Start a new session

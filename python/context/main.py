@@ -39,7 +39,6 @@ def create_session_context_id():
     client = Stagehand(
         browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
         browserbase_project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
-        model_api_key=os.environ.get("OPENAI_API_KEY"),
     )
 
     # Connect Stagehand to the existing session (no new session created).
@@ -136,7 +135,6 @@ def main():
     client = Stagehand(
         browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
         browserbase_project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
-        model_api_key=os.environ.get("OPENAI_API_KEY"),
     )
 
     try:

@@ -10,7 +10,7 @@ from playwright.sync_api import sync_playwright
 from stagehand import Stagehand
 
 # Load environment variables from .env file
-# Required: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID, GOOGLE_API_KEY
+# Required: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID
 load_dotenv()
 
 
@@ -92,7 +92,6 @@ def main():
     client = Stagehand(
         browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
         browserbase_project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
-        model_api_key=os.environ.get("GOOGLE_API_KEY"),
     )
 
     # Start a new session

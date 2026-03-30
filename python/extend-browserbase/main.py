@@ -15,7 +15,7 @@ from extend_ai import Extend
 from stagehand import AsyncStagehand
 
 # Load environment variables from .env file
-# Required: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID, GOOGLE_API_KEY
+# Required: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID
 # Optional: EXTEND_API_KEY
 load_dotenv()
 
@@ -442,8 +442,6 @@ async def main() -> None:
 
     browserbase_api_key = os.environ.get("BROWSERBASE_API_KEY")
     browserbase_project_id = os.environ.get("BROWSERBASE_PROJECT_ID")
-    google_api_key = os.environ.get("GOOGLE_API_KEY")
-
     if not browserbase_api_key or not browserbase_project_id:
         raise ValueError("BROWSERBASE_API_KEY and BROWSERBASE_PROJECT_ID are required")
 
@@ -454,7 +452,6 @@ async def main() -> None:
     client = AsyncStagehand(
         browserbase_api_key=browserbase_api_key,
         browserbase_project_id=browserbase_project_id,
-        model_api_key=google_api_key,
     )
 
     # Start a Stagehand session (returns a response with session_id)
@@ -559,10 +556,7 @@ if __name__ == "__main__":
     except Exception as err:
         print(f"Application error: {err}")
         print("Common issues:")
-        print(
-            "  - Check .env file has BROWSERBASE_PROJECT_ID, "
-            "BROWSERBASE_API_KEY, and GOOGLE_API_KEY"
-        )
+        print("  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY")
         print("  - Add EXTEND_API_KEY to .env to enable receipt parsing with Extend AI")
         print("  - Verify internet connection and expense portal accessibility")
         print("Docs: https://docs.stagehand.dev/v3/first-steps/introduction")

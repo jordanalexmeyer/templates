@@ -32,7 +32,6 @@ def generate_one_liner(domain: str) -> str:
     client = Stagehand(
         browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
         browserbase_project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
-        model_api_key=os.environ.get("OPENAI_API_KEY"),
     )
 
     # Start a new session
@@ -151,7 +150,6 @@ def main():
         error_message = str(error) if isinstance(error, Exception) else error
         print(f"\n❌ Error: {error_message}")
         print("\nCommon issues:")
-        print("  - Check .env file has OPENAI_API_KEY set (required for LLM generation)")
         print(
             "  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY set (required for browser automation)"
         )

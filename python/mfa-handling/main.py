@@ -87,7 +87,6 @@ def main():
     client = Stagehand(
         browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
         browserbase_project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
-        model_api_key=os.environ.get("OPENAI_API_KEY"),
     )
 
     # Start a new session
@@ -234,7 +233,6 @@ if __name__ == "__main__":
         print(f"Error in MFA handling: {err}")
         print("Common issues:")
         print("  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY")
-        print("  - Check .env file has OPENAI_API_KEY (or set model_api_key for your chosen model)")
         print("  - TOTP code may have expired (try running again)")
         print("  - Page structure may have changed")
         print("Docs: https://docs.stagehand.dev/v3/first-steps/introduction")

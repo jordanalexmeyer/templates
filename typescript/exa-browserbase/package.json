@@ -8,7 +8,7 @@
     "start": "tsx index.ts"
   },
   "dependencies": {
-    "@browserbasehq/stagehand": "latest",
+    "@browserbasehq/stagehand": "^3.1.0",
     "dotenv": "latest",
     "exa-js": "latest",
     "playwright-core": "latest",

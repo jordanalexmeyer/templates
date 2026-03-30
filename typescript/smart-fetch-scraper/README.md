@@ -23,17 +23,19 @@
 1. cd smart-fetch-scraper
 2. npm install
 3. cp .env.example .env
-4. Add BROWSERBASE_PROJECT_ID, BROWSERBASE_API_KEY, and GOOGLE_API_KEY to .env
+4. Add BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY to .env
 5. npm start \<url\> — e.g. `npm start https://news.ycombinator.com`
 
 ## EXAMPLE URLS
 
 Fetch API fast-path (server-rendered, returns usable HTML directly):
+
 - `npm start https://news.ycombinator.com` — server-rendered, lightweight HTML
 - `npm start https://en.wikipedia.org/wiki/Web_scraping` — static content, no JS required
 - `npm start https://www.bbc.com/news` — server-rendered news page
 
 Browser fallback (JS-rendered, blocked, or low text density):
+
 - `npm start https://www.reddit.com` — returns a 403, triggers fallback
 - `npm start https://x.com` — returns an "Enable JavaScript" shell page
 - `npm start https://github.com/trending` — HTML is mostly inline scripts (3.6% text density), triggers fallback
@@ -48,7 +50,6 @@ Browser fallback (JS-rendered, blocked, or low text density):
 
 - Missing credentials: verify .env contains BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY
 - Fetch API access: the Fetch API may require enablement on your account — contact support if you get a 404
-- Google API access: GOOGLE_API_KEY is only needed for the browser fallback path
 - Content threshold: adjust MIN_CONTENT_LENGTH if server-rendered pages are incorrectly triggering the browser fallback
 - Text density: adjust MIN_TEXT_DENSITY if pages with lots of inline scripts/styles are incorrectly triggering the browser fallback
 - JS-challenge detection: JS_REQUIRED_PATTERNS covers common bot-detection pages (Cloudflare, etc.) — extend the array for other patterns you encounter

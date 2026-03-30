@@ -97,8 +97,12 @@ async function main(): Promise<void> {
 
     // Deduplicate and filter out any empty/malformed URLs before applying the limit.
     const uniqueUrls = [...new Set(allUrls)].filter((u) => {
-      try { const { protocol } = new URL(u); return protocol === "https:" || protocol === "http:"; }
-      catch { return false; }
+      try {
+        const { protocol } = new URL(u);
+        return protocol === "https:" || protocol === "http:";
+      } catch {
+        return false;
+      }
     });
     console.log(`Found ${uniqueUrls.length} unique image URL(s)`);
 
@@ -147,7 +151,10 @@ async function main(): Promise<void> {
               reader.onload = () => {
                 const dataUrl = reader.result as string;
                 const comma = dataUrl.indexOf(",");
-                if (comma === -1) { resolve(null); return; }
+                if (comma === -1) {
+                  resolve(null);
+                  return;
+                }
                 const prefix = dataUrl.slice(0, comma); // e.g. "data:image/png;base64"
                 const base64 = dataUrl.slice(comma + 1);
                 const mimeMatch = prefix.match(/data:([^;]+)/);
@@ -201,7 +208,6 @@ main().catch((err) => {
   console.error("Error:", err);
   console.error("Common issues:");
   console.error("  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY");
-  console.error("  - Ensure GOOGLE_API_KEY is set for the gemini-2.5-flash model");
   console.error("  - Verify the target URL is accessible");
   console.error("Docs: https://docs.stagehand.dev/v3/first-steps/introduction");
   process.exit(1);

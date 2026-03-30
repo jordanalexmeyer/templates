@@ -156,7 +156,6 @@ async def extract_with_browser(url: str) -> dict:
     client = AsyncStagehand(
         browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
         browserbase_project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
-        model_api_key=os.environ.get("MODEL_API_KEY") or os.environ.get("GOOGLE_API_KEY"),
     )
 
     # Start session
@@ -247,7 +246,6 @@ if __name__ == "__main__":
         print(f"Error: {err}")
         print("Common issues:")
         print("  - Check .env has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY")
-        print("  - Verify GOOGLE_API_KEY is set for the model (browser fallback)")
         print("  - Verify network connectivity")
         print("Docs: https://docs.stagehand.dev")
         sys.exit(1)

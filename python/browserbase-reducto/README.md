@@ -42,7 +42,6 @@
    - `BROWSERBASE_PROJECT_ID`
    - `BROWSERBASE_API_KEY`
    - `REDUCTOAI_API_KEY`
-   - `GOOGLE_API_KEY`
 5. Run the script:
    ```bash
    python main.py

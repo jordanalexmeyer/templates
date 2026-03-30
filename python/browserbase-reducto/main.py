@@ -9,11 +9,10 @@ from pathlib import Path
 from browserbase import Browserbase
 from dotenv import load_dotenv
 from reducto import Reducto
-
 from stagehand import AsyncStagehand
 
 # Load environment variables from .env file
-# Required: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID, REDUCTOAI_API_KEY, GOOGLE_API_KEY
+# Required: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID, REDUCTOAI_API_KEY
 load_dotenv()
 
 
@@ -258,7 +257,6 @@ async def main():
     client = AsyncStagehand(
         browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
         browserbase_project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
-        model_api_key=os.environ.get("GOOGLE_API_KEY"),
     )
 
     # Start a Stagehand session (returns a response with session_id)
