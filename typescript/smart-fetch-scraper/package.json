@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@browserbasehq/sdk": "^2.8.0",
-    "@browserbasehq/stagehand": "^3.1.0",
+    "@browserbasehq/stagehand": "^3.3.0",
     "dotenv": "^16.4.5",
     "zod": "^3.23.8"
   },
