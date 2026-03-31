@@ -1,0 +1,33 @@
+[project]
+name = "quickstart-selenium"
+version = "1.0.0"
+description = "Clone this repository to get started with Selenium (Python) and Browserbase."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "browserbase>=1.6.0",
+    "selenium>=4.26.1",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 100
+target-version = ['py39', 'py310', 'py311']
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
