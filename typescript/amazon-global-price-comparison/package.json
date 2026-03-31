@@ -6,7 +6,7 @@
     "start": "tsx index.ts"
   },
   "dependencies": {
-    "@browserbasehq/stagehand": "^3.3.0",
+    "@browserbasehq/stagehand": "latest",
     "dotenv": "^16.4.7",
     "zod": "latest"
   },
