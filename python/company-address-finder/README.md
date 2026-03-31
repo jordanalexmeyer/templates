@@ -27,7 +27,6 @@
 2. source venv/bin/activate # On Windows: venv\Scripts\activate
 3. uvx install stagehand python-dotenv pydantic
 4. cp .env.example .env # Add your Browserbase API key, Project ID, and Google Generative AI API key to .env
-   Note: This template uses a CUA model and requires a separate model provider API key in addition to your Browserbase credentials.
 5. Edit COMPANY_NAMES array in main.py to specify which companies to process
 6. python main.py
 

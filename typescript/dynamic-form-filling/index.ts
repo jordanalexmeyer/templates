@@ -29,7 +29,7 @@ async function main() {
     // The agent will use semantic matching to select appropriate form options.
     const agent = stagehand.agent({
       cua: false,
-      model: "google/gemini-2.5-pro", // Routed through Browserbase Model Gateway
+      model: "google/gemini-2.5-pro", // Routed through Model Gateway
       systemPrompt: `You are filling out a trip planning form. 
     - When filling out fields, extract relevant information from the trip details provided
     - For fields with options (radio buttons, dropdowns, checkboxes), always choose the closest matching option from the available choices

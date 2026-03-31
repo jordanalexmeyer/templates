@@ -17,7 +17,6 @@
 2.  source venv/bin/activate # On Windows: venv\Scripts\activate
 3.  pip install -r requirements.txt
 4.  cp .env.example .env # Add your Browserbase API key, Project ID, and Google API key to .env
-    Note: This template uses a CUA model and requires a separate model provider API key in addition to your Browserbase credentials.
 5.  python main.py
 
 ## EXPECTED OUTPUT

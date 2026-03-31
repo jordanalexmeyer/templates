@@ -22,9 +22,9 @@ A comprehensive collection of ready-to-use automation templates demonstrating th
 
 ## Model Gateway
 
-Templates use the [Browserbase Model Gateway](https://docs.browserbase.com) to route LLM requests — you only need your `BROWSERBASE_API_KEY`. No separate OpenAI, Anthropic, or Google API keys required. Supported models include OpenAI, Anthropic, and Google (Gemini).
+Templates use the Model Gateway to route LLM requests — you only need your `BROWSERBASE_API_KEY`. No separate OpenAI, Anthropic, or Google API keys required. Supported models include OpenAI, Anthropic, and Google (Gemini).
 
-> **Note**: CUA (Computer Use Agent) models are not yet supported through Model Gateway. Templates using CUA models still require a separate model provider API key.
+> **Note**: CUA (Computer Use Agent) models are not yet supported through the Model Gateway. Templates using CUA models still require a separate model provider API key.
 
 ## 📚 Resources
 

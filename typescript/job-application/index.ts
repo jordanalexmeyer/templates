@@ -72,7 +72,7 @@ async function applyToJob(jobInfo: JobInfo, semaphore: () => Promise<void>, rele
   // Initialize Stagehand with Browserbase for cloud-based browser automation
   const stagehand = new Stagehand({
     env: "BROWSERBASE",
-    model: "google/gemini-2.5-flash", // Routed through Browserbase Model Gateway
+    model: "google/gemini-2.5-flash", // Routed through Model Gateway
   });
 
   try {
@@ -165,7 +165,7 @@ async function main() {
   // Initialize Stagehand with Browserbase for cloud-based browser automation
   const stagehand = new Stagehand({
     env: "BROWSERBASE",
-    model: "google/gemini-2.5-flash", // Routed through Browserbase Model Gateway
+    model: "google/gemini-2.5-flash", // Routed through Model Gateway
   });
 
   // Initialize browser session to start automation

@@ -58,7 +58,7 @@ async function main() {
 
     // Create agent with Gemini 3 Flash for autonomous web browsing.
     const agent = stagehand.agent({
-      model: "google/gemini-3-flash-preview", // Routed through Browserbase Model Gateway
+      model: "google/gemini-3-flash-preview", // Routed through Model Gateway
       systemPrompt: `You are a helpful assistant that can use a web browser.
       You are currently on the following page: ${page.url()}.
       Do not ask follow up questions, the user will trust your judgement. If you are getting blocked on google, try another search engine.`,

@@ -19,7 +19,6 @@
 1. npm install
 2. cp .env.example .env
 3. Add required API keys/IDs to .env
-   Note: This template uses a CUA model and requires a separate model provider API key in addition to your Browserbase credentials.
 4. npm start
 
 ## EXPECTED OUTPUT

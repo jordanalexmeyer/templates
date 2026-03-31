@@ -27,7 +27,6 @@
 2. npm install
 3. cp .env.example .env
 4. Add your Browserbase API key, Project ID, and Google Generative AI API key to .env
-   Note: This template uses a CUA model and requires a separate model provider API key in addition to your Browserbase credentials.
 5. Edit COMPANY_NAMES array in index.ts to specify which companies to process
 6. npm start
 

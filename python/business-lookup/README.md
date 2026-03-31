@@ -20,7 +20,6 @@
 2. source venv/bin/activate # On Windows: venv\Scripts\activate
 3. uvx install stagehand python-dotenv pydantic
 4. cp .env.example .env # Add required API keys/IDs to .env
-   Note: This template uses a CUA model and requires a separate model provider API key in addition to your Browserbase credentials.
 5. python main.py
 
 ## EXPECTED OUTPUT
