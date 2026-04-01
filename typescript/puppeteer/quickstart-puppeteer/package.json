@@ -1,7 +1,7 @@
 {
-  "name": "quickstart-puppeteer-js",
+  "name": "quickstart-puppeteer",
   "version": "1.0.0",
-  "description": "Clone this repository to get started with Puppeteer and Browserbase.",
+  "description": "Clone this repository to get started with Puppeteer (TypeScript) and Browserbase.",
   "type": "module",
   "main": "index.ts",
   "scripts": {
