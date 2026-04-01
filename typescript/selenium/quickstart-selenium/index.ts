@@ -44,13 +44,12 @@ async function run(): Promise<void> {
     .usingServer(session.seleniumRemoteUrl)
     .build();
 
-  const caps = await driver.getCapabilities();
-  console.log(
-    `Connected to Browserbase ${caps.getBrowserName()} version ${caps.getBrowserVersion()}`,
-  );
-  console.log(`Live debug URL: https://browserbase.com/sessions/${session.id}`);
-
   try {
+    const caps = await driver.getCapabilities();
+    console.log(
+      `Connected to Browserbase ${caps.getBrowserName()} version ${caps.getBrowserVersion()}`,
+    );
+    console.log(`Live debug URL: https://browserbase.com/sessions/${session.id}`);
     // Navigate to the SFMOMA homepage
     await driver.get("https://www.sfmoma.org");
     const url: string = await driver.getCurrentUrl();
@@ -93,7 +92,7 @@ async function run(): Promise<void> {
     const heading = await driver.wait(until.elementLocated(By.tagName("h1")), WAIT_TIMEOUT);
     console.log(`Heading: ${await heading.getText()}`);
 
-    const intro = await driver.findElement(By.css("main p"));
+    const intro = await driver.wait(until.elementLocated(By.css("main p")), WAIT_TIMEOUT);
     console.log(`Intro: ${await intro.getText()}`);
   } finally {
     // Make sure to quit the driver so your session is ended!
