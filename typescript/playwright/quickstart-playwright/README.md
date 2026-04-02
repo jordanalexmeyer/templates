@@ -20,20 +20,21 @@
 
 ## QUICKSTART
 
-### Python
+### Option 1: Using create-browser-app (recommended)
 
-1. cd python/playwright/quickstart-playwright
-2. cp .env.example .env
-3. Add BROWSERBASE_API_KEY to .env (get it from https://browserbase.com/settings)
-4. `uv run python main.py`
+1. npx create-browser-app quickstart-playwright
+2. cd quickstart-playwright
 
-### TypeScript
+### Option 2: From this repo
 
 1. cd typescript/playwright/quickstart-playwright
 2. npm install
-3. cp .env.example .env
-4. Add BROWSERBASE_API_KEY to .env (get it from https://browserbase.com/settings)
-5. npm start
+
+### Then
+
+1. cp .env.example .env
+2. Add BROWSERBASE_API_KEY to .env (get it from https://browserbase.com/settings)
+3. npm start
 
 ## EXPECTED OUTPUT
 

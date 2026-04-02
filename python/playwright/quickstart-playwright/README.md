@@ -20,20 +20,12 @@
 
 ## QUICKSTART
 
-### Python
-
-1. cd python/playwright/quickstart-playwright
-2. cp .env.example .env
-3. Add BROWSERBASE_API_KEY to .env (get it from https://browserbase.com/settings)
-4. `uv run python main.py`
-
-### TypeScript
-
-1. cd typescript/playwright/quickstart-playwright
-2. npm install
-3. cp .env.example .env
-4. Add BROWSERBASE_API_KEY to .env (get it from https://browserbase.com/settings)
-5. npm start
+1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) if you haven't already
+2. cd python/playwright/quickstart-playwright
+3. uv pip install -e .
+4. cp .env.example .env
+5. Add BROWSERBASE_API_KEY to .env (get it from https://browserbase.com/settings)
+6. uv run python main.py
 
 ## EXPECTED OUTPUT
 
