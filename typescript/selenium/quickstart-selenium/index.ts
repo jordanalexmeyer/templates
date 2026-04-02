@@ -21,7 +21,7 @@ const bb = new Browserbase({
   apiKey: BROWSERBASE_API_KEY,
 });
 
-async function run(): Promise<void> {
+async function main(): Promise<void> {
   // Create a new Browserbase session and connect via Selenium
   const session = await bb.sessions.create();
 
@@ -100,4 +100,12 @@ async function run(): Promise<void> {
   }
 }
 
-run();
+main().catch((err) => {
+  console.error("Error in Selenium quickstart:", err);
+  console.error("Common issues:");
+  console.error("  - Check .env file has BROWSERBASE_API_KEY set");
+  console.error("  - Verify your API key is valid at https://browserbase.com");
+  console.error("  - Ensure network connectivity to Browserbase servers");
+  console.error("Docs: https://docs.browserbase.com/quickstart/selenium");
+  process.exit(1);
+});
