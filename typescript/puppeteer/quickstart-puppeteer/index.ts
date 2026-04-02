@@ -67,7 +67,6 @@ async function main(): Promise<void> {
     console.log(`Intro: ${intro}`);
   } finally {
     // Make sure to close the browser so your session is ended!
-    await page.close();
     await browser.close();
   }
 }
