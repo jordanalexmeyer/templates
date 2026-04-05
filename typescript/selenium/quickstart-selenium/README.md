@@ -50,21 +50,21 @@
 - Timeout waiting for element: increase the `until` timeout (default 10000ms) for slow-loading pages
 - Click intercepted: another element (cookie banner, overlay) may be covering the target — close it first or use `driver.wait()` to wait for it to disappear
 - Stale element reference: if the page reloads between finding and clicking an element, re-locate it with a fresh `driver.wait()` call
-- Find more information on your Browserbase dashboard → https://www.browserbase.com/sign-in
+- Find more information on your Browserbase dashboard -> https://www.browserbase.com/sign-in
 
 ## USE CASES
 
-- Getting started with Browserbase and Selenium in TypeScript
-- Migrating existing Selenium scripts to the cloud
-- Cloud browser automation without managing infrastructure
-- Cross-browser testing with Selenium Grid compatibility
+• Getting started with Browserbase and Selenium in TypeScript
+• Migrating existing Selenium scripts to the cloud
+• Cloud browser automation without managing infrastructure
+• Cross-browser testing with Selenium Grid compatibility
 
 ## NEXT STEPS
 
-- Add AI extraction: swap in Stagehand for AI-powered `act()`, `extract()`, and `observe()`
-- Enable proxies: pass `proxies: true` in `bb.sessions.create()` for residential proxy support
-- Enable stealth mode: add `browserSettings: { advancedStealth: true, solveCaptchas: true }` to bypass bot detection
-- Run in parallel: create multiple sessions for concurrent browser automation
+• Add AI extraction: swap in Stagehand for AI-powered `act()`, `extract()`, and `observe()`
+• Enable proxies: pass `proxies: true` in `bb.sessions.create()` for residential proxy support
+• Enable stealth mode: add `browserSettings: { advancedStealth: true, solveCaptchas: true }` to bypass bot detection
+• Run in parallel: create multiple sessions for concurrent browser automation
 
 ## HELPFUL RESOURCES
 
