@@ -26,10 +26,10 @@ const bb = new Browserbase({
   const defaultContext = browser.contexts()[0];
   const page = defaultContext.pages()[0];
 
-  const debugUrls = await bb.sessions.debug(session.id);
-  console.log(`Session started, live debug accessible here: ${debugUrls.debuggerUrl}.`);
-
   try {
+    const debugUrls = await bb.sessions.debug(session.id);
+    console.log(`Session started, live debug accessible here: ${debugUrls.debuggerUrl}.`);
+
     // Navigate to the SFMOMA homepage
     await page.goto("https://www.sfmoma.org", {
       waitUntil: "domcontentloaded",

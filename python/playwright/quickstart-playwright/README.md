@@ -20,12 +20,10 @@
 
 ## QUICKSTART
 
-1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) if you haven't already
-2. cd python/playwright/quickstart-playwright
-3. uv pip install -e .
-4. cp .env.example .env
-5. Add BROWSERBASE_API_KEY to .env (get it from https://browserbase.com/settings)
-6. uv run python main.py
+1. cd python/playwright/quickstart-playwright
+2. cp .env.example .env
+3. Add BROWSERBASE_API_KEY to .env (get it from https://browserbase.com/settings)
+4. uvx --with browserbase --with playwright --with python-dotenv python main.py
 
 ## EXPECTED OUTPUT
 
@@ -43,21 +41,21 @@
 - Project ID confusion: BROWSERBASE_PROJECT_ID is optional — the API infers it from your API key
 - Playwright install: run `playwright install chromium` if you get browser-not-found errors (though Browserbase provides the browser)
 - Session not closing: always close the browser to avoid leaked sessions
-- Find more information on your Browserbase dashboard → https://www.browserbase.com/sign-in
+- Find more information on your Browserbase dashboard -> https://www.browserbase.com/sign-in
 
 ## USE CASES
 
-- Getting started with Browserbase and Playwright
-- Cloud browser automation without managing infrastructure
-- Interacting with UI elements and extracting content from web pages
-- Building browser-based workflows with Playwright
+• Getting started with Browserbase and Playwright
+• Cloud browser automation without managing infrastructure
+• Interacting with UI elements and extracting content from web pages
+• Building browser-based workflows with Playwright
 
 ## NEXT STEPS
 
-- Add AI extraction: swap in Stagehand for AI-powered `act()`, `extract()`, and `observe()`
-- Enable proxies: pass `proxies=True` in `bb.sessions.create()` for residential proxy support
-- Enable stealth mode: add `browser_settings={"advanced_stealth": True, "solve_captchas": True}` to bypass bot detection
-- Run in parallel: create multiple sessions for concurrent browser automation
+• Add AI extraction: swap in Stagehand for AI-powered `act()`, `extract()`, and `observe()`
+• Enable proxies: pass `proxies=True` in `bb.sessions.create()` for residential proxy support
+• Enable stealth mode: add `browser_settings={"advanced_stealth": True, "solve_captchas": True}` to bypass bot detection
+• Run in parallel: create multiple sessions for concurrent browser automation
 
 ## HELPFUL RESOURCES
 

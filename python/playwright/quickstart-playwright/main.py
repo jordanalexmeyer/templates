@@ -26,10 +26,10 @@ def run(playwright: Playwright) -> None:
     context = browser.contexts[0]
     page = context.pages[0]
 
-    debug_urls = bb.sessions.debug(session.id)
-    print(f"Session started, live debug accessible here: {debug_urls.debugger_url}.")
-
     try:
+        debug_urls = bb.sessions.debug(session.id)
+        print(f"Session started, live debug accessible here: {debug_urls.debugger_url}.")
+
         # Navigate to the SFMOMA homepage
         page.goto("https://www.sfmoma.org", wait_until="domcontentloaded")
         print(f"At URL: {page.url} | Title: {page.title()}")
