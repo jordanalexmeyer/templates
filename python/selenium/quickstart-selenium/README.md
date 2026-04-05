@@ -24,7 +24,7 @@
 1. cd python/selenium/quickstart-selenium
 2. cp .env.example .env
 3. Add BROWSERBASE_API_KEY to .env (get it from https://browserbase.com/settings)
-4. `uv run python main.py`
+4. uvx --with browserbase --with selenium --with python-dotenv python main.py
 
 ## EXPECTED OUTPUT
 
@@ -48,21 +48,21 @@
 - Timeout waiting for element: increase the `WebDriverWait` timeout (default 10s) for slow-loading pages
 - Click intercepted: another element (cookie banner, overlay) may be covering the target — close it first or use `WebDriverWait` to wait for it to disappear
 - Stale element reference: if the page reloads between finding and clicking an element, re-locate it with a fresh `wait.until()` call
-- Find more information on your Browserbase dashboard → https://www.browserbase.com/sign-in
+- Find more information on your Browserbase dashboard -> https://www.browserbase.com/sign-in
 
 ## USE CASES
 
-- Getting started with Browserbase and Selenium in Python
-- Migrating existing Selenium scripts to the cloud
-- Cloud browser automation without managing infrastructure
-- Cross-browser testing with Selenium Grid compatibility
+• Getting started with Browserbase and Selenium in Python
+• Migrating existing Selenium scripts to the cloud
+• Cloud browser automation without managing infrastructure
+• Cross-browser testing with Selenium Grid compatibility
 
 ## NEXT STEPS
 
-- Add AI extraction: swap in Stagehand for AI-powered `act()`, `extract()`, and `observe()`
-- Enable proxies: pass `proxies=True` in `bb.sessions.create()` for residential proxy support
-- Enable stealth mode: add `browser_settings={"advanced_stealth": True, "solve_captchas": True}` to bypass bot detection
-- Run in parallel: create multiple sessions for concurrent browser automation
+• Add AI extraction: swap in Stagehand for AI-powered `act()`, `extract()`, and `observe()`
+• Enable proxies: pass `proxies=True` in `bb.sessions.create()` for residential proxy support
+• Enable stealth mode: add `browser_settings={"advanced_stealth": True, "solve_captchas": True}` to bypass bot detection
+• Run in parallel: create multiple sessions for concurrent browser automation
 
 ## HELPFUL RESOURCES
 
