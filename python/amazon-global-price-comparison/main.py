@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from stagehand import AsyncStagehand
 
 # Load environment variables from .env file
-# Required: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID
+# Required: BROWSERBASE_API_KEY
 load_dotenv()
 
 
@@ -129,7 +129,6 @@ async def get_products_for_country(
     # Initialize AsyncStagehand client (v3 API)
     client = AsyncStagehand(
         browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
-        browserbase_project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
     )
 
     try:
@@ -378,7 +377,7 @@ if __name__ == "__main__":
     except Exception as err:
         print(f"Application error: {err}")
         print("\nCommon issues:")
-        print("  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY")
+        print("  - Check .env file has BROWSERBASE_API_KEY")
         print(
             "  - Verify geolocation proxy locations are valid "
             "(see https://docs.browserbase.com/features/proxies)"

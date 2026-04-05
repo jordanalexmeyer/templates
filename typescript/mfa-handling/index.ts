@@ -181,7 +181,7 @@ async function main() {
 main().catch((err) => {
   console.error("Error in MFA handling:", err);
   console.error("Common issues:");
-  console.error("  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY");
+  console.error("  - Check .env file has BROWSERBASE_API_KEY");
   console.error("  - TOTP code may have expired (try running again)");
   console.error("  - Page structure may have changed");
   console.error("Docs: https://docs.stagehand.dev/v3/first-steps/introduction");

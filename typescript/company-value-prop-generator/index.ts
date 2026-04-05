@@ -131,7 +131,7 @@ async function main() {
     console.error(`\n❌ Error: ${errorMessage}`);
     console.error("\nCommon issues:");
     console.error(
-      "  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY set (required for browser automation)",
+      "  - Check .env file has BROWSERBASE_API_KEY set (required for browser automation)",
     );
     console.error("  - Ensure the domain is accessible and not a placeholder/maintenance page");
     console.error("  - Verify internet connectivity and that the target site is reachable");

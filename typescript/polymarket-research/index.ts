@@ -73,7 +73,7 @@ async function main() {
 
     // Provide helpful troubleshooting information
     console.error("\nCommon issues:");
-    console.error("1. Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY");
+    console.error("1. Check .env file has BROWSERBASE_API_KEY");
     console.error("2. Ensure internet access and https://polymarket.com is accessible");
     console.error("3. Verify Browserbase account has sufficient credits");
 

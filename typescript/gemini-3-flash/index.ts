@@ -88,7 +88,7 @@ async function main() {
 main().catch((err) => {
   console.error("Error in Gemini 3 Flash agent example:", err);
   console.error("Common issues:");
-  console.error("  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY");
+  console.error("  - Check .env file has BROWSERBASE_API_KEY");
   console.error("Docs: https://docs.stagehand.dev/v3/first-steps/introduction");
   process.exit(1);
 });

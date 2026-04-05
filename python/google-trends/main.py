@@ -63,7 +63,6 @@ async def main():
     # Initialize AsyncStagehand client (v3 architecture)
     client = AsyncStagehand(
         browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
-        browserbase_project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
     )
 
     # Start a Stagehand session with Gemini model
@@ -140,7 +139,7 @@ async def main():
 
         # Provide helpful troubleshooting information
         print("\nCommon issues:")
-        print("1. Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY")
+        print("1. Check .env file has BROWSERBASE_API_KEY")
         print("2. Ensure country code is a valid 2-letter ISO code (US, GB, IN, DE, etc.)")
         print("3. Verify Browserbase account has sufficient credits")
         print("4. Check if Google Trends page structure has changed")
@@ -160,6 +159,6 @@ if __name__ == "__main__":
     except Exception as err:
         print(f"Application error: {err}")
         print("Common issues:")
-        print("  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY")
+        print("  - Check .env file has BROWSERBASE_API_KEY")
         print("Docs: https://docs.stagehand.dev/v3/sdk/python")
         exit(1)

@@ -33,7 +33,6 @@
 3. playwright install chromium
 4. cp .env.example .env
 5. Add required API keys to .env:
-   - `BROWSERBASE_PROJECT_ID` — from Browserbase
    - `BROWSERBASE_API_KEY` — from Browserbase
    - `EXA_API_KEY` — from https://dashboard.exa.ai/api-keys
 6. Update `APPLICATION_DETAILS` dict in main.py with candidate information

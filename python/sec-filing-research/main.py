@@ -50,7 +50,7 @@ def dereference_schema(schema: dict) -> dict:
 
 
 # Load environment variables from .env file
-# Required: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID
+# Required: BROWSERBASE_API_KEY
 load_dotenv()
 
 # Search query - can be company name, ticker symbol, or CIK number
@@ -72,10 +72,9 @@ async def main():
     print(f"Retrieving {NUM_FILINGS} most recent filings\n")
 
     # Initialize AsyncStagehand client (v3 architecture)
-    # Uses environment variables: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID
+    # Uses environment variable: BROWSERBASE_API_KEY
     client = AsyncStagehand(
         browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
-        browserbase_project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
     )
 
     # Start a new browser session
@@ -207,7 +206,7 @@ if __name__ == "__main__":
         print(f"Application error: {err}")
         # Provide helpful troubleshooting information
         print("\nCommon issues:")
-        print("  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY")
+        print("  - Check .env file has BROWSERBASE_API_KEY")
         print("  - Verify internet connection and SEC website accessibility")
         print("  - Ensure the search query is valid (company name, ticker, or CIK)")
         print("Docs: https://docs.stagehand.dev/v3/sdk/python")

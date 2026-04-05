@@ -19,7 +19,7 @@
 1. cd typescript/company-value-prop-generator
 2. npm install
 3. cp .env.example .env
-4. Add your Browserbase API key and Project ID to .env
+4. Add your Browserbase API key to .env
 5. npm start
 
 ## EXPECTED OUTPUT
@@ -38,7 +38,6 @@
 
 - Dependency install errors: ensure npm install completed
 - Missing credentials:
-  - BROWSERBASE_PROJECT_ID (required for browser automation)
   - BROWSERBASE_API_KEY (required for browser automation)
 - Placeholder pages: Template includes detection logic, but some custom placeholder pages may still pass validation
 - Slow-loading sites: 5-minute timeout configured, but extremely slow sites may still timeout

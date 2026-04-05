@@ -36,7 +36,6 @@ def main():
     # Initialize Stagehand with Browserbase for cloud-based browser automation
     client = Stagehand(
         browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
-        browserbase_project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
     )
 
     # Start a new session
@@ -105,7 +104,7 @@ def main():
 
         # Provide helpful troubleshooting information
         print("\nCommon issues:")
-        print("1. Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY")
+        print("1. Check .env file has BROWSERBASE_API_KEY")
         print("2. Ensure internet access and https://phila.legistar.com is accessible")
         print("3. Verify Browserbase account has sufficient credits")
         print("4. Check if the calendar page structure has changed")

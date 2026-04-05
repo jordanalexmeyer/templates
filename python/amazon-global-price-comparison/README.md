@@ -25,7 +25,6 @@
 1. cd python/amazon-global-price-comparison
 2. cp .env.example .env
 3. Add required API keys to .env:
-   - `BROWSERBASE_PROJECT_ID`
    - `BROWSERBASE_API_KEY`
 4. Run the script:
    ```bash
@@ -44,7 +43,7 @@
 
 - **Browserbase Developer plan or higher is required to use proxies**
 - "ModuleNotFoundError": ensure you're running with `uv run python main.py` (uv automatically installs dependencies from pyproject.toml)
-- Missing credentials: verify .env contains `BROWSERBASE_PROJECT_ID` and `BROWSERBASE_API_KEY`
+- Missing credentials: verify .env contains `BROWSERBASE_API_KEY`
 - Geolocation fields are case-insensitive (city, country can be any case)
 - Amazon may show different products in different regions - comparison works best for globally available products
 - ERR_TUNNEL_CONNECTION_FAILED: indicates either a temporary proxy hiccup or a site unsupported by built-in proxies

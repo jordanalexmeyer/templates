@@ -39,7 +39,6 @@
 
 3. cp .env.example .env
 4. Add required API keys to .env:
-   - `BROWSERBASE_PROJECT_ID`
    - `BROWSERBASE_API_KEY`
    - `REDUCTOAI_API_KEY`
 5. Run the script:

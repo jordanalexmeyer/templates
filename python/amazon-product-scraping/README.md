@@ -19,7 +19,7 @@
 
 1. cd python/amazon-product-scraping
 2. cp .env.example .env (or create .env with required keys)
-3. Add `BROWSERBASE_PROJECT_ID` and `BROWSERBASE_API_KEY` to .env
+3. Add `BROWSERBASE_API_KEY` to .env
 4. Optionally edit `SEARCH_QUERY` in main.py
 5. Run the script:
    ```bash
@@ -38,7 +38,7 @@
 ## COMMON PITFALLS
 
 - **Import errors**: Ensure you're running with `uv run python main.py` so dependencies are installed
-- **Missing credentials**: Verify .env contains `BROWSERBASE_PROJECT_ID` and `BROWSERBASE_API_KEY`
+- **Missing credentials**: Verify .env contains `BROWSERBASE_API_KEY`
 - **Amazon layout changes**: Extraction may need prompt/schema updates if Amazon changes their search results UI
 - Find more information on your Browserbase dashboard → https://www.browserbase.com/sign-in
 

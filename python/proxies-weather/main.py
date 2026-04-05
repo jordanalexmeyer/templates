@@ -66,7 +66,6 @@ def get_weather_for_location(geolocation: GeolocationConfig) -> WeatherResult:
     # Initialize Stagehand with Browserbase for cloud-based browser automation
     client = Stagehand(
         browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
-        browserbase_project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
     )
 
     try:
@@ -166,7 +165,7 @@ if __name__ == "__main__":
     except Exception as err:
         print(f"Application error: {err}")
         print("Common issues:")
-        print("  - Check .env file has BROWSERBASE_PROJECT_ID, BROWSERBASE_API_KEY")
+        print("  - Check .env file has BROWSERBASE_API_KEY")
         print("  - Verify internet connection and API accessibility")
         print(
             "  - Verify geolocation proxy locations are valid (see https://docs.browserbase.com/features/proxies)"

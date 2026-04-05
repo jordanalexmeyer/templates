@@ -155,7 +155,6 @@ async def extract_with_browser(url: str) -> dict:
     # Initialize AsyncStagehand client (v3 BYOB architecture)
     client = AsyncStagehand(
         browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
-        browserbase_project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
     )
 
     # Start session
@@ -245,7 +244,7 @@ if __name__ == "__main__":
     except Exception as err:
         print(f"Error: {err}")
         print("Common issues:")
-        print("  - Check .env has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY")
+        print("  - Check .env has BROWSERBASE_API_KEY")
         print("  - Verify network connectivity")
         print("Docs: https://docs.stagehand.dev")
         sys.exit(1)

@@ -75,7 +75,7 @@ Make sure to:
 main().catch((err) => {
   console.error("Error in dynamic form filling:", err);
   console.error("Common issues:");
-  console.error("  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY");
+  console.error("  - Check .env file has BROWSERBASE_API_KEY");
   console.error("  - Ensure the form URL is accessible and form fields are available");
   console.error("Docs: https://docs.stagehand.dev/v3/first-steps/introduction");
   process.exit(1);

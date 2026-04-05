@@ -44,7 +44,7 @@ def dereference_schema(schema: dict) -> dict:
 
 
 # Load environment variables from .env file
-# Required: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID
+# Required: BROWSERBASE_API_KEY
 load_dotenv()
 
 # ============= CONFIGURATION =============
@@ -66,10 +66,9 @@ async def main():
     print("Starting Amazon Product Scraping...")
 
     # Initialize AsyncStagehand client (v3 BYOB architecture)
-    # Uses environment variables: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID
+    # Uses environment variable: BROWSERBASE_API_KEY
     client = AsyncStagehand(
         browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
-        browserbase_project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
     )
 
     # Start a Stagehand session with the specified model
@@ -129,7 +128,7 @@ if __name__ == "__main__":
     except Exception as err:
         print(f"Error in Amazon product scraping: {err}")
         print("Common issues:")
-        print("  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY")
+        print("  - Check .env file has BROWSERBASE_API_KEY")
         print("  - Verify network connectivity")
         print("Docs: https://docs.stagehand.dev")
         exit(1)

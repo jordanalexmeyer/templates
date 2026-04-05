@@ -30,7 +30,6 @@
 4. **Configure environment**
    - Ensure your `.env` file (at repo root or in this folder) contains:
      - `BROWSERBASE_API_KEY`
-     - `BROWSERBASE_PROJECT_ID`
 5. **Run the script**
    - `python main.py`
 
@@ -62,7 +61,7 @@
 ## COMMON PITFALLS
 
 - **Missing credentials**
-  - Ensure `.env` contains `BROWSERBASE_PROJECT_ID` and `BROWSERBASE_API_KEY`.
+  - Ensure `.env` contains `BROWSERBASE_API_KEY`.
 - **Concurrency limits**
   - `MAX_CONCURRENT_LINKS > 1` will open multiple browsers in parallel and requires a Browserbase plan that supports concurrency (Startup or Developer or higher).
 - **Slow or failing pages**

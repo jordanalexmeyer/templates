@@ -23,7 +23,7 @@
 1. cd python/smart-fetch-scraper
 2. uv pip install -e .
 3. cp .env.example .env
-4. Add BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY to .env
+4. Add BROWSERBASE_API_KEY to .env
 5. uv run python main.py \<url\> — e.g. `uv run python main.py https://news.ycombinator.com`
 
 ## EXAMPLE URLS
@@ -48,7 +48,7 @@ Browser fallback (JS-rendered, blocked, or low text density):
 
 ## COMMON PITFALLS
 
-- Missing credentials: verify .env contains BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY
+- Missing credentials: verify .env contains BROWSERBASE_API_KEY
 - Fetch API access: the Fetch API may require enablement on your account — contact support if you get a 404
 - Content threshold: adjust MIN_CONTENT_LENGTH if server-rendered pages are incorrectly triggering the browser fallback
 - Text density: adjust MIN_TEXT_DENSITY if pages with lots of inline scripts/styles are incorrectly triggering the browser fallback

@@ -12,7 +12,7 @@ from playwright.async_api import async_playwright
 from stagehand import AsyncStagehand
 
 # Load environment variables from .env file
-# Required: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID, EXA_API_KEY
+# Required: BROWSERBASE_API_KEY, EXA_API_KEY
 load_dotenv()
 
 # Candidate application details - customize these for your job search
@@ -291,7 +291,6 @@ async def apply_to_job(careers_page: dict, index: int) -> dict:
 
     client = AsyncStagehand(
         browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
-        browserbase_project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
     )
 
     # Start session (proxies require Developer plan or higher)
@@ -440,9 +439,7 @@ if __name__ == "__main__":
     except Exception as err:
         print(f"Error in Exa + Browserbase job application: {err}")
         print("Common issues:")
-        print(
-            "  - Check .env file has BROWSERBASE_PROJECT_ID, BROWSERBASE_API_KEY, and EXA_API_KEY"
-        )
+        print("  - Check .env file has BROWSERBASE_API_KEY and EXA_API_KEY")
         print("  - Verify companies exist for the search query")
         print("  - Ensure careers pages are accessible")
         print("Docs: https://docs.stagehand.dev/v3/sdk/python")

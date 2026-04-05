@@ -12,7 +12,7 @@ from reducto import Reducto
 from stagehand import AsyncStagehand
 
 # Load environment variables from .env file
-# Required: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID, REDUCTOAI_API_KEY
+# Required: BROWSERBASE_API_KEY, REDUCTOAI_API_KEY
 load_dotenv()
 
 
@@ -256,7 +256,6 @@ async def main():
     # Initialize AsyncStagehand client (v3 BYOB architecture)
     client = AsyncStagehand(
         browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
-        browserbase_project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
     )
 
     # Start a Stagehand session (returns a response with session_id)
@@ -323,10 +322,7 @@ if __name__ == "__main__":
     except Exception as err:
         print(f"Application error: {err}")
         print("Common issues:")
-        print(
-            "  - Check .env file has BROWSERBASE_PROJECT_ID, "
-            "BROWSERBASE_API_KEY, and REDUCTOAI_API_KEY"
-        )
+        print("  - Check .env file has BROWSERBASE_API_KEY and REDUCTOAI_API_KEY")
         print("  - Verify internet connection and Apple website accessibility")
         print("  - Ensure sufficient timeout for slow-loading pages")
         print("Docs: https://docs.stagehand.dev/v3/sdk/python")

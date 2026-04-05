@@ -70,7 +70,6 @@ def apply_to_job(job_info: JobInfo):
     # Initialize Stagehand with Browserbase for cloud-based browser automation
     client = Stagehand(
         browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
-        browserbase_project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
     )
 
     # Start a new session
@@ -203,7 +202,6 @@ def main():
     # Initialize Stagehand with Browserbase for cloud-based browser automation (main session for job scraping)
     client = Stagehand(
         browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
-        browserbase_project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
     )
 
     # Start a new session

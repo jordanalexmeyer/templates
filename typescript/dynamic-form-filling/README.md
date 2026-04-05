@@ -20,7 +20,7 @@
 
 1. pnpm install
 2. cp .env.example .env
-3. Add your Browserbase API key and Project ID to .env (BROWSERBASE_PROJECT_ID, BROWSERBASE_API_KEY)
+3. Add your Browserbase API key to .env (BROWSERBASE_API_KEY)
 4. Customize the `tripDetails` variable in index.ts with your own form data
 5. Update the form URL if using a different form
 6. pnpm start
@@ -40,7 +40,7 @@
 ## COMMON PITFALLS
 
 - Dependency install errors: ensure pnpm install completed
-- Missing credentials: verify .env contains BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY
+- Missing credentials: verify .env contains BROWSERBASE_API_KEY
 - Agent stopping early: increase maxSteps (default 30) for complex forms with many fields
 - Form not submitting: verify the form URL is accessible and form fields are visible
 - Semantic matching issues: adjust system prompt to better guide agent's matching behavior

@@ -86,7 +86,6 @@ def main():
     # Initialize Stagehand with Browserbase for cloud-based browser automation
     client = Stagehand(
         browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
-        browserbase_project_id=os.environ.get("BROWSERBASE_PROJECT_ID"),
     )
 
     # Start a new session
@@ -232,7 +231,7 @@ if __name__ == "__main__":
     except Exception as err:
         print(f"Error in MFA handling: {err}")
         print("Common issues:")
-        print("  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY")
+        print("  - Check .env file has BROWSERBASE_API_KEY")
         print("  - TOTP code may have expired (try running again)")
         print("  - Page structure may have changed")
         print("Docs: https://docs.stagehand.dev/v3/first-steps/introduction")

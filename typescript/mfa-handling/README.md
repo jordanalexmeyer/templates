@@ -21,7 +21,7 @@
 
 1. pnpm install
 2. cp .env.example .env
-3. Add your Browserbase API key and Project ID to .env (BROWSERBASE_PROJECT_ID, BROWSERBASE_API_KEY)
+3. Add your Browserbase API key to .env (BROWSERBASE_API_KEY)
 4. pnpm start
 
 ## EXPECTED OUTPUT
@@ -41,7 +41,7 @@
 ## COMMON PITFALLS
 
 - Dependency install errors: ensure pnpm install completed
-- Missing credentials: verify .env contains BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY
+- Missing credentials: verify .env contains BROWSERBASE_API_KEY
 - TOTP code expiration: codes are valid for 30 seconds - if authentication fails, the script automatically retries with a fresh code
 - Page structure changes: if the demo site structure changes, extraction may fail
 - Network timeouts: ensure stable internet connection for reliable page loading
