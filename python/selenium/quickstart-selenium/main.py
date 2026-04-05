@@ -31,18 +31,17 @@ def run() -> None:
         },
     )
     driver = webdriver.Remote(
-        command_executor=session.selenium_remote_url,
         options=webdriver.ChromeOptions(),
         client_config=client_config,
     )
 
-    print(
-        "Connected to Browserbase",
-        f"{driver.name} version {driver.caps['browserVersion']}",  # type: ignore
-    )
-    print(f"Live debug URL: https://browserbase.com/sessions/{session.id}")
-
     try:
+        print(
+            "Connected to Browserbase",
+            f"{driver.name} version {driver.caps['browserVersion']}",  # type: ignore
+        )
+        print(f"Live debug URL: https://browserbase.com/sessions/{session.id}")
+
         # Navigate to the SFMOMA homepage
         driver.get("https://www.sfmoma.org")
         print(f"At URL: {driver.current_url} | Title: {driver.title}")
@@ -75,7 +74,7 @@ def run() -> None:
         heading = wait.until(EC.presence_of_element_located((By.TAG_NAME, "h1")))
         print(f"Heading: {heading.text}")
 
-        intro = driver.find_element(By.CSS_SELECTOR, "main p")
+        intro = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "main p")))
         print(f"Intro: {intro.text}")
 
     finally:
