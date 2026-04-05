@@ -210,5 +210,5 @@ if __name__ == "__main__":
         print("  - Check .env file has BROWSERBASE_PROJECT_ID and BROWSERBASE_API_KEY")
         print("  - Verify internet connection and SEC website accessibility")
         print("  - Ensure the search query is valid (company name, ticker, or CIK)")
-        print("Docs: https://docs.stagehand.dev/reference/python/overview")
+        print("Docs: https://docs.stagehand.dev/v3/sdk/python")
         exit(1)
