@@ -17,7 +17,7 @@ const bb = new Browserbase({
   apiKey: BROWSERBASE_API_KEY,
 });
 
-(async () => {
+async function main() {
   const session = await bb.sessions.create();
   console.log(`Session created, id: ${session.id}`);
 
@@ -70,4 +70,14 @@ const bb = new Browserbase({
   }
 
   console.log(`Session complete! View replay at https://browserbase.com/sessions/${session.id}`);
-})();
+}
+
+main().catch((err) => {
+  console.error("Error in Playwright quickstart:", err);
+  console.error("Common issues:");
+  console.error("  - Check .env file has BROWSERBASE_API_KEY");
+  console.error("  - Verify your API key is valid and has access");
+  console.error("  - Ensure the target page is accessible");
+  console.error("Docs: https://docs.browserbase.com");
+  process.exit(1);
+});
