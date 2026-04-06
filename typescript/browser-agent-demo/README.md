@@ -70,6 +70,7 @@ Docs → https://docs.browserbase.com/features/functions
 📚 Stagehand Docs: https://docs.stagehand.dev
 📚 Search API: https://docs.browserbase.com/features/search
 📚 Fetch API: https://docs.browserbase.com/features/fetch
+📚 Implementation Docs: https://docs.browserbase.com/features/fetch
 🎮 Browserbase: https://www.browserbase.com
 💡 Try it out: https://www.browserbase.com/playground
 🔧 Templates: https://www.browserbase.com/templates
