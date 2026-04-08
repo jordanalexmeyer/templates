@@ -77,7 +77,6 @@ Ready-to-use automation templates for Stagehand and Browserbase. Each template h
 | [proxies-weather](typescript/proxies-weather) | TS | Geolocation proxies fetching location-specific weather data from multiple cities |
 | [proxies-weather](python/proxies-weather) | PY | Geolocation proxies fetching location-specific weather data from multiple cities |
 | [puppeteer](typescript/puppeteer) | TS | Raw Puppeteer usage with Browserbase |
-| [resilient-payment-agent](typescript/resilient-payment-agent) | TS | Robust payment-form automation patterns for reliable checkout flows |
 | [sec-filing-research](typescript/sec-filing-research) | TS | Search SEC EDGAR for a company and extract recent filing metadata |
 | [sec-filing-research](python/sec-filing-research) | PY | Search SEC EDGAR for a company and extract recent filing metadata |
 | [selenium](typescript/selenium) | TS | Raw Selenium usage with Browserbase |

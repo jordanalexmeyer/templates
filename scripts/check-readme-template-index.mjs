@@ -1,4 +1,5 @@
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 
 const REPO_ROOT = process.cwd();
@@ -21,17 +22,46 @@ function fail(message) {
   process.exit(1);
 }
 
+function getTrackedTemplatePaths() {
+  try {
+    const gitOutput = execFileSync(
+      "git",
+      ["ls-files", "-co", "--exclude-standard", "--", ...Object.keys(TEMPLATE_ROOTS)],
+      {
+        cwd: REPO_ROOT,
+        encoding: "utf8",
+      },
+    );
+
+    return new Set(
+      gitOutput
+        .split(/\r?\n/)
+        .filter(Boolean)
+        .map((filePath) => {
+          const [root, templateName] = filePath.split("/");
+          if (!TEMPLATE_ROOTS[root] || !templateName) {
+            return null;
+          }
+
+          return `${root}/${templateName}`;
+        })
+        .filter(Boolean),
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    fail(`Could not determine tracked template paths from git:\n${message}`);
+  }
+}
+
 function getExpectedEntries() {
-  return Object.entries(TEMPLATE_ROOTS)
-    .flatMap(([root, language]) => {
-      const rootPath = path.join(REPO_ROOT, root);
-      return readdirSync(rootPath, { withFileTypes: true })
-        .filter((entry) => entry.isDirectory())
-        .map((entry) => ({
-          name: entry.name,
-          path: `${root}/${entry.name}`,
-          language,
-        }));
+  return [...getTrackedTemplatePaths()]
+    .map((templatePath) => {
+      const [root, name] = templatePath.split("/");
+      return {
+        name,
+        path: templatePath,
+        language: TEMPLATE_ROOTS[root],
+      };
     })
     .sort(
       (left, right) =>
@@ -121,12 +151,6 @@ function validateReadmeEntries(entries) {
         `README entry text \`${entry.name}\` must match directory name \`${directoryName}\`.`,
       );
     }
-
-    const fullPath = path.join(REPO_ROOT, entry.path);
-    if (!existsSync(fullPath) || !statSync(fullPath).isDirectory()) {
-      problems.push(`README entry \`${entry.path}\` does not exist on disk.`);
-    }
-
     if (!entry.description) {
       problems.push(`README entry \`${entry.path}\` is missing a description.`);
     }
