@@ -44,9 +44,19 @@ function parseListFlag(argv, flagName) {
 }
 
 function createFileFilter(argv) {
+  // Filtering flags:
+  // --include-template=<name[,name2]>  Include only matching top-level template folders.
+  // --exclude-template=<name[,name2]>  Exclude matching top-level template folders.
+  // --include-path=<token[,token2]>    Include files whose relative path contains any token.
+  // --exclude-path=<token[,token2]>    Exclude files whose relative path contains any token.
+  // --exclude=<token[,token2]>         Convenience alias: applies to both template-name and path excludes.
+  // Each flag supports both "--flag value" and "--flag=value" forms.
   const includeTemplates = new Set(parseListFlag(argv, "--include-template"));
   const genericExcludes = parseListFlag(argv, "--exclude");
-  const excludeTemplates = new Set([...parseListFlag(argv, "--exclude-template"), ...genericExcludes]);
+  const excludeTemplates = new Set([
+    ...parseListFlag(argv, "--exclude-template"),
+    ...genericExcludes,
+  ]);
   const includePaths = parseListFlag(argv, "--include-path");
   const excludePaths = [...parseListFlag(argv, "--exclude-path"), ...genericExcludes];
 
