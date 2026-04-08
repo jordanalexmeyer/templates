@@ -1,0 +1,42 @@
+name: README Template Index
+
+on:
+  pull_request:
+    paths:
+      - "README.md"
+      - "go/**"
+      - "python/**"
+      - "typescript/**"
+      - "package.json"
+      - "scripts/check-readme-template-index.mjs"
+      - ".github/workflows/readme-template-index.yml"
+  push:
+    branches:
+      - dev
+    paths:
+      - "README.md"
+      - "go/**"
+      - "python/**"
+      - "typescript/**"
+      - "package.json"
+      - "scripts/check-readme-template-index.mjs"
+      - ".github/workflows/readme-template-index.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-readme-template-index:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Validate README template index
+        run: npm run check:readme-template-index
