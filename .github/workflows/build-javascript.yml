@@ -4,6 +4,17 @@ on:
   push:
     branches:
       - main
+      - dev
+    paths:
+      - "typescript/**"
+      - "scripts/build-javascript.mjs"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/build-javascript.yml"
+  pull_request:
+    branches:
+      - main
+      - dev
     paths:
       - "typescript/**"
       - "scripts/build-javascript.mjs"
@@ -38,6 +49,7 @@ jobs:
         run: pnpm run build:javascript
 
       - name: Commit generated javascript files
+        if: github.event_name != 'pull_request'
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: regenerate javascript templates"
