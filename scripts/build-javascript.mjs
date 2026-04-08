@@ -45,9 +45,10 @@ function parseListFlag(argv, flagName) {
 
 function createFileFilter(argv) {
   const includeTemplates = new Set(parseListFlag(argv, "--include-template"));
-  const excludeTemplates = new Set(parseListFlag(argv, "--exclude-template"));
+  const genericExcludes = parseListFlag(argv, "--exclude");
+  const excludeTemplates = new Set([...parseListFlag(argv, "--exclude-template"), ...genericExcludes]);
   const includePaths = parseListFlag(argv, "--include-path");
-  const excludePaths = parseListFlag(argv, "--exclude-path");
+  const excludePaths = [...parseListFlag(argv, "--exclude-path"), ...genericExcludes];
 
   return (sourcePath) => {
     const relativePath = path.relative(TYPESCRIPT_DIR, sourcePath);
