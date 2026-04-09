@@ -9,13 +9,11 @@ const TEMPLATE_ROOTS = {
   python: "PY",
   go: "GO",
 };
-const LANGUAGE_ORDER = {
-  TS: 0,
-  PY: 1,
-  GO: 2,
-};
+const LANGUAGE_COLUMNS = ["TS", "PY", "GO"];
+const LANGUAGE_TO_ROOT = Object.fromEntries(
+  Object.entries(TEMPLATE_ROOTS).map(([root, language]) => [language, root]),
+);
 const SECTION_PATTERN = /^## All Templates\r?\n\r?\n([\s\S]*?)(?=^##\s)/m;
-const ROW_PATTERN = /^\|\s*\[([^\]]+)\]\(([^)]+)\)\s*\|\s*(TS|PY|GO)\s*\|\s*(.+?)\s*\|$/;
 
 function fail(message) {
   console.error(message);
@@ -53,22 +51,18 @@ function getTrackedTemplatePaths() {
   }
 }
 
-function getExpectedEntries() {
-  return [...getTrackedTemplatePaths()]
-    .map((templatePath) => {
-      const [root, name] = templatePath.split("/");
-      return {
-        name,
-        path: templatePath,
-        language: TEMPLATE_ROOTS[root],
-      };
-    })
-    .sort(
-      (left, right) =>
-        left.name.localeCompare(right.name) ||
-        LANGUAGE_ORDER[left.language] - LANGUAGE_ORDER[right.language] ||
-        left.path.localeCompare(right.path),
-    );
+function getExpectedRows() {
+  const rows = new Map();
+
+  for (const templatePath of [...getTrackedTemplatePaths()].sort()) {
+    const [root, name] = templatePath.split("/");
+    const language = TEMPLATE_ROOTS[root];
+    const row = rows.get(name) ?? { name, languages: {} };
+    row.languages[language] = { label: language, path: templatePath };
+    rows.set(name, row);
+  }
+
+  return [...rows.values()].sort((left, right) => left.name.localeCompare(right.name));
 }
 
 function getReadmeSection(readmeContents) {
@@ -80,7 +74,23 @@ function getReadmeSection(readmeContents) {
   return match[1];
 }
 
-function parseReadmeEntries(section) {
+function parseLanguageCell(cell, expectedLanguage, rowName, line) {
+  if (cell === "-") {
+    return null;
+  }
+
+  const match = cell.match(/^\[([A-Z]{2})\]\(([^)]+)\)$/);
+  if (!match) {
+    fail(
+      `Invalid ${expectedLanguage} cell format for template \`${rowName}\` in README.md:\n${line}`,
+    );
+  }
+
+  const [, label, templatePath] = match;
+  return { label, path: templatePath };
+}
+
+function parseReadmeRows(section) {
   const lines = section
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -93,77 +103,127 @@ function parseReadmeEntries(section) {
   const dataLines = lines.slice(2);
 
   return dataLines.map((line) => {
-    const match = line.match(ROW_PATTERN);
-    if (!match) {
+    const cells = line
+      .split("|")
+      .slice(1, -1)
+      .map((cell) => cell.trim());
+
+    if (cells.length !== 5) {
       fail(`Invalid template row format in README.md:\n${line}`);
     }
 
-    const [, name, templatePath, language, description] = match;
+    const [name, tsCell, pyCell, goCell, description] = cells;
+
     return {
       name,
-      path: templatePath,
-      language,
+      languages: {
+        TS: parseLanguageCell(tsCell, "TS", name, line),
+        PY: parseLanguageCell(pyCell, "PY", name, line),
+        GO: parseLanguageCell(goCell, "GO", name, line),
+      },
       description: description.trim(),
     };
   });
 }
 
-function findDuplicatePaths(entries) {
+function findDuplicateNames(rows) {
   const counts = new Map();
 
-  for (const entry of entries) {
-    counts.set(entry.path, (counts.get(entry.path) ?? 0) + 1);
+  for (const row of rows) {
+    counts.set(row.name, (counts.get(row.name) ?? 0) + 1);
+  }
+
+  return [...counts.entries()].filter(([, count]) => count > 1).map(([name]) => name);
+}
+
+function findDuplicatePaths(rows) {
+  const counts = new Map();
+
+  for (const row of rows) {
+    for (const language of LANGUAGE_COLUMNS) {
+      const cell = row.languages[language];
+      if (!cell) {
+        continue;
+      }
+
+      counts.set(cell.path, (counts.get(cell.path) ?? 0) + 1);
+    }
   }
 
   return [...counts.entries()].filter(([, count]) => count > 1).map(([entryPath]) => entryPath);
 }
 
-function validateReadmeEntries(entries) {
+function flattenRowPaths(rows) {
+  return rows.flatMap((row) =>
+    LANGUAGE_COLUMNS.flatMap((language) => {
+      const cell = row.languages[language];
+      return cell ? [cell.path] : [];
+    }),
+  );
+}
+
+function validateReadmeRows(rows) {
   const problems = [];
 
-  for (const entry of entries) {
-    const segments = entry.path.split("/");
-    if (segments.length !== 2) {
-      problems.push(
-        `README entry \`${entry.path}\` must point to a first-level template directory.`,
-      );
-      continue;
+  for (const row of rows) {
+    if (!row.name) {
+      problems.push("README has a template row with an empty name.");
     }
 
-    const [root] = segments;
-    const expectedLanguage = TEMPLATE_ROOTS[root];
-    if (!expectedLanguage) {
-      problems.push(
-        `README entry \`${entry.path}\` must live under one of: ${Object.keys(TEMPLATE_ROOTS).join(", ")}.`,
-      );
-      continue;
+    if (!row.description) {
+      problems.push(`README row \`${row.name}\` is missing a description.`);
     }
 
-    if (entry.language !== expectedLanguage) {
-      problems.push(
-        `README entry \`${entry.path}\` is labeled ${entry.language}, but ${root}/ templates must use ${expectedLanguage}.`,
-      );
+    const linkedLanguages = LANGUAGE_COLUMNS.filter((language) => row.languages[language]);
+    if (linkedLanguages.length === 0) {
+      problems.push(`README row \`${row.name}\` must link at least one template.`);
     }
 
-    const directoryName = path.posix.basename(entry.path);
-    if (entry.name !== directoryName) {
-      problems.push(
-        `README entry text \`${entry.name}\` must match directory name \`${directoryName}\`.`,
-      );
-    }
-    if (!entry.description) {
-      problems.push(`README entry \`${entry.path}\` is missing a description.`);
+    for (const language of LANGUAGE_COLUMNS) {
+      const cell = row.languages[language];
+      if (!cell) {
+        continue;
+      }
+
+      if (cell.label !== language) {
+        problems.push(
+          `README row \`${row.name}\` has a ${cell.label} link in the ${language} column.`,
+        );
+      }
+
+      const segments = cell.path.split("/");
+      if (segments.length !== 2) {
+        problems.push(
+          `README entry \`${cell.path}\` must point to a first-level template directory.`,
+        );
+        continue;
+      }
+
+      const [root] = segments;
+      const expectedRoot = LANGUAGE_TO_ROOT[language];
+      if (root !== expectedRoot) {
+        problems.push(
+          `README entry \`${cell.path}\` is in the ${language} column, but ${language} templates must live under \`${expectedRoot}/\`.`,
+        );
+      }
+
+      const directoryName = path.posix.basename(cell.path);
+      if (row.name !== directoryName) {
+        problems.push(
+          `README row name \`${row.name}\` must match directory name \`${directoryName}\`.`,
+        );
+      }
     }
   }
 
   return problems;
 }
 
-function getOrderMessage(expectedEntries, readmeEntries) {
-  const expectedPaths = expectedEntries.map((entry) => entry.path);
-  const actualPaths = readmeEntries.map((entry) => entry.path);
-  const mismatchIndex = expectedPaths.findIndex(
-    (expectedPath, index) => expectedPath !== actualPaths[index],
+function getOrderMessage(expectedRows, readmeRows) {
+  const expectedNames = expectedRows.map((row) => row.name);
+  const actualNames = readmeRows.map((row) => row.name);
+  const mismatchIndex = expectedNames.findIndex(
+    (expectedName, index) => expectedName !== actualNames[index],
   );
 
   if (mismatchIndex === -1) {
@@ -172,25 +232,32 @@ function getOrderMessage(expectedEntries, readmeEntries) {
 
   return [
     "README template rows are out of order.",
-    "Sort rows by template name, then by language in TS/PY/GO order.",
-    `First mismatch at row ${mismatchIndex + 1}: expected \`${expectedPaths[mismatchIndex]}\`, found \`${actualPaths[mismatchIndex]}\`.`,
+    "Sort rows alphabetically by template name.",
+    `First mismatch at row ${mismatchIndex + 1}: expected \`${expectedNames[mismatchIndex]}\`, found \`${actualNames[mismatchIndex]}\`.`,
   ].join("\n");
 }
 
 function main() {
   const readmeContents = readFileSync(README_PATH, "utf8");
-  const expectedEntries = getExpectedEntries();
-  const readmeEntries = parseReadmeEntries(getReadmeSection(readmeContents));
+  const expectedRows = getExpectedRows();
+  const readmeRows = parseReadmeRows(getReadmeSection(readmeContents));
 
-  const duplicatePaths = findDuplicatePaths(readmeEntries);
-  const validationProblems = validateReadmeEntries(readmeEntries);
-  const expectedPaths = new Set(expectedEntries.map((entry) => entry.path));
-  const readmePaths = new Set(readmeEntries.map((entry) => entry.path));
-  const missingEntries = expectedEntries.filter((entry) => !readmePaths.has(entry.path));
-  const unexpectedEntries = readmeEntries.filter((entry) => !expectedPaths.has(entry.path));
-  const orderProblem = getOrderMessage(expectedEntries, readmeEntries);
+  const duplicateNames = findDuplicateNames(readmeRows);
+  const duplicatePaths = findDuplicatePaths(readmeRows);
+  const validationProblems = validateReadmeRows(readmeRows);
+  const expectedPaths = new Set(flattenRowPaths(expectedRows));
+  const readmePaths = new Set(flattenRowPaths(readmeRows));
+  const missingEntries = [...expectedPaths].filter((entry) => !readmePaths.has(entry));
+  const unexpectedEntries = [...readmePaths].filter((entry) => !expectedPaths.has(entry));
+  const orderProblem = getOrderMessage(expectedRows, readmeRows);
 
   const problems = [];
+
+  if (duplicateNames.length > 0) {
+    problems.push(
+      `Duplicate README template rows found:\n${duplicateNames.map((name) => `- ${name}`).join("\n")}`,
+    );
+  }
 
   if (duplicatePaths.length > 0) {
     problems.push(
@@ -204,17 +271,13 @@ function main() {
 
   if (missingEntries.length > 0) {
     problems.push(
-      `Template directories missing from README:\n${missingEntries
-        .map((entry) => `- ${entry.path}`)
-        .join("\n")}`,
+      `Template directories missing from README:\n${missingEntries.map((entry) => `- ${entry}`).join("\n")}`,
     );
   }
 
   if (unexpectedEntries.length > 0) {
     problems.push(
-      `README entries that do not match any template directory:\n${unexpectedEntries
-        .map((entry) => `- ${entry.path}`)
-        .join("\n")}`,
+      `README entries that do not match any template directory:\n${unexpectedEntries.map((entry) => `- ${entry}`).join("\n")}`,
     );
   }
 
@@ -231,7 +294,7 @@ function main() {
   }
 
   console.log(
-    `README template index matches ${expectedEntries.length} first-level template directories.`,
+    `README template index matches ${expectedRows.length} template rows covering ${expectedPaths.size} first-level template directories.`,
   );
 }
 

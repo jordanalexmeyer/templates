@@ -6,85 +6,51 @@ Ready-to-use automation templates for Stagehand and Browserbase. Each template h
 
 ## All Templates
 
-| Template | Lang | Description |
-|----------|------|-------------|
-| [agent-with-human-in-loop](typescript/agent-with-human-in-loop) | TS | Build an AI agent that can pause and ask a human for input mid-task |
-| [amazon-global-price-comparison](typescript/amazon-global-price-comparison) | TS | Compare Amazon product prices across multiple countries using geolocation proxies |
-| [amazon-global-price-comparison](python/amazon-global-price-comparison) | PY | Compare Amazon product prices across multiple countries using geolocation proxies |
-| [amazon-product-scraping](typescript/amazon-product-scraping) | TS | Scrape the first 3 Amazon search results for a given query and return structured product data |
-| [amazon-product-scraping](python/amazon-product-scraping) | PY | Scrape the first 3 Amazon search results for a given query and return structured product data |
-| [basic-caching](typescript/basic-caching) | TS | Demonstrate how Stagehand's caching feature reduces cost and latency by reusing previously computed actions |
-| [basic-caching](python/basic-caching) | PY | Demonstrate how Stagehand's caching feature reduces cost and latency by reusing previously computed actions |
-| [basic-recaptcha](typescript/basic-recaptcha) | TS | Automatic reCAPTCHA solving using Browserbase's built-in captcha solving capabilities |
-| [basic-recaptcha](python/basic-recaptcha) | PY | Automatic reCAPTCHA solving using Browserbase's built-in captcha solving capabilities |
-| [browser-agent-demo](typescript/browser-agent-demo) | TS | Browser agent that searches the web, fetches page content, and autonomously extracts information |
-| [browserbase-reducto](typescript/browserbase-reducto) | TS | Download financial PDFs from websites and extract structured data using AI-powered document parsing |
-| [browserbase-reducto](python/browserbase-reducto) | PY | Download financial PDFs from websites and extract structured data using AI-powered document parsing |
-| [business-lookup](typescript/business-lookup) | TS | Automate business registry searches using an autonomous AI agent with computer-use capabilities |
-| [business-lookup](python/business-lookup) | PY | Automate business registry searches using an autonomous AI agent with computer-use capabilities |
-| [cartesia-form-filling](python/cartesia-form-filling) | PY | Voice agent that conducts phone questionnaires while automatically filling out web forms |
-| [cerebras-docs-checker](python/cerebras-docs-checker) | PY | Crawl documentation sites, discover source repos, and verify docs accuracy against actual codebase |
-| [company-address-finder](typescript/company-address-finder) | TS | Discover company legal information and physical addresses from Terms of Service and Privacy Policy pages |
-| [company-address-finder](python/company-address-finder) | PY | Discover company legal information and physical addresses from Terms of Service and Privacy Policy pages |
-| [company-value-prop-generator](typescript/company-value-prop-generator) | TS | Extract and format website value propositions into concise one-liners for email personalization |
-| [company-value-prop-generator](python/company-value-prop-generator) | PY | Extract and format website value propositions into concise one-liners for email personalization |
-| [context](typescript/context) | TS | Persistent authentication using Browserbase contexts that survive across sessions |
-| [context](python/context) | PY | Persistent authentication using Browserbase contexts that survive across sessions |
-| [council-events](typescript/council-events) | TS | Automate event information extraction from Philadelphia Council |
-| [council-events](python/council-events) | PY | Automate extraction of Philadelphia Council events for 2025 from the official calendar |
-| [download-financial-statements](typescript/download-financial-statements) | TS | Download Apple's quarterly financial statements (PDFs) from their investor relations site |
-| [download-financial-statements](python/download-financial-statements) | PY | Download Apple's quarterly financial statements (PDFs) from their investor relations site |
-| [dynamic-form-filling](typescript/dynamic-form-filling) | TS | Intelligent form filling using a Stagehand AI agent that understands form context and uses semantic matching |
-| [exa-browserbase](typescript/exa-browserbase) | TS | Automate job applications with AI that writes smart, tailored responses for each role |
-| [exa-browserbase](python/exa-browserbase) | PY | Automate job applications with AI that writes smart, tailored responses for each role |
-| [extend-browserbase](typescript/extend-browserbase) | TS | Download receipts from an expense portal and extract structured receipt data using AI-powered document parsing |
-| [extend-browserbase](python/extend-browserbase) | PY | Download receipts from an expense portal and extract structured receipt data using AI-powered document parsing |
-| [form-filling](typescript/form-filling) | TS | Automate form filling with Stagehand and Browserbase |
-| [form-filling](python/form-filling) | PY | Automate form filling with Stagehand and Browserbase |
-| [gemini-3-flash](typescript/gemini-3-flash) | TS | Autonomous web browsing using Google's Gemini 3 Flash with Stagehand and Browserbase |
-| [gemini-cua](typescript/gemini-cua) | TS | Autonomous web browsing using Google's Computer Use Agent with Stagehand and Browserbase |
-| [gemini-cua](python/gemini-cua) | PY | Autonomous web browsing using Google's Computer Use Agent with Stagehand and Browserbase |
-| [getting-started-with-browserbase](typescript/getting-started-with-browserbase) | TS | Demo all three core Browserbase capabilities: Search API, Fetch API, and Browser Sessions |
-| [getting-started-with-browserbase](python/getting-started-with-browserbase) | PY | Demo all three core Browserbase capabilities: Search API, Fetch API, and Browser Sessions |
-| [gift-finder](typescript/gift-finder) | TS | Find personalized gift recommendations using AI-generated search queries and intelligent product scoring |
-| [gift-finder](python/gift-finder) | PY | Find personalized gift recommendations using AI-generated search queries and intelligent product scoring |
-| [google-trends](typescript/google-trends) | TS | Extract trending search keywords from Google Trends for any country with structured JSON output |
-| [google-trends](python/google-trends) | PY | Extract trending search keywords from Google Trends for any country with structured JSON output |
-| [hackernews](go/hackernews) | GO | Demonstrate Stagehand's core browser automation features through a complete Hacker News workflow |
-| [image-url-download](typescript/image-url-download) | TS | Extract all image URLs from a page and download each image through the browser's direct connection |
-| [image-url-download](python/image-url-download) | PY | Extract all image URLs from a page and download each image through the browser's direct connection |
-| [job-application](typescript/job-application) | TS | Automate job applications by discovering job listings and submitting applications |
-| [job-application](python/job-application) | PY | Automate job applications by discovering job listings and submitting applications |
-| [license-verification](typescript/license-verification) | TS | Extract structured, validated data from websites using Stagehand + Zod |
-| [license-verification](python/license-verification) | PY | Extract structured, validated data from websites using Stagehand + Pydantic |
-| [manual-mfa-with-contexts](typescript/manual-mfa-with-contexts) | TS | Persist authentication across sessions using Browserbase Contexts, eliminating MFA friction |
-| [manual-mfa-with-contexts](python/manual-mfa-with-contexts) | PY | Persist authentication across sessions using Browserbase Contexts, eliminating MFA friction |
-| [mfa-handling](typescript/mfa-handling) | TS | Automate MFA completion using TOTP (Time-based One-Time Password) code generation |
-| [mfa-handling](python/mfa-handling) | PY | Automate MFA completion using TOTP (Time-based One-Time Password) code generation |
-| [microsoft-cua](typescript/microsoft-cua) | TS | Autonomous web browsing using Microsoft's Computer Use Agent with Stagehand and Browserbase |
-| [nurse-verification](typescript/nurse-verification) | TS | Automate verification of nurse licenses by filling forms and extracting structured results |
-| [nurse-verification](python/nurse-verification) | PY | Automate verification of nurse licenses by filling forms and extracting structured results |
-| [pickleball](typescript/pickleball) | TS | Automate tennis and pickleball court bookings in San Francisco Recreation & Parks system |
-| [pickleball](python/pickleball) | PY | Automate tennis and pickleball court bookings in San Francisco Recreation & Parks system |
-| [playwright](typescript/playwright) | TS | Raw Playwright usage with Browserbase (no Stagehand) |
-| [playwright](python/playwright) | PY | Raw Playwright usage with Browserbase (no Stagehand) |
-| [playwright-mfa-handling](typescript/playwright-mfa-handling) | TS | Automate MFA completion using TOTP with raw Playwright and Browserbase |
-| [playwright-mfa-handling](python/playwright-mfa-handling) | PY | Automate MFA completion using TOTP with raw Playwright and Browserbase |
-| [polymarket-research](typescript/polymarket-research) | TS | Automate market research on prediction markets using Stagehand |
-| [polymarket-research](python/polymarket-research) | PY | Automate research of prediction markets on Polymarket to extract current odds, pricing, and volume data |
-| [proxies](typescript/proxies) | TS | Demonstrate different proxy configurations with Browserbase sessions |
-| [proxies](python/proxies) | PY | Demonstrate different proxy configurations with Browserbase sessions |
-| [proxies-weather](typescript/proxies-weather) | TS | Geolocation proxies fetching location-specific weather data from multiple cities |
-| [proxies-weather](python/proxies-weather) | PY | Geolocation proxies fetching location-specific weather data from multiple cities |
-| [puppeteer](typescript/puppeteer) | TS | Raw Puppeteer usage with Browserbase |
-| [sec-filing-research](typescript/sec-filing-research) | TS | Search SEC EDGAR for a company and extract recent filing metadata |
-| [sec-filing-research](python/sec-filing-research) | PY | Search SEC EDGAR for a company and extract recent filing metadata |
-| [selenium](typescript/selenium) | TS | Raw Selenium usage with Browserbase |
-| [selenium](python/selenium) | PY | Raw Selenium usage with Browserbase |
-| [smart-fetch-scraper](typescript/smart-fetch-scraper) | TS | Scrape a webpage using the fastest method available -- Fetch API first, full browser session as fallback |
-| [smart-fetch-scraper](python/smart-fetch-scraper) | PY | Scrape a webpage using the fastest method available -- Fetch API first, full browser session as fallback |
-| [website-link-tester](typescript/website-link-tester) | TS | Crawl a website's homepage, collect all links, and verify each link loads successfully |
-| [website-link-tester](python/website-link-tester) | PY | Crawl a website's homepage, collect all links, and verify each link loads successfully |
+| Template                         | TS                                                | PY                                            | GO                  | Description                                                                                                    |
+| -------------------------------- | ------------------------------------------------- | --------------------------------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------- |
+| agent-with-human-in-loop         | [TS](typescript/agent-with-human-in-loop)         | -                                             | -                   | Build an AI agent that can pause and ask a human for input mid-task                                            |
+| amazon-global-price-comparison   | [TS](typescript/amazon-global-price-comparison)   | [PY](python/amazon-global-price-comparison)   | -                   | Compare Amazon product prices across multiple countries using geolocation proxies                              |
+| amazon-product-scraping          | [TS](typescript/amazon-product-scraping)          | [PY](python/amazon-product-scraping)          | -                   | Scrape the first 3 Amazon search results for a given query and return structured product data                  |
+| basic-caching                    | [TS](typescript/basic-caching)                    | [PY](python/basic-caching)                    | -                   | Demonstrate how Stagehand's caching feature reduces cost and latency by reusing previously computed actions    |
+| basic-recaptcha                  | [TS](typescript/basic-recaptcha)                  | [PY](python/basic-recaptcha)                  | -                   | Automatic reCAPTCHA solving using Browserbase's built-in captcha solving capabilities                          |
+| browser-agent-demo               | [TS](typescript/browser-agent-demo)               | -                                             | -                   | Browser agent that searches the web, fetches page content, and autonomously extracts information               |
+| browserbase-reducto              | [TS](typescript/browserbase-reducto)              | [PY](python/browserbase-reducto)              | -                   | Download financial PDFs from websites and extract structured data using AI-powered document parsing            |
+| business-lookup                  | [TS](typescript/business-lookup)                  | [PY](python/business-lookup)                  | -                   | Automate business registry searches using an autonomous AI agent with computer-use capabilities                |
+| cartesia-form-filling            | -                                                 | [PY](python/cartesia-form-filling)            | -                   | Voice agent that conducts phone questionnaires while automatically filling out web forms                       |
+| cerebras-docs-checker            | -                                                 | [PY](python/cerebras-docs-checker)            | -                   | Crawl documentation sites, discover source repos, and verify docs accuracy against actual codebase             |
+| company-address-finder           | [TS](typescript/company-address-finder)           | [PY](python/company-address-finder)           | -                   | Discover company legal information and physical addresses from Terms of Service and Privacy Policy pages       |
+| company-value-prop-generator     | [TS](typescript/company-value-prop-generator)     | [PY](python/company-value-prop-generator)     | -                   | Extract and format website value propositions into concise one-liners for email personalization                |
+| context                          | [TS](typescript/context)                          | [PY](python/context)                          | -                   | Persistent authentication using Browserbase contexts that survive across sessions                              |
+| council-events                   | [TS](typescript/council-events)                   | [PY](python/council-events)                   | -                   | Automate event information extraction from Philadelphia Council                                                |
+| download-financial-statements    | [TS](typescript/download-financial-statements)    | [PY](python/download-financial-statements)    | -                   | Download Apple's quarterly financial statements (PDFs) from their investor relations site                      |
+| dynamic-form-filling             | [TS](typescript/dynamic-form-filling)             | -                                             | -                   | Intelligent form filling using a Stagehand AI agent that understands form context and uses semantic matching   |
+| exa-browserbase                  | [TS](typescript/exa-browserbase)                  | [PY](python/exa-browserbase)                  | -                   | Automate job applications with AI that writes smart, tailored responses for each role                          |
+| extend-browserbase               | [TS](typescript/extend-browserbase)               | [PY](python/extend-browserbase)               | -                   | Download receipts from an expense portal and extract structured receipt data using AI-powered document parsing |
+| form-filling                     | [TS](typescript/form-filling)                     | [PY](python/form-filling)                     | -                   | Automate form filling with Stagehand and Browserbase                                                           |
+| gemini-3-flash                   | [TS](typescript/gemini-3-flash)                   | -                                             | -                   | Autonomous web browsing using Google's Gemini 3 Flash with Stagehand and Browserbase                           |
+| gemini-cua                       | [TS](typescript/gemini-cua)                       | [PY](python/gemini-cua)                       | -                   | Autonomous web browsing using Google's Computer Use Agent with Stagehand and Browserbase                       |
+| getting-started-with-browserbase | [TS](typescript/getting-started-with-browserbase) | [PY](python/getting-started-with-browserbase) | -                   | Demo all three core Browserbase capabilities: Search API, Fetch API, and Browser Sessions                      |
+| gift-finder                      | [TS](typescript/gift-finder)                      | [PY](python/gift-finder)                      | -                   | Find personalized gift recommendations using AI-generated search queries and intelligent product scoring       |
+| google-trends                    | [TS](typescript/google-trends)                    | [PY](python/google-trends)                    | -                   | Extract trending search keywords from Google Trends for any country with structured JSON output                |
+| hackernews                       | -                                                 | -                                             | [GO](go/hackernews) | Demonstrate Stagehand's core browser automation features through a complete Hacker News workflow               |
+| image-url-download               | [TS](typescript/image-url-download)               | [PY](python/image-url-download)               | -                   | Extract all image URLs from a page and download each image through the browser's direct connection             |
+| job-application                  | [TS](typescript/job-application)                  | [PY](python/job-application)                  | -                   | Automate job applications by discovering job listings and submitting applications                              |
+| license-verification             | [TS](typescript/license-verification)             | [PY](python/license-verification)             | -                   | Extract structured, validated data from websites using Stagehand + Zod                                         |
+| manual-mfa-with-contexts         | [TS](typescript/manual-mfa-with-contexts)         | [PY](python/manual-mfa-with-contexts)         | -                   | Persist authentication across sessions using Browserbase Contexts, eliminating MFA friction                    |
+| mfa-handling                     | [TS](typescript/mfa-handling)                     | [PY](python/mfa-handling)                     | -                   | Automate MFA completion using TOTP (Time-based One-Time Password) code generation                              |
+| microsoft-cua                    | [TS](typescript/microsoft-cua)                    | -                                             | -                   | Autonomous web browsing using Microsoft's Computer Use Agent with Stagehand and Browserbase                    |
+| nurse-verification               | [TS](typescript/nurse-verification)               | [PY](python/nurse-verification)               | -                   | Automate verification of nurse licenses by filling forms and extracting structured results                     |
+| pickleball                       | [TS](typescript/pickleball)                       | [PY](python/pickleball)                       | -                   | Automate tennis and pickleball court bookings in San Francisco Recreation & Parks system                       |
+| playwright                       | [TS](typescript/playwright)                       | [PY](python/playwright)                       | -                   | Raw Playwright usage with Browserbase (no Stagehand)                                                           |
+| playwright-mfa-handling          | [TS](typescript/playwright-mfa-handling)          | [PY](python/playwright-mfa-handling)          | -                   | Automate MFA completion using TOTP with raw Playwright and Browserbase                                         |
+| polymarket-research              | [TS](typescript/polymarket-research)              | [PY](python/polymarket-research)              | -                   | Automate market research on prediction markets using Stagehand                                                 |
+| proxies                          | [TS](typescript/proxies)                          | [PY](python/proxies)                          | -                   | Demonstrate different proxy configurations with Browserbase sessions                                           |
+| proxies-weather                  | [TS](typescript/proxies-weather)                  | [PY](python/proxies-weather)                  | -                   | Geolocation proxies fetching location-specific weather data from multiple cities                               |
+| puppeteer                        | [TS](typescript/puppeteer)                        | -                                             | -                   | Raw Puppeteer usage with Browserbase                                                                           |
+| sec-filing-research              | [TS](typescript/sec-filing-research)              | [PY](python/sec-filing-research)              | -                   | Search SEC EDGAR for a company and extract recent filing metadata                                              |
+| selenium                         | [TS](typescript/selenium)                         | [PY](python/selenium)                         | -                   | Raw Selenium usage with Browserbase                                                                            |
+| smart-fetch-scraper              | [TS](typescript/smart-fetch-scraper)              | [PY](python/smart-fetch-scraper)              | -                   | Scrape a webpage using the fastest method available -- Fetch API first, full browser session as fallback       |
+| website-link-tester              | [TS](typescript/website-link-tester)              | [PY](python/website-link-tester)              | -                   | Crawl a website's homepage, collect all links, and verify each link loads successfully                         |
 
 ## Model Gateway
 
