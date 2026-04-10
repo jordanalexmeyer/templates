@@ -1,0 +1,16 @@
+{
+  "name": "image-url-download",
+  "version": "1.0.0",
+  "description": "Stagehand + Browserbase: extract image URLs from a page and download each through the browser's proxied connection",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "@browserbasehq/stagehand": "^3.0.0",
+    "dotenv": "^16.4.5",
+    "zod": "^3.23.8"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "amazon-global-price-comparison-template",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@browserbasehq/stagehand": "latest",
+    "dotenv": "^16.4.7",
+    "zod": "latest"
+  }
+}
