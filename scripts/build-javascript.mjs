@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import console from "node:console";
 import path from "node:path";
 import process from "node:process";
@@ -9,6 +9,72 @@ const TYPESCRIPT_DIR = path.join(ROOT_DIR, "typescript");
 const JAVASCRIPT_DIR = path.join(ROOT_DIR, "javascript");
 
 const DEFAULT_EXCLUDED_DIRS = new Set(["node_modules", ".next", "dist", "build", "coverage"]);
+
+const TYPESCRIPT_ONLY_DEV_DEPENDENCIES = new Set(["typescript", "tsx"]);
+
+function isTranspilableTypeScriptSource(filePath) {
+  const name = path.basename(filePath);
+  if (name.endsWith(".tsx")) return true;
+  if (name.endsWith(".ts") && !name.endsWith(".d.ts")) return true;
+  return false;
+}
+
+/** Rewrite npm script strings from TypeScript runner / paths to plain Node. */
+function adaptScriptCommand(command) {
+  let value = command
+    .replaceAll(/\btsx\s+watch\s+/g, "node --watch ")
+    .replaceAll(/\btsx\s+/g, "node ");
+  return value
+    .replaceAll(/\.d\.ts\b/g, "__PRESERVE_D_TS__")
+    .replaceAll(/\.tsx\b/g, ".jsx")
+    .replaceAll(/\.ts\b/g, ".js")
+    .replaceAll(/__PRESERVE_D_TS__/g, ".d.ts");
+}
+
+function isTypesPackage(depName) {
+  return depName.startsWith("@types/");
+}
+
+function adaptPackageJsonForJavaScript(packageJson) {
+  const pkg = JSON.parse(JSON.stringify(packageJson));
+
+  if (typeof pkg.main === "string") {
+    pkg.main = pkg.main.replace(/\.tsx$/u, ".jsx").replace(/\.ts$/u, ".js");
+  }
+
+  if (pkg.scripts !== null && typeof pkg.scripts === "object" && !Array.isArray(pkg.scripts)) {
+    const scripts = { ...pkg.scripts };
+    for (const key of Object.keys(scripts)) {
+      const scriptValue = scripts[key];
+      if (typeof scriptValue !== "string") continue;
+      scripts[key] = adaptScriptCommand(scriptValue);
+    }
+    if (typeof scripts.build === "string" && /^\s*tsc(\s|$)/u.test(scripts.build)) {
+      delete scripts.build;
+    }
+    pkg.scripts = scripts;
+  }
+
+  if (
+    pkg.devDependencies !== null &&
+    typeof pkg.devDependencies === "object" &&
+    !Array.isArray(pkg.devDependencies)
+  ) {
+    const devDeps = { ...pkg.devDependencies };
+    for (const name of Object.keys(devDeps)) {
+      if (TYPESCRIPT_ONLY_DEV_DEPENDENCIES.has(name) || isTypesPackage(name)) {
+        delete devDeps[name];
+      }
+    }
+    if (Object.keys(devDeps).length === 0) {
+      delete pkg.devDependencies;
+    } else {
+      pkg.devDependencies = devDeps;
+    }
+  }
+
+  return pkg;
+}
 
 function normalizeRelativePath(filePath) {
   return filePath.split(path.sep).join("/");
@@ -84,20 +150,16 @@ function createFileFilter(argv) {
   };
 }
 
-async function getTypeScriptFiles(dir, fileFilter) {
+async function getAllFilteredFiles(dir, fileFilter) {
   const entries = await readdir(dir, { withFileTypes: true });
   const files = await Promise.all(
     entries.map(async (entry) => {
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
-        return getTypeScriptFiles(fullPath, fileFilter);
+        return getAllFilteredFiles(fullPath, fileFilter);
       }
 
-      if (
-        entry.isFile() &&
-        (entry.name.endsWith(".ts") || entry.name.endsWith(".tsx")) &&
-        fileFilter(fullPath)
-      ) {
+      if (entry.isFile() && fileFilter(fullPath)) {
         return [fullPath];
       }
 
@@ -106,6 +168,23 @@ async function getTypeScriptFiles(dir, fileFilter) {
   );
 
   return files.flat();
+}
+
+async function copyAssetFile(sourcePath) {
+  const relativePath = path.relative(TYPESCRIPT_DIR, sourcePath);
+  const outputPath = path.join(JAVASCRIPT_DIR, relativePath);
+  await mkdir(path.dirname(outputPath), { recursive: true });
+  await copyFile(sourcePath, outputPath);
+}
+
+async function writeAdaptedPackageJson(sourcePath) {
+  const relativePath = path.relative(TYPESCRIPT_DIR, sourcePath);
+  const outputPath = path.join(JAVASCRIPT_DIR, relativePath);
+  const raw = await readFile(sourcePath, "utf8");
+  const pkg = JSON.parse(raw);
+  const adapted = adaptPackageJsonForJavaScript(pkg);
+  await mkdir(path.dirname(outputPath), { recursive: true });
+  await writeFile(outputPath, `${JSON.stringify(adapted, null, 2)}\n`, "utf8");
 }
 
 async function transpileFile(sourcePath) {
@@ -146,14 +225,29 @@ async function buildJavaScriptTemplates() {
   await rm(JAVASCRIPT_DIR, { recursive: true, force: true });
   await mkdir(JAVASCRIPT_DIR, { recursive: true });
 
-  const tsFiles = await getTypeScriptFiles(TYPESCRIPT_DIR, fileFilter);
+  const allFiles = await getAllFilteredFiles(TYPESCRIPT_DIR, fileFilter);
+  const tsFiles = allFiles.filter(isTranspilableTypeScriptSource);
+  const assetFiles = allFiles.filter((filePath) => !isTranspilableTypeScriptSource(filePath));
+
   await Promise.all(tsFiles.map((file) => transpileFile(file)));
+
+  await Promise.all(
+    assetFiles.map(async (filePath) => {
+      if (path.basename(filePath) === "package.json") {
+        await writeAdaptedPackageJson(filePath);
+      } else {
+        await copyAssetFile(filePath);
+      }
+    }),
+  );
 
   const args = process.argv.slice(2);
   if (args.length > 0) {
     console.log(`Filters: ${args.join(" ")}`);
   }
-  console.log(`Built ${tsFiles.length} files into javascript/`);
+  console.log(
+    `Built ${tsFiles.length} TypeScript files and ${assetFiles.length} other files into javascript/`,
+  );
 }
 
 buildJavaScriptTemplates().catch((error) => {
