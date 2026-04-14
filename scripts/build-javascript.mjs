@@ -220,12 +220,37 @@ async function transpileFile(sourcePath) {
 }
 
 async function buildJavaScriptTemplates() {
-  const fileFilter = createFileFilter(process.argv.slice(2));
-
-  await rm(JAVASCRIPT_DIR, { recursive: true, force: true });
-  await mkdir(JAVASCRIPT_DIR, { recursive: true });
+  const argv = process.argv.slice(2);
+  const fileFilter = createFileFilter(argv);
 
   const allFiles = await getAllFilteredFiles(TYPESCRIPT_DIR, fileFilter);
+
+  const includeTemplates = new Set(parseListFlag(argv, "--include-template"));
+  const includePaths = parseListFlag(argv, "--include-path");
+  const excludePathOnly = parseListFlag(argv, "--exclude-path");
+
+  // Avoid wiping unrelated templates when filters narrow the build (e.g. --include-template=foo).
+  if (includeTemplates.size > 0) {
+    const templatesToRefresh = new Set();
+    for (const filePath of allFiles) {
+      const relativePath = path.relative(TYPESCRIPT_DIR, filePath);
+      const normalizedPath = normalizeRelativePath(relativePath);
+      const [templateName] = normalizedPath.split("/");
+      if (templateName) templatesToRefresh.add(templateName);
+    }
+    await mkdir(JAVASCRIPT_DIR, { recursive: true });
+    await Promise.all(
+      [...templatesToRefresh].map((name) =>
+        rm(path.join(JAVASCRIPT_DIR, name), { recursive: true, force: true }),
+      ),
+    );
+  } else if (includePaths.length > 0 || excludePathOnly.length > 0) {
+    await mkdir(JAVASCRIPT_DIR, { recursive: true });
+    // Path-level filters can match a subset of files per template; only overwrites run.
+  } else {
+    await rm(JAVASCRIPT_DIR, { recursive: true, force: true });
+    await mkdir(JAVASCRIPT_DIR, { recursive: true });
+  }
   const tsFiles = allFiles.filter(isTranspilableTypeScriptSource);
   const assetFiles = allFiles.filter((filePath) => !isTranspilableTypeScriptSource(filePath));
 
@@ -241,9 +266,8 @@ async function buildJavaScriptTemplates() {
     }),
   );
 
-  const args = process.argv.slice(2);
-  if (args.length > 0) {
-    console.log(`Filters: ${args.join(" ")}`);
+  if (argv.length > 0) {
+    console.log(`Filters: ${argv.join(" ")}`);
   }
   console.log(
     `Built ${tsFiles.length} TypeScript files and ${assetFiles.length} other files into javascript/`,
