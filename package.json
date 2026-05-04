@@ -6,6 +6,8 @@
   "type": "module",
   "scripts": {
     "build:javascript": "node scripts/build-javascript.mjs",
+    "ci:playground": "node scripts/playground-ci.mjs",
+    "validate:playground": "node scripts/validate-playground-templates.mjs",
     "check:readme-template-index": "node scripts/check-readme-template-index.mjs",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",

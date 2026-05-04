@@ -12,6 +12,114 @@ const DEFAULT_EXCLUDED_DIRS = new Set(["node_modules", ".next", "dist", "build",
 
 const TYPESCRIPT_ONLY_DEV_DEPENDENCIES = new Set(["typescript", "tsx"]);
 
+/**
+ * Builds JavaScript templates from TypeScript templates.
+ * @returns {Promise<void>}
+ * @throws {Error} If the build fails.
+ */
+async function buildJavaScriptTemplates() {
+  // Get the command line arguments.
+  const argv = process.argv.slice(2);
+  // Filter function that determines which files to include in the build.
+  const fileFilter = createFileFilter(argv);
+  const allFiles = await getAllFilteredFiles(TYPESCRIPT_DIR, fileFilter);
+
+  const includeTemplates = new Set(parseListFlag(argv, "--include-template"));
+  const includePaths = parseListFlag(argv, "--include-path");
+  const excludePathOnly = parseListFlag(argv, "--exclude-path");
+
+  // Avoid wiping unrelated templates when filters narrow the build (e.g. --include-template=foo).
+  if (includeTemplates.size > 0) {
+    const templatesToRefresh = new Set();
+    for (const filePath of allFiles) {
+      const relativePath = path.relative(TYPESCRIPT_DIR, filePath);
+      const normalizedPath = normalizeRelativePath(relativePath);
+      const [templateName] = normalizedPath.split("/");
+      if (templateName) templatesToRefresh.add(templateName);
+    }
+    await mkdir(JAVASCRIPT_DIR, { recursive: true });
+    await Promise.all(
+      [...templatesToRefresh].map((name) =>
+        rm(path.join(JAVASCRIPT_DIR, name), { recursive: true, force: true }),
+      ),
+    );
+  } else if (includePaths.length > 0 || excludePathOnly.length > 0) {
+    await mkdir(JAVASCRIPT_DIR, { recursive: true });
+    // Path-level filters can match a subset of files per template; only overwrites run.
+  } else {
+    await rm(JAVASCRIPT_DIR, { recursive: true, force: true });
+    await mkdir(JAVASCRIPT_DIR, { recursive: true });
+  }
+  const tsFiles = allFiles.filter(isTranspilableTypeScriptSource);
+  const assetFiles = allFiles.filter((filePath) => !isTranspilableTypeScriptSource(filePath));
+
+  await Promise.all(tsFiles.map((file) => transpileFile(file)));
+
+  await Promise.all(
+    assetFiles.map(async (filePath) => {
+      if (path.basename(filePath) === "package.json") {
+        await writeAdaptedPackageJson(filePath);
+      } else {
+        await copyAssetFile(filePath);
+      }
+    }),
+  );
+
+  if (argv.length > 0) {
+    console.log(`Filters: ${argv.join(" ")}`);
+  }
+  console.log(
+    `Built ${tsFiles.length} TypeScript files and ${assetFiles.length} other files into javascript/`,
+  );
+}
+
+/**
+ * Creates a file filter function from command line arguments.
+ * Returns a function that takes a source path and returns a boolean indicating whether the file should be included.
+ * Flags:
+ * --include-template=<name[,name2]>  Include only matching top-level template folders.
+ * --exclude-template=<name[,name2]>  Exclude matching top-level template folders.
+ * --include-path=<token[,token2]>    Include files whose relative path contains any token.
+ * --exclude-path=<token[,token2]>    Exclude files whose relative path contains any token.
+ * --exclude=<token[,token2]>         Convenience alias: applies to both template-name and path excludes.
+ * Each flag supports both "--flag value" and "--flag=value" forms.
+ * @param {string[]} argv
+ * @returns {function(string): boolean}
+ */
+function createFileFilter(argv) {
+  const includeTemplates = new Set(parseListFlag(argv, "--include-template"));
+  const genericExcludes = parseListFlag(argv, "--exclude");
+  const excludeTemplates = new Set([
+    ...parseListFlag(argv, "--exclude-template"),
+    ...genericExcludes,
+  ]);
+  const includePaths = parseListFlag(argv, "--include-path");
+  const excludePaths = [...parseListFlag(argv, "--exclude-path"), ...genericExcludes];
+
+  return (sourcePath) => {
+    const relativePath = path.relative(TYPESCRIPT_DIR, sourcePath);
+    const normalizedPath = normalizeRelativePath(relativePath);
+    const [templateName] = normalizedPath.split("/");
+
+    if (!templateName) return false;
+    if (normalizedPath.endsWith(".d.ts")) return false;
+
+    const pathSegments = normalizedPath.split("/");
+    if (pathSegments.some((segment) => DEFAULT_EXCLUDED_DIRS.has(segment))) return false;
+
+    if (includeTemplates.size > 0 && !includeTemplates.has(templateName)) return false;
+    if (excludeTemplates.has(templateName)) return false;
+
+    if (includePaths.length > 0 && !includePaths.some((token) => normalizedPath.includes(token))) {
+      return false;
+    }
+
+    if (excludePaths.some((token) => normalizedPath.includes(token))) return false;
+
+    return true;
+  };
+}
+
 function isTranspilableTypeScriptSource(filePath) {
   const name = path.basename(filePath);
   if (name.endsWith(".tsx")) return true;
@@ -109,47 +217,6 @@ function parseListFlag(argv, flagName) {
   return values;
 }
 
-function createFileFilter(argv) {
-  // Filtering flags:
-  // --include-template=<name[,name2]>  Include only matching top-level template folders.
-  // --exclude-template=<name[,name2]>  Exclude matching top-level template folders.
-  // --include-path=<token[,token2]>    Include files whose relative path contains any token.
-  // --exclude-path=<token[,token2]>    Exclude files whose relative path contains any token.
-  // --exclude=<token[,token2]>         Convenience alias: applies to both template-name and path excludes.
-  // Each flag supports both "--flag value" and "--flag=value" forms.
-  const includeTemplates = new Set(parseListFlag(argv, "--include-template"));
-  const genericExcludes = parseListFlag(argv, "--exclude");
-  const excludeTemplates = new Set([
-    ...parseListFlag(argv, "--exclude-template"),
-    ...genericExcludes,
-  ]);
-  const includePaths = parseListFlag(argv, "--include-path");
-  const excludePaths = [...parseListFlag(argv, "--exclude-path"), ...genericExcludes];
-
-  return (sourcePath) => {
-    const relativePath = path.relative(TYPESCRIPT_DIR, sourcePath);
-    const normalizedPath = normalizeRelativePath(relativePath);
-    const [templateName] = normalizedPath.split("/");
-
-    if (!templateName) return false;
-    if (normalizedPath.endsWith(".d.ts")) return false;
-
-    const pathSegments = normalizedPath.split("/");
-    if (pathSegments.some((segment) => DEFAULT_EXCLUDED_DIRS.has(segment))) return false;
-
-    if (includeTemplates.size > 0 && !includeTemplates.has(templateName)) return false;
-    if (excludeTemplates.has(templateName)) return false;
-
-    if (includePaths.length > 0 && !includePaths.some((token) => normalizedPath.includes(token))) {
-      return false;
-    }
-
-    if (excludePaths.some((token) => normalizedPath.includes(token))) return false;
-
-    return true;
-  };
-}
-
 async function getAllFilteredFiles(dir, fileFilter) {
   const entries = await readdir(dir, { withFileTypes: true });
   const files = await Promise.all(
@@ -217,61 +284,6 @@ async function transpileFile(sourcePath) {
 
   await mkdir(path.dirname(outputPath), { recursive: true });
   await writeFile(outputPath, transpiled.outputText, "utf8");
-}
-
-async function buildJavaScriptTemplates() {
-  const argv = process.argv.slice(2);
-  const fileFilter = createFileFilter(argv);
-
-  const allFiles = await getAllFilteredFiles(TYPESCRIPT_DIR, fileFilter);
-
-  const includeTemplates = new Set(parseListFlag(argv, "--include-template"));
-  const includePaths = parseListFlag(argv, "--include-path");
-  const excludePathOnly = parseListFlag(argv, "--exclude-path");
-
-  // Avoid wiping unrelated templates when filters narrow the build (e.g. --include-template=foo).
-  if (includeTemplates.size > 0) {
-    const templatesToRefresh = new Set();
-    for (const filePath of allFiles) {
-      const relativePath = path.relative(TYPESCRIPT_DIR, filePath);
-      const normalizedPath = normalizeRelativePath(relativePath);
-      const [templateName] = normalizedPath.split("/");
-      if (templateName) templatesToRefresh.add(templateName);
-    }
-    await mkdir(JAVASCRIPT_DIR, { recursive: true });
-    await Promise.all(
-      [...templatesToRefresh].map((name) =>
-        rm(path.join(JAVASCRIPT_DIR, name), { recursive: true, force: true }),
-      ),
-    );
-  } else if (includePaths.length > 0 || excludePathOnly.length > 0) {
-    await mkdir(JAVASCRIPT_DIR, { recursive: true });
-    // Path-level filters can match a subset of files per template; only overwrites run.
-  } else {
-    await rm(JAVASCRIPT_DIR, { recursive: true, force: true });
-    await mkdir(JAVASCRIPT_DIR, { recursive: true });
-  }
-  const tsFiles = allFiles.filter(isTranspilableTypeScriptSource);
-  const assetFiles = allFiles.filter((filePath) => !isTranspilableTypeScriptSource(filePath));
-
-  await Promise.all(tsFiles.map((file) => transpileFile(file)));
-
-  await Promise.all(
-    assetFiles.map(async (filePath) => {
-      if (path.basename(filePath) === "package.json") {
-        await writeAdaptedPackageJson(filePath);
-      } else {
-        await copyAssetFile(filePath);
-      }
-    }),
-  );
-
-  if (argv.length > 0) {
-    console.log(`Filters: ${argv.join(" ")}`);
-  }
-  console.log(
-    `Built ${tsFiles.length} TypeScript files and ${assetFiles.length} other files into javascript/`,
-  );
 }
 
 buildJavaScriptTemplates().catch((error) => {
