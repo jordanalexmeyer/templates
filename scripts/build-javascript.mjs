@@ -132,6 +132,8 @@ function isTranspilableTypeScriptSource(filePath) {
 /** Rewrite npm script strings from TypeScript runner / paths to plain Node. */
 function adaptScriptCommand(command) {
   let value = command
+    .replaceAll(/\bnpx\s+tsx\s+watch\s+/g, "node --watch ")
+    .replaceAll(/\bnpx\s+tsx\s+/g, "node ")
     .replaceAll(/\btsx\s+watch\s+/g, "node --watch ")
     .replaceAll(/\btsx\s+/g, "node ");
   return value
