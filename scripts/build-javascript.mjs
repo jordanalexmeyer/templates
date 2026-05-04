@@ -1,3 +1,9 @@
+/**
+ * Transpiles `typescript/` → `javascript/` for local development and tooling
+ * (e.g. `pnpm run build:javascript`). It is not run by CI on `main`/`dev`.
+ * Playground-facing JS on the `production` branch is produced by
+ * `scripts/playground-ci.mjs` via `.github/workflows/playground-production.yml`.
+ */
 import { copyFile, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import console from "node:console";
 import path from "node:path";
@@ -12,11 +18,7 @@ const DEFAULT_EXCLUDED_DIRS = new Set(["node_modules", ".next", "dist", "build",
 
 const TYPESCRIPT_ONLY_DEV_DEPENDENCIES = new Set(["typescript", "tsx"]);
 
-/**
- * Builds JavaScript templates from TypeScript templates.
- * @returns {Promise<void>}
- * @throws {Error} If the build fails.
- */
+/** Builds JavaScript from TypeScript (local development; see file header). */
 async function buildJavaScriptTemplates() {
   // Get the command line arguments.
   const argv = process.argv.slice(2);
