@@ -225,6 +225,9 @@ async function getAllFilteredFiles(dir, fileFilter) {
     entries.map(async (entry) => {
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
+        if (DEFAULT_EXCLUDED_DIRS.has(entry.name)) {
+          return [];
+        }
         return getAllFilteredFiles(fullPath, fileFilter);
       }
 
