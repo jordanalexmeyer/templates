@@ -1,30 +1,15 @@
-name: Build JavaScript Templates
+# Full TypeScript → JavaScript mirror (entire `typescript/` tree). This workflow no
+# longer runs on branch pushes or opens PRs — generated `javascript/` is committed
+# only from the production playground workflow. Use this job manually when you need a
+# one-off full build in CI (artifacts are not pushed to the repo).
+
+name: Build JavaScript Templates (manual)
 
 on:
-  push:
-    branches:
-      - main
-      - dev
-    paths:
-      - "typescript/**"
-      - "scripts/build-javascript.mjs"
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - ".github/workflows/build-javascript.yml"
-  pull_request:
-    branches:
-      - main
-      - dev
-    paths:
-      - "typescript/**"
-      - "scripts/build-javascript.mjs"
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - ".github/workflows/build-javascript.yml"
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build-javascript:
@@ -45,12 +30,5 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build javascript templates
+      - name: Build javascript templates (full tree; not committed)
         run: pnpm run build:javascript
-
-      - name: Commit generated javascript files
-        if: github.event_name != 'pull_request'
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "chore: regenerate javascript templates"
-          file_pattern: javascript/**
