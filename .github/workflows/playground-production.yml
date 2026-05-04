@@ -1,0 +1,60 @@
+# Validates TypeScript → JavaScript builds for templates exposed by the public
+# templates API (playgroundRunnable). Intended for the `production` branch workflow
+# described in https://github.com/browserbase/templates (branch protection: require
+# this check + Dashboard team review before merge).
+#
+# Set TEMPLATES_API_URL to override the default public endpoint (e.g. staging).
+
+name: Playground templates (production)
+
+on:
+  pull_request:
+    branches:
+      - production
+  push:
+    branches:
+      - production
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  playground-templates:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Clean javascript output directory
+        run: rm -rf javascript && mkdir -p javascript
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and validate playground TypeScript templates
+        env:
+          TEMPLATES_API_URL: ${{ vars.TEMPLATES_API_URL }}
+        run: pnpm run ci:playground
+
+      - name: Commit and push playground javascript (push to production only)
+        if: github.event_name == 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A javascript/
+          if git diff --staged --quiet; then
+            echo "No javascript changes to commit."
+          else
+            git commit -m "chore: regenerate playground javascript templates"
+            git push
+          fi
