@@ -1,0 +1,1170 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>bb research engine</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f4f6f1;
+        --surface: #ffffff;
+        --surface-2: #f8faf7;
+        --ink: #151923;
+        --muted: #5f6977;
+        --line: #dce2d7;
+        --line-strong: #c7d0c1;
+        --accent: #16745d;
+        --accent-2: #245f9f;
+        --accent-soft: #e7f3ee;
+        --warn: #925a18;
+        --error: #b4232d;
+        --shadow: 0 18px 45px rgba(22, 28, 39, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.5;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      button:disabled {
+        cursor: wait;
+        opacity: 0.68;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      a {
+        color: var(--accent-2);
+        overflow-wrap: anywhere;
+        text-decoration-thickness: 1px;
+        text-underline-offset: 2px;
+      }
+
+      .app-shell {
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: 260px minmax(0, 1fr);
+      }
+
+      .sidebar {
+        min-height: 100vh;
+        border-right: 1px solid var(--line);
+        background: #fbfcf9;
+        padding: 22px 18px;
+        display: grid;
+        grid-template-rows: auto auto 1fr;
+        gap: 24px;
+      }
+
+      .brand {
+        display: grid;
+        gap: 4px;
+      }
+
+      .brand h1 {
+        font-size: 20px;
+        letter-spacing: 0;
+        line-height: 1.2;
+      }
+
+      .brand p {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .side-nav,
+      .history-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .nav-button,
+      .history-button,
+      .tab-button {
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--muted);
+        border-radius: 6px;
+        min-height: 38px;
+        padding: 0 10px;
+        text-align: left;
+        font-weight: 700;
+      }
+
+      .nav-button.active,
+      .tab-button.active {
+        background: var(--accent-soft);
+        border-color: #bfddd1;
+        color: var(--accent);
+      }
+
+      .history {
+        align-self: end;
+        display: grid;
+        gap: 10px;
+        min-height: 0;
+      }
+
+      .history h2 {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .history-list {
+        max-height: 34vh;
+        overflow: auto;
+      }
+
+      .history-button {
+        min-height: unset;
+        padding: 10px;
+        background: var(--surface);
+        border-color: var(--line);
+      }
+
+      .history-button strong,
+      .history-button span {
+        display: block;
+      }
+
+      .history-button strong {
+        color: var(--ink);
+        font-size: 13px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .history-button span {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 650;
+        margin-top: 2px;
+      }
+
+      .history-empty,
+      .empty {
+        color: var(--muted);
+        font-size: 13px;
+        border: 1px dashed var(--line-strong);
+        border-radius: 6px;
+        padding: 14px;
+        background: rgba(255, 255, 255, 0.62);
+      }
+
+      .main {
+        min-width: 0;
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      .topbar {
+        min-height: 72px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.82);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 0 28px;
+      }
+
+      .topbar h2 {
+        font-size: 16px;
+        letter-spacing: 0;
+      }
+
+      .status-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .status-pill {
+        min-height: 32px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: var(--surface);
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 750;
+        padding: 0 12px;
+      }
+
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--warn);
+      }
+
+      .status-pill.ready .dot,
+      .status-pill.online .dot {
+        background: var(--accent);
+      }
+
+      .status-pill.error .dot,
+      .status-pill.offline .dot {
+        background: var(--error);
+      }
+
+      .workspace {
+        min-width: 0;
+        padding: 28px;
+        display: grid;
+        gap: 18px;
+        align-content: start;
+      }
+
+      .command-panel,
+      .brief-panel,
+      .explain-panel,
+      .panel,
+      .metric-card,
+      .timeline,
+      .notice {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+      }
+
+      .command-panel {
+        padding: 18px;
+      }
+
+      .brief-panel {
+        padding: 18px;
+        box-shadow: none;
+        display: grid;
+        gap: 8px;
+      }
+
+      .brief-panel span {
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 850;
+        text-transform: uppercase;
+      }
+
+      .brief-panel h2 {
+        font-size: 18px;
+        line-height: 1.25;
+      }
+
+      .brief-panel p {
+        color: var(--muted);
+        max-width: 1060px;
+      }
+
+      .explain-panel {
+        padding: 18px;
+        box-shadow: none;
+        display: grid;
+        gap: 14px;
+      }
+
+      .explain-heading {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 14px;
+      }
+
+      .explain-heading h2 {
+        font-size: 18px;
+        line-height: 1.25;
+      }
+
+      .explain-heading p {
+        color: var(--muted);
+        font-size: 13px;
+        max-width: 680px;
+      }
+
+      .explain-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      details {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--surface-2);
+        padding: 0;
+      }
+
+      details[open] {
+        border-color: #b8d7ca;
+        background: #f4faf7;
+      }
+
+      summary {
+        min-height: 52px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        color: var(--ink);
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 850;
+        padding: 0 12px;
+      }
+
+      summary::-webkit-details-marker {
+        display: none;
+      }
+
+      summary::after {
+        content: "+";
+        color: var(--accent);
+        font-size: 18px;
+        font-weight: 800;
+        line-height: 1;
+      }
+
+      details[open] summary::after {
+        content: "-";
+      }
+
+      .explain-body {
+        border-top: 1px solid var(--line);
+        display: grid;
+        gap: 8px;
+        padding: 12px;
+      }
+
+      .explain-body p {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .trust-note {
+        border-left: 3px solid var(--accent);
+        background: #ffffff;
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 700;
+        padding: 10px 12px;
+      }
+
+      form {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 12px;
+        align-items: end;
+      }
+
+      label {
+        display: grid;
+        gap: 7px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      input {
+        width: 100%;
+        min-height: 46px;
+        border: 1px solid var(--line-strong);
+        border-radius: 6px;
+        background: #fff;
+        color: var(--ink);
+        padding: 0 13px;
+        font-weight: 650;
+      }
+
+      input:focus {
+        border-color: var(--accent);
+        outline: 3px solid rgba(22, 116, 93, 0.15);
+      }
+
+      .run-button {
+        min-height: 46px;
+        border: 0;
+        border-radius: 6px;
+        background: var(--accent);
+        color: #fff;
+        font-weight: 800;
+        padding: 0 18px;
+        white-space: nowrap;
+      }
+
+      .run-button:not(:disabled):hover {
+        background: #115f4d;
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .metric-card {
+        padding: 16px;
+        min-height: 104px;
+        box-shadow: none;
+      }
+
+      .metric-card span {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .metric-card strong {
+        display: block;
+        color: var(--ink);
+        font-size: 30px;
+        line-height: 1.1;
+        margin-top: 10px;
+      }
+
+      .metric-card small {
+        color: var(--muted);
+        display: block;
+        font-size: 12px;
+        margin-top: 5px;
+      }
+
+      .timeline {
+        box-shadow: none;
+        padding: 14px;
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .step {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--surface-2);
+        min-height: 54px;
+        padding: 9px 10px;
+      }
+
+      .step span {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 850;
+        text-transform: uppercase;
+      }
+
+      .step strong {
+        display: block;
+        font-size: 13px;
+        margin-top: 2px;
+      }
+
+      .step.active {
+        border-color: #9ccbb8;
+        background: var(--accent-soft);
+      }
+
+      .step.done {
+        border-color: #b5d6c7;
+        background: #f1f8f5;
+      }
+
+      .step.failed {
+        border-color: #efb5b9;
+        background: #fff5f5;
+      }
+
+      .notice {
+        border-left: 4px solid var(--error);
+        box-shadow: none;
+        color: var(--error);
+        padding: 14px 16px;
+      }
+
+      .results-shell {
+        min-width: 0;
+        display: grid;
+        gap: 0;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+      }
+
+      .tab-button {
+        border-color: var(--line);
+        background: rgba(255, 255, 255, 0.72);
+        text-align: center;
+      }
+
+      .panel {
+        padding: 18px;
+        min-height: 260px;
+      }
+
+      .panel[hidden] {
+        display: none;
+      }
+
+      .panel h2 {
+        font-size: 18px;
+        margin-bottom: 12px;
+      }
+
+      .summary-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.3fr) minmax(260px, 0.7fr);
+        gap: 14px;
+      }
+
+      .summary-card,
+      .finding,
+      .source-card,
+      .artifact-card {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--surface-2);
+        padding: 14px;
+      }
+
+      .summary-card p,
+      .finding p,
+      .source-card p {
+        color: var(--ink);
+      }
+
+      .summary-card + .summary-card {
+        margin-top: 12px;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .pass {
+        color: var(--accent);
+        font-weight: 800;
+      }
+
+      .fail {
+        color: var(--warn);
+        font-weight: 800;
+      }
+
+      .list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .finding h3,
+      .source-card h3 {
+        font-size: 15px;
+        margin-bottom: 8px;
+      }
+
+      .finding-footer {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 750;
+        margin-top: 10px;
+      }
+
+      .sources-table-wrap {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 760px;
+        background: var(--surface);
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid var(--line);
+        padding: 12px;
+        text-align: left;
+        vertical-align: top;
+        font-size: 13px;
+      }
+
+      th {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 850;
+        text-transform: uppercase;
+        background: var(--surface-2);
+      }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
+      pre {
+        margin: 0;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        background: #121821;
+        color: #f8fafc;
+        border-radius: 6px;
+        padding: 14px;
+        font-size: 13px;
+      }
+
+      @media (max-width: 980px) {
+        .app-shell {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          min-height: unset;
+          grid-template-rows: auto auto;
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+
+        .side-nav {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .history {
+          display: none;
+        }
+
+        .metrics,
+        .timeline,
+        .summary-grid,
+        .explain-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 680px) {
+        .topbar {
+          align-items: flex-start;
+          flex-direction: column;
+          padding: 16px;
+        }
+
+        .workspace {
+          padding: 16px;
+        }
+
+        form,
+        .metrics,
+        .timeline,
+        .summary-grid,
+        .explain-grid,
+        .side-nav {
+          grid-template-columns: 1fr;
+        }
+
+        .explain-heading {
+          display: grid;
+        }
+
+        .run-button {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <p>Browserbase</p>
+          <h1>bb research engine</h1>
+        </div>
+        <nav class="side-nav" aria-label="Workspace">
+          <button class="nav-button active" type="button" data-tab-target="overview">Overview</button>
+          <button class="nav-button" type="button" data-tab-target="findings">Findings</button>
+          <button class="nav-button" type="button" data-tab-target="sources">Sources</button>
+          <button class="nav-button" type="button" data-tab-target="artifacts">Artifacts</button>
+        </nav>
+        <section class="history" aria-labelledby="history-heading">
+          <h2 id="history-heading">Runs</h2>
+          <div class="history-list" id="history-list"></div>
+        </section>
+      </aside>
+
+      <div class="main">
+        <header class="topbar">
+          <h2 id="workspace-title">Research workspace</h2>
+          <div class="status-row">
+            <div class="status-pill ready" id="status-pill">
+              <span class="dot" aria-hidden="true"></span>
+              <span id="status">Ready</span>
+            </div>
+            <div class="status-pill" id="api-pill">
+              <span class="dot" aria-hidden="true"></span>
+              <span id="api-status">Checking API</span>
+            </div>
+          </div>
+        </header>
+
+        <main class="workspace">
+          <section class="command-panel">
+            <form id="research-form">
+              <label>
+                Research topic
+                <input id="topic" name="topic" maxlength="300" required value="Browserbase Fetch API" />
+              </label>
+              <button class="run-button" id="submit" type="submit">Run research</button>
+            </form>
+          </section>
+
+          <section class="brief-panel" aria-labelledby="brief-heading">
+            <span>System brief</span>
+            <h2 id="brief-heading">Evidence-first web research, backed by Browserbase</h2>
+            <p>
+              bb research engine turns a research question into a cited, auditable brief by searching the live web,
+              fetching source content, falling back to Browserbase/Stagehand browser sessions when pages are dynamic or
+              blocked, extracting evidence, synthesizing key findings, and scoring the final answer with a verification
+              pass. We find this to be increasingly essential because it moves research from "ask a model and trust it"
+              to a repeatable evidence pipeline where sources, claims, gaps, and confidence are visible. The value prop
+              is that it combines cheap search/fetch workflows with real browser automation only when needed, so teams
+              can produce higher-trust research faster without manually opening dozens of tabs or losing track of why an
+              answer is credible.
+            </p>
+          </section>
+
+          <section class="explain-panel" aria-labelledby="explain-heading">
+            <div class="explain-heading">
+              <div>
+                <h2 id="explain-heading">How the engine works</h2>
+                <p>Open each stage to see what it contributes to the research pipeline.</p>
+              </div>
+            </div>
+            <div class="explain-grid">
+              <details>
+                <summary>Search</summary>
+                <div class="explain-body">
+                  <p>Uses Browserbase Search to discover candidate URLs from the live web without launching a browser for every page.</p>
+                  <p>This keeps discovery fast and cheap while preserving useful metadata like titles, URLs, and result context.</p>
+                </div>
+              </details>
+              <details>
+                <summary>Fetch</summary>
+                <div class="explain-body">
+                  <p>Uses Browserbase Fetch to retrieve page content through Browserbase infrastructure and parse usable text locally.</p>
+                  <p>Fetch is the default path because it avoids browser-session cost when static content is enough.</p>
+                </div>
+              </details>
+              <details>
+                <summary>Browser fallback</summary>
+                <div class="explain-body">
+                  <p>Escalates to Stagehand browser sessions only when a page is dynamic, blocked, too thin, or needs rendered-page extraction.</p>
+                  <p>This makes real browser automation a precision tool instead of the expensive default for every source.</p>
+                </div>
+              </details>
+              <details>
+                <summary>Evidence extraction</summary>
+                <div class="explain-body">
+                  <p>Normalizes accepted pages into source records, extracts claim-level evidence, scores source quality, and keeps retrieval traces.</p>
+                  <p>The output stays inspectable because claims remain connected to source IDs, domains, word counts, and reliability scores.</p>
+                </div>
+              </details>
+              <details>
+                <summary>Synthesis</summary>
+                <div class="explain-body">
+                  <p>Turns the ranked evidence set into an executive brief with key findings, gaps, contradictions, and follow-up questions.</p>
+                  <p>The synthesizer is constrained by gathered evidence, so the UI can show why a conclusion was included.</p>
+                </div>
+              </details>
+              <details open>
+                <summary>Verifier</summary>
+                <div class="explain-body">
+                  <p>The verifier is the trust layer. It evaluates the final brief against an explicit rubric, source coverage, confidence signals, gaps, and process quality.</p>
+                  <p>It is maximally trustworthy for this workflow because it is separate from the synthesis step, uses the collected evidence as its audit surface, and reports a score, pass state, and summary instead of hiding uncertainty.</p>
+                  <div class="trust-note">The verifier does not ask you to blindly trust the answer. It makes the reasons to trust, question, or improve the answer visible.</div>
+                </div>
+              </details>
+            </div>
+          </section>
+
+          <section class="metrics" aria-label="Run metrics">
+            <div class="metric-card">
+              <span>Duration</span>
+              <strong id="metric-duration">--</strong>
+              <small>seconds</small>
+            </div>
+            <div class="metric-card">
+              <span>Sources</span>
+              <strong id="metric-sources">--</strong>
+              <small>accepted</small>
+            </div>
+            <div class="metric-card">
+              <span>Domains</span>
+              <strong id="metric-domains">--</strong>
+              <small>distinct</small>
+            </div>
+            <div class="metric-card">
+              <span>Verification</span>
+              <strong id="metric-verification">--</strong>
+              <small id="metric-pass">pending</small>
+            </div>
+          </section>
+
+          <section class="timeline" aria-label="Run timeline">
+            <div class="step" data-step="planning"><span>01</span><strong>Planning</strong></div>
+            <div class="step" data-step="search"><span>02</span><strong>Search</strong></div>
+            <div class="step" data-step="fetch"><span>03</span><strong>Fetch</strong></div>
+            <div class="step" data-step="browser"><span>04</span><strong>Browser</strong></div>
+            <div class="step" data-step="synthesis"><span>05</span><strong>Synthesis</strong></div>
+            <div class="step" data-step="verify"><span>06</span><strong>Verify</strong></div>
+          </section>
+
+          <div id="notice"></div>
+
+          <section class="results-shell">
+            <div class="tabs" role="tablist" aria-label="Results">
+              <button class="tab-button active" type="button" data-tab-target="overview">Overview</button>
+              <button class="tab-button" type="button" data-tab-target="findings">Findings</button>
+              <button class="tab-button" type="button" data-tab-target="sources">Sources</button>
+              <button class="tab-button" type="button" data-tab-target="artifacts">Artifacts</button>
+            </div>
+
+            <section class="panel" id="panel-overview">
+              <div class="empty">No run selected.</div>
+            </section>
+            <section class="panel" id="panel-findings" hidden>
+              <div class="empty">No findings yet.</div>
+            </section>
+            <section class="panel" id="panel-sources" hidden>
+              <div class="empty">No sources yet.</div>
+            </section>
+            <section class="panel" id="panel-artifacts" hidden>
+              <div class="empty">No artifacts yet.</div>
+            </section>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <script>
+      const form = document.querySelector("#research-form");
+      const topicInput = document.querySelector("#topic");
+      const submit = document.querySelector("#submit");
+      const statusText = document.querySelector("#status");
+      const statusPill = document.querySelector("#status-pill");
+      const apiStatus = document.querySelector("#api-status");
+      const apiPill = document.querySelector("#api-pill");
+      const notice = document.querySelector("#notice");
+      const historyList = document.querySelector("#history-list");
+      const panelOverview = document.querySelector("#panel-overview");
+      const panelFindings = document.querySelector("#panel-findings");
+      const panelSources = document.querySelector("#panel-sources");
+      const panelArtifacts = document.querySelector("#panel-artifacts");
+      const metricDuration = document.querySelector("#metric-duration");
+      const metricSources = document.querySelector("#metric-sources");
+      const metricDomains = document.querySelector("#metric-domains");
+      const metricVerification = document.querySelector("#metric-verification");
+      const metricPass = document.querySelector("#metric-pass");
+      const apiBase = window.location.protocol === "file:" ? "http://localhost:3000" : "";
+      const historyKey = "bb-research-engine-runs";
+      const pipelineSteps = ["planning", "search", "fetch", "browser", "synthesis", "verify"];
+
+      document.querySelectorAll("[data-tab-target]").forEach((button) => {
+        button.addEventListener("click", () => setActiveTab(button.dataset.tabTarget));
+      });
+
+      historyList.addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-topic]");
+        if (!button) return;
+        topicInput.value = button.dataset.topic;
+      });
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const topic = topicInput.value.trim();
+        if (!topic) return;
+
+        submit.disabled = true;
+        setStatus("Running", "ready");
+        setPipeline("running");
+        notice.innerHTML = "";
+        panelOverview.innerHTML = `<div class="empty">Running ${escapeHtml(topic)}</div>`;
+        panelFindings.innerHTML = `<div class="empty">No findings yet.</div>`;
+        panelSources.innerHTML = `<div class="empty">No sources yet.</div>`;
+        panelArtifacts.innerHTML = `<div class="empty">No artifacts yet.</div>`;
+        resetMetrics();
+        setActiveTab("overview");
+
+        try {
+          const response = await fetch(`${apiBase}/api/research`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ topic }),
+          });
+          const payload = await readJson(response);
+          if (!response.ok) {
+            throw new Error(payload.error || "Research failed.");
+          }
+          renderResults(payload);
+          saveRun(payload);
+          renderHistory();
+          setStatus("Ready", "ready");
+          setPipeline("complete");
+        } catch (error) {
+          notice.innerHTML = `<div class="notice">${escapeHtml(error.message || String(error))}</div>`;
+          setStatus("Error", "error");
+          setPipeline("failed");
+        } finally {
+          submit.disabled = false;
+        }
+      });
+
+      async function checkHealth() {
+        try {
+          const response = await fetch(`${apiBase}/api/health`);
+          apiStatus.textContent = response.ok ? "API online" : "API unavailable";
+          apiPill.className = `status-pill ${response.ok ? "online" : "offline"}`;
+        } catch {
+          apiStatus.textContent = "API unavailable";
+          apiPill.className = "status-pill offline";
+        }
+      }
+
+      function renderResults(result) {
+        const report = result.report || {};
+        const quality = result.qualityEval || {};
+        const verification = result.verification || {};
+        const findings = report.keyFindings || [];
+        const sources = result.sources || [];
+        const followUps = report.followUpQuestions || [];
+        const gaps = report.gaps || [];
+
+        metricDuration.textContent = String(result.durationSec || 0);
+        metricSources.textContent = String(sources.length);
+        metricDomains.textContent = String(quality.distinctDomains || 0);
+        metricVerification.textContent = verification.overallScore ?? "n/a";
+        metricPass.textContent = verification.pass ? "passed" : "review";
+        metricPass.className = verification.pass ? "pass" : "fail";
+
+        panelOverview.innerHTML = `
+          <div class="summary-grid">
+            <div>
+              <h2>${escapeHtml(report.title || result.topic)}</h2>
+              <div class="summary-card">
+                <p>${escapeHtml(report.executiveSummary || "")}</p>
+              </div>
+              <div class="summary-card">
+                <p class="${verification.pass ? "pass" : "fail"}">Verification: ${verification.pass ? "passed" : "review"}</p>
+                <p class="muted">${escapeHtml(verification.summary || "")}</p>
+              </div>
+            </div>
+            <div class="list">
+              ${renderMiniList("Gaps", gaps)}
+              ${renderMiniList("Follow ups", followUps)}
+            </div>
+          </div>
+        `;
+
+        panelFindings.innerHTML = findings.length
+          ? `<div class="list">${findings.map(renderFinding).join("")}</div>`
+          : `<div class="empty">No findings returned.</div>`;
+
+        panelSources.innerHTML = sources.length
+          ? renderSourcesTable(sources)
+          : `<div class="empty">No sources returned.</div>`;
+
+        panelArtifacts.innerHTML = `
+          <div class="artifact-card">
+            <pre>${escapeHtml(JSON.stringify(result.artifacts || {}, null, 2))}</pre>
+          </div>
+        `;
+      }
+
+      function renderMiniList(title, values) {
+        const items = Array.isArray(values) ? values.filter(Boolean) : [];
+        return `
+          <div class="summary-card">
+            <h3>${escapeHtml(title)}</h3>
+            ${items.length
+              ? `<div class="list">${items.map((item) => `<p>${escapeHtml(item)}</p>`).join("")}</div>`
+              : `<p class="muted">None returned.</p>`}
+          </div>
+        `;
+      }
+
+      function renderFinding(finding) {
+        return `
+          <article class="finding">
+            <h3>${escapeHtml(finding.confidence || "medium")} confidence</h3>
+            <p>${escapeHtml(finding.finding || "")}</p>
+            <p class="finding-footer">Sources: ${(finding.sourceIds || []).map((id) => `[${escapeHtml(id)}]`).join(", ") || "none"}</p>
+          </article>
+        `;
+      }
+
+      function renderSourcesTable(sources) {
+        return `
+          <div class="sources-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Source</th>
+                  <th>Domain</th>
+                  <th>Type</th>
+                  <th>Words</th>
+                  <th>Reliability</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${sources.map((source) => `
+                  <tr>
+                    <td>${escapeHtml(source.id)}</td>
+                    <td><a href="${escapeAttr(source.url)}">${escapeHtml(source.title)}</a></td>
+                    <td>${escapeHtml(source.domain)}</td>
+                    <td>${escapeHtml(source.sourceType)}</td>
+                    <td>${escapeHtml(source.wordCount)}</td>
+                    <td>${escapeHtml(source.reliabilityScore)}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      function saveRun(result) {
+        const runs = readHistory();
+        const verification = result.verification || {};
+        const sources = result.sources || [];
+        const nextRun = {
+          topic: result.topic,
+          durationSec: result.durationSec || 0,
+          sourceCount: sources.length,
+          score: verification.overallScore ?? "n/a",
+          createdAt: new Date().toISOString(),
+        };
+        localStorage.setItem(historyKey, JSON.stringify([nextRun, ...runs].slice(0, 8)));
+      }
+
+      function readHistory() {
+        try {
+          return JSON.parse(localStorage.getItem(historyKey) || "[]");
+        } catch {
+          return [];
+        }
+      }
+
+      function renderHistory() {
+        const runs = readHistory();
+        historyList.innerHTML = runs.length
+          ? runs.map((run) => `
+              <button class="history-button" type="button" data-topic="${escapeAttr(run.topic)}">
+                <strong>${escapeHtml(run.topic)}</strong>
+                <span>${escapeHtml(run.sourceCount)} sources | ${escapeHtml(run.score)} score</span>
+              </button>
+            `).join("")
+          : `<div class="history-empty">No saved runs.</div>`;
+      }
+
+      function setActiveTab(tabName) {
+        document.querySelectorAll("[data-tab-target]").forEach((button) => {
+          button.classList.toggle("active", button.dataset.tabTarget === tabName);
+        });
+        panelOverview.hidden = tabName !== "overview";
+        panelFindings.hidden = tabName !== "findings";
+        panelSources.hidden = tabName !== "sources";
+        panelArtifacts.hidden = tabName !== "artifacts";
+      }
+
+      function setStatus(text, state) {
+        statusText.textContent = text;
+        statusPill.className = `status-pill ${state}`;
+      }
+
+      function setPipeline(state) {
+        pipelineSteps.forEach((step, index) => {
+          const node = document.querySelector(`[data-step="${step}"]`);
+          node.className = "step";
+          if (state === "running") {
+            node.classList.toggle("active", index === 0);
+          }
+          if (state === "complete") {
+            node.classList.add("done");
+          }
+          if (state === "failed") {
+            node.classList.toggle("failed", index === 0);
+          }
+        });
+      }
+
+      function resetMetrics() {
+        metricDuration.textContent = "--";
+        metricSources.textContent = "--";
+        metricDomains.textContent = "--";
+        metricVerification.textContent = "--";
+        metricPass.textContent = "pending";
+        metricPass.className = "";
+      }
+
+      async function readJson(response) {
+        try {
+          return await response.json();
+        } catch {
+          return { error: await response.text() };
+        }
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      function escapeAttr(value) {
+        return escapeHtml(value).replace(/`/g, "&#96;");
+      }
+
+      renderHistory();
+      checkHealth();
+    </script>
+  </body>
+</html>
