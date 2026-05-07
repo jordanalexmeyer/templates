@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { readFile } from "node:fs/promises";
+import { cleanTopic, errorMessage, readTopic, runResearchForResponse } from "./src/api-utils.js";
 
 export const config = {
   maxDuration: 300,
@@ -49,36 +50,7 @@ async function runResearchHandler(request: any, response: any): Promise<void> {
   }
 
   try {
-    const { runResearchTask } = await import("./src/research.js");
-    const startedAt = Date.now();
-    const result = await runResearchTask({
-      topic,
-      runId: `vercel-${Date.now()}`,
-    });
-    const latestQuality = result.traces[result.traces.length - 1]?.qualityEval;
-
-    return sendJson(response, 200, {
-      topic: result.topic,
-      durationSec: Math.round((Date.now() - startedAt) / 1000),
-      report: result.report,
-      verification: result.verification,
-      qualityEval: latestQuality,
-      sources: result.evidence.map((source) => ({
-        id: source.id,
-        title: source.title,
-        url: source.url,
-        domain: source.domain,
-        sourceType: source.sourceType,
-        wordCount: source.wordCount,
-        reliabilityScore: source.reliabilityScore,
-        score: Number(source.score.toFixed(3)),
-      })),
-      artifacts: {
-        workspace: result.workspace.root,
-        markdown: result.paths.markdownPath,
-        json: result.paths.jsonPath,
-      },
-    });
+    return sendJson(response, 200, await runResearchForResponse(topic, "vercel"));
   } catch (error) {
     return sendJson(response, 500, { error: errorMessage(error) });
   }
@@ -126,30 +98,4 @@ function setCorsHeaders(response: any): void {
   response.setHeader("access-control-allow-origin", "*");
   response.setHeader("access-control-allow-methods", "GET,POST,OPTIONS");
   response.setHeader("access-control-allow-headers", "content-type");
-}
-
-function readTopic(body: unknown): string {
-  if (!body) return "";
-  if (typeof body === "string") {
-    try {
-      const parsed = JSON.parse(body) as { topic?: unknown };
-      return typeof parsed.topic === "string" ? parsed.topic : "";
-    } catch {
-      return "";
-    }
-  }
-  if (typeof body === "object" && "topic" in body) {
-    const topic = (body as { topic?: unknown }).topic;
-    return typeof topic === "string" ? topic : "";
-  }
-  return "";
-}
-
-function cleanTopic(value: string): string {
-  return value.replace(/\s+/g, " ").trim().slice(0, 300);
-}
-
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return String(error);
 }

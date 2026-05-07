@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { readFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { runResearchTask } from "./research.js";
+import { cleanTopic, errorMessage, readTopic, runResearchForResponse } from "./api-utils.js";
 
 const PORT = Number.parseInt(process.env.PORT || "3000", 10);
 const INDEX_HTML_URL = new URL("../public/index.html", import.meta.url);
@@ -60,35 +60,7 @@ async function handleResearch(request: IncomingMessage, response: ServerResponse
 
   activeRun = true;
   try {
-    const startedAt = Date.now();
-    const result = await runResearchTask({
-      topic,
-      runId: `web-${Date.now()}`,
-    });
-    const latestQuality = result.traces[result.traces.length - 1]?.qualityEval;
-
-    return sendJson(response, 200, {
-      topic: result.topic,
-      durationSec: Math.round((Date.now() - startedAt) / 1000),
-      report: result.report,
-      verification: result.verification,
-      qualityEval: latestQuality,
-      sources: result.evidence.map((source) => ({
-        id: source.id,
-        title: source.title,
-        url: source.url,
-        domain: source.domain,
-        sourceType: source.sourceType,
-        wordCount: source.wordCount,
-        reliabilityScore: source.reliabilityScore,
-        score: Number(source.score.toFixed(3)),
-      })),
-      artifacts: {
-        workspace: result.workspace.root,
-        markdown: result.paths.markdownPath,
-        json: result.paths.jsonPath,
-      },
-    });
+    return sendJson(response, 200, await runResearchForResponse(topic, "web"));
   } catch (error) {
     return sendJson(response, 500, { error: errorMessage(error) });
   } finally {
@@ -112,21 +84,6 @@ async function readBody(request: IncomingMessage): Promise<string> {
     chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   }
   return Buffer.concat(chunks).toString("utf8");
-}
-
-function readTopic(body: string): string {
-  if (!body) return "";
-  try {
-    const parsed = JSON.parse(body) as { topic?: unknown };
-    return typeof parsed.topic === "string" ? parsed.topic : "";
-  } catch {
-    const params = new URLSearchParams(body);
-    return params.get("topic") || "";
-  }
-}
-
-function cleanTopic(value: string): string {
-  return value.replace(/\s+/g, " ").trim().slice(0, 300);
 }
 
 function sendHtml(response: ServerResponse, statusCode: number, html: string): void {
@@ -153,9 +110,4 @@ function setCorsHeaders(response: ServerResponse): void {
   response.setHeader("access-control-allow-origin", "*");
   response.setHeader("access-control-allow-methods", "GET,POST,OPTIONS");
   response.setHeader("access-control-allow-headers", "content-type");
-}
-
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return String(error);
 }

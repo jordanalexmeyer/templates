@@ -1634,25 +1634,31 @@ function buildDeterministicVerification(input: {
   rejected: RejectedSource[];
 }): VerificationResult {
   const evidenceById = new Map(input.evidence.map((source) => [source.id, source]));
-  const unsupportedClaims = input.report.claimMap
-    .map((claim) => {
-      const citedSources = claim.supportingSourceIds.map((id) => evidenceById.get(id)).filter(Boolean) as EvidenceSource[];
-      const supported = citedSources.some((source) => claimSupportedBySource(claim.claim, source));
-      return supported
-        ? null
-        : {
-            claim: claim.claim,
-            reason: citedSources.length ? "Claim has citations, but cited source text has weak lexical support" : "Claim has no valid supporting source IDs",
-            sourceIds: claim.supportingSourceIds,
-          };
-    })
-    .filter((claim): claim is { claim: string; reason: string; sourceIds: number[] } => Boolean(claim));
+  const unsupportedClaims: Array<{ claim: string; reason: string; sourceIds: number[] }> = [];
+  const weakCitations: Array<{ claim: string; reason: string; sourceIds: number[] }> = [];
 
-  const weakCitations = unsupportedClaims.map((claim) => ({
-    claim: claim.claim,
-    sourceIds: claim.sourceIds,
-    reason: claim.reason,
-  }));
+  for (const claim of input.report.claimMap) {
+    const citedSources = claim.supportingSourceIds.map((id) => evidenceById.get(id)).filter(Boolean) as EvidenceSource[];
+    const supported = citedSources.some((source) => claimSupportedBySource(claim.claim, source));
+    if (supported) {
+      continue;
+    }
+
+    if (citedSources.length) {
+      weakCitations.push({
+        claim: claim.claim,
+        reason: "Claim has citations, but cited source text has weak lexical support",
+        sourceIds: claim.supportingSourceIds,
+      });
+      continue;
+    }
+
+    unsupportedClaims.push({
+      claim: claim.claim,
+      reason: "Claim has no valid supporting source IDs",
+      sourceIds: claim.supportingSourceIds,
+    });
+  }
 
   const latestQuality = input.traces[input.traces.length - 1]?.qualityEval;
   const distinctDomains = new Set(input.evidence.map((source) => source.domain)).size;
@@ -1670,9 +1676,10 @@ function buildDeterministicVerification(input: {
   const gapsBonus = input.report.gaps.length && input.report.contradictions.length ? 12 : 0;
   const outcomeScore = clamp(Math.round(88 - citationPenalty + gapsBonus), 0, 100);
   const overallScore = Math.round(processScore * 0.45 + outcomeScore * 0.55);
+  const weakOrUnsupportedClaimCount = unsupportedClaims.length + weakCitations.length;
   const missingCriteria = [
     ...(distinctDomains < MIN_DISTINCT_DOMAINS ? ["P2: source diversity threshold not met"] : []),
-    ...(unsupportedClaims.length ? ["O2: some claims are not clearly supported by cited evidence"] : []),
+    ...(weakOrUnsupportedClaimCount ? ["O2: some claims are not clearly supported by cited evidence"] : []),
     ...(input.report.gaps.length === 0 ? ["O3: gaps are missing"] : []),
     ...(input.report.contradictions.length === 0 ? ["O3: contradictions or disagreement analysis is missing"] : []),
   ];
@@ -1683,7 +1690,9 @@ function buildDeterministicVerification(input: {
     .slice(0, 8);
 
   const controllableFailures = [
-    ...(unsupportedClaims.length ? ["Tighten synthesis so claims are rewritten or removed unless cited source text directly supports them."] : []),
+    ...(weakOrUnsupportedClaimCount
+      ? ["Tighten synthesis so claims are rewritten or removed unless cited source text directly supports them."]
+      : []),
     ...(distinctDomains < MIN_DISTINCT_DOMAINS ? ["Run another iteration with queries targeting independent domains and primary sources."] : []),
     ...(latestQuality?.missingAngles.length
       ? [`Search specifically for missing angles: ${latestQuality.missingAngles.join(", ")}.`]
@@ -1703,7 +1712,7 @@ function buildDeterministicVerification(input: {
     evidenceRelevance: buildEvidenceRelevance(input.rubric, input.evidence),
     repairActions: [
       ...controllableFailures,
-      ...(unsupportedClaims.length ? ["Move unsupported claims to gaps or add sources that explicitly support them."] : []),
+      ...(weakOrUnsupportedClaimCount ? ["Move unsupported or weakly cited claims to gaps, or add sources that explicitly support them."] : []),
     ],
     summary:
       overallScore >= input.rubric.passThreshold
