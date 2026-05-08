@@ -1486,12 +1486,11 @@ function evaluateResearchQuality(
   const browserSourceCount = evidence.filter((source) => source.sourceType === "browser").length;
   const claimCount = evidence.reduce((total, source) => total + source.claimCandidates.length, 0);
   const riskFlagCount = evidence.reduce((total, source) => total + source.riskFlags.length, 0);
-  const lowerEvidence = evidence
-    .map((source) => `${source.title} ${source.description || ""} ${source.excerpt}`.toLowerCase())
-    .join(" ");
-  const missingAngles = strategy.requiredAngles.filter((angle) =>
-    tokenize(angle).every((term) => !lowerEvidence.includes(term)),
-  );
+  const evidenceTerms = new Set(evidence.flatMap((source) => tokenize(`${source.title} ${source.description || ""} ${source.excerpt}`)));
+  const missingAngles = strategy.requiredAngles.filter((angle) => {
+    const angleTerms = tokenize(angle);
+    return angleTerms.length === 0 || angleTerms.every((term) => !evidenceTerms.has(term));
+  });
 
   const sourceScore = Math.min(sourceCount / MAX_SOURCES, 1) * 25;
   const domainScore = Math.min(distinctDomains / MIN_DISTINCT_DOMAINS, 1) * 20;

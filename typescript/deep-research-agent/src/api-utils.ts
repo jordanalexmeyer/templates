@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import type { runResearchTask } from "./research.js";
 
 type ResearchRunResult = Awaited<ReturnType<typeof runResearchTask>>;
@@ -34,6 +35,96 @@ export async function runResearchForResponse(topic: string, runIdPrefix: string)
   });
 
   return buildResearchResponse(result, startedAt);
+}
+
+export function makeIndexHtmlReader(indexHtmlUrl: URL): () => Promise<string> {
+  let cachedIndexHtml: string | undefined;
+
+  return async () => {
+    cachedIndexHtml ||= await readFile(indexHtmlUrl, "utf8");
+    return cachedIndexHtml;
+  };
+}
+
+export async function handleDashboardRequest(
+  request: any,
+  response: any,
+  options: {
+    protocol: "http" | "https";
+    readIndexHtml: () => Promise<string>;
+    handleResearch: (request: any, response: any) => Promise<void>;
+  },
+): Promise<void> {
+  try {
+    const url = requestUrl(request, options.protocol);
+
+    if (request.method === "OPTIONS") {
+      return sendEmpty(response, 204);
+    }
+
+    if (request.method === "GET" && (url.pathname === "/" || url.pathname === "/index.html")) {
+      return sendHtml(response, 200, await options.readIndexHtml());
+    }
+
+    if (request.method === "GET" && (url.pathname === "/health" || url.pathname === "/api/health")) {
+      return sendJson(response, 200, { ok: true });
+    }
+
+    if (url.pathname === "/research" || url.pathname === "/api/research") {
+      return options.handleResearch(request, response);
+    }
+
+    return sendJson(response, 404, { error: "Not found." });
+  } catch (error) {
+    return sendJson(response, 500, { error: errorMessage(error) });
+  }
+}
+
+function requestUrl(request: any, protocol: "http" | "https"): URL {
+  const host = request.headers?.host || "localhost";
+  return new URL(request.url || "/", `${protocol}://${host}`);
+}
+
+export async function readBody(request: AsyncIterable<unknown>): Promise<string> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of request) {
+    if (Buffer.isBuffer(chunk)) {
+      chunks.push(chunk);
+    } else if (typeof chunk === "string") {
+      chunks.push(Buffer.from(chunk));
+    } else if (chunk instanceof Uint8Array) {
+      chunks.push(Buffer.from(chunk));
+    } else {
+      chunks.push(Buffer.from(String(chunk)));
+    }
+  }
+  return Buffer.concat(chunks).toString("utf8");
+}
+
+export function sendJson(response: any, statusCode: number, payload: unknown): void {
+  response.statusCode = statusCode;
+  setCorsHeaders(response);
+  response.setHeader("content-type", "application/json; charset=utf-8");
+  response.end(JSON.stringify(payload));
+}
+
+function sendHtml(response: any, statusCode: number, html: string): void {
+  response.statusCode = statusCode;
+  setCorsHeaders(response);
+  response.setHeader("content-type", "text/html; charset=utf-8");
+  response.end(html);
+}
+
+function sendEmpty(response: any, statusCode: number): void {
+  response.statusCode = statusCode;
+  setCorsHeaders(response);
+  response.end();
+}
+
+function setCorsHeaders(response: any): void {
+  response.setHeader("access-control-allow-origin", "*");
+  response.setHeader("access-control-allow-methods", "GET,POST,OPTIONS");
+  response.setHeader("access-control-allow-headers", "content-type");
 }
 
 function buildResearchResponse(result: ResearchRunResult, startedAt: number): ResearchResponse {
