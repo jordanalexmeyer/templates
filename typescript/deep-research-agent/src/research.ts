@@ -2996,13 +2996,22 @@ export async function runResearchTask(input: {
 }
 
 async function main(): Promise<void> {
-  const topic = process.argv.slice(2).join(" ").trim() || DEFAULT_TOPIC;
+  const args = process.argv.slice(2);
+  const benchmarkRequested = args.includes("--bench") || Boolean(BENCH_TASKS_FILE);
+  const topic = args.filter((arg) => arg !== "--bench").join(" ").trim() || DEFAULT_TOPIC;
+
+  if (benchmarkRequested && !BENCH_TASKS_FILE) {
+    throw new Error(
+      "Benchmark mode requires BENCH_TASKS_FILE. Example: BENCH_TASKS_FILE=./benchmark.example.tsv BENCH_TASK_LIMIT=1 npm run bench",
+    );
+  }
+
   if (!process.env.BROWSERBASE_API_KEY) {
     throw new Error("Missing BROWSERBASE_API_KEY. Copy .env.example to .env and add your key.");
   }
 
   console.log("=".repeat(60));
-  console.log(BENCH_TASKS_FILE ? "DEEP RESEARCH BENCHMARK" : "DEEP RESEARCH AGENT");
+  console.log(benchmarkRequested ? "DEEP RESEARCH BENCHMARK" : "DEEP RESEARCH AGENT");
   console.log("=".repeat(60));
   console.log(`Model: ${RESEARCH_MODEL}`);
   console.log(`Research planner: ${USE_RESEARCH_PLANNER ? "enabled" : "disabled"}`);
@@ -3012,7 +3021,7 @@ async function main(): Promise<void> {
   console.log(`Iterations: ${RESEARCH_ITERATIONS}`);
   console.log("");
 
-  if (BENCH_TASKS_FILE) {
+  if (benchmarkRequested) {
     await runBenchmark(BENCH_TASKS_FILE);
     return;
   }
@@ -3045,6 +3054,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     console.error("  - Set USE_STRATEGY_PLANNER=false to skip trace-based strategy improvement");
     console.error("  - Set USE_BROWSER_SYNTHESIS=false to skip final browser synthesis");
     console.error("  - Set USE_VERIFIER=false to skip rubric generation and report verification");
+    console.error("  - Set BENCH_TASKS_FILE=./benchmark.example.tsv before running npm run bench");
     console.error("  - Set BENCH_TASK_LIMIT=1 when testing a large benchmark file");
     process.exit(1);
   });
