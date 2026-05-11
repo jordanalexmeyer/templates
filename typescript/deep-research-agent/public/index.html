@@ -1006,7 +1006,8 @@
       const metricDomains = document.querySelector("#metric-domains");
       const metricVerification = document.querySelector("#metric-verification");
       const metricPass = document.querySelector("#metric-pass");
-      const apiBase = window.location.protocol === "file:" ? "http://localhost:3000" : "";
+      let apiBase = window.location.protocol === "file:" ? "http://localhost:3000" : "";
+      const localApiCandidates = ["http://localhost:3000", "http://localhost:3210"];
       const historyKey = "bb-research-engine-runs";
       const pipelineSteps = ["planning", "search", "fetch", "browser", "synthesis", "verify"];
       const loadingSteps = [
@@ -1070,14 +1071,21 @@
       });
 
       async function checkHealth() {
-        try {
-          const response = await fetch(`${apiBase}/api/health`);
-          apiStatus.textContent = response.ok ? "API online" : "API unavailable";
-          apiPill.className = `status-pill ${response.ok ? "online" : "offline"}`;
-        } catch {
-          apiStatus.textContent = "API unavailable";
-          apiPill.className = "status-pill offline";
+        const candidates = window.location.protocol === "file:" ? localApiCandidates : [apiBase];
+        for (const base of candidates) {
+          try {
+            const response = await fetch(`${base}/api/health`);
+            if (!response.ok) continue;
+            apiBase = base;
+            apiStatus.textContent = "API online";
+            apiPill.className = "status-pill online";
+            return;
+          } catch {
+            // Try the next local API candidate.
+          }
         }
+        apiStatus.textContent = "API unavailable";
+        apiPill.className = "status-pill offline";
       }
 
       function renderResults(result) {
@@ -1287,10 +1295,12 @@
       }
 
       async function readJson(response) {
+        const text = await response.text();
+        if (!text) return {};
         try {
-          return await response.json();
+          return JSON.parse(text);
         } catch {
-          return { error: await response.text() };
+          return { error: text };
         }
       }
 
