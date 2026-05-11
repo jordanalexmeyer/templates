@@ -150,8 +150,6 @@ function isTypesPackage(depName) {
 function adaptPackageJsonForJavaScript(packageJson) {
   const pkg = JSON.parse(JSON.stringify(packageJson));
 
-  pkg.type = "module";
-
   if (typeof pkg.main === "string") {
     pkg.main = pkg.main.replace(/\.tsx$/u, ".jsx").replace(/\.ts$/u, ".js");
   }
