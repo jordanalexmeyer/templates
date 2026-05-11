@@ -479,6 +479,24 @@
         text-align: right;
       }
 
+      .loading-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .loading-meta span {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        text-align: left;
+      }
+
+      .loading-meta span:last-child {
+        text-align: right;
+      }
+
       .loading-bar {
         height: 6px;
         border-radius: 999px;
@@ -851,6 +869,10 @@
                 <strong id="loading-title">Run in progress</strong>
                 <span id="loading-detail">Preparing request</span>
               </div>
+              <div class="loading-meta">
+                <span id="loading-elapsed">Elapsed 0:00</span>
+                <span id="loading-eta">Estimated time until complete: ~4:00</span>
+              </div>
               <div class="loading-bar" aria-hidden="true"></div>
             </div>
           </section>
@@ -991,6 +1013,8 @@
       const loadingState = document.querySelector("#loading-state");
       const loadingTitle = document.querySelector("#loading-title");
       const loadingDetail = document.querySelector("#loading-detail");
+      const loadingElapsed = document.querySelector("#loading-elapsed");
+      const loadingEta = document.querySelector("#loading-eta");
       const statusText = document.querySelector("#status");
       const statusPill = document.querySelector("#status-pill");
       const apiStatus = document.querySelector("#api-status");
@@ -1010,6 +1034,7 @@
       const localApiCandidates = ["http://localhost:3000", "http://localhost:3210"];
       const historyKey = "bb-research-engine-runs";
       const pipelineSteps = ["planning", "search", "fetch", "browser", "synthesis", "verify"];
+      const estimatedRunSeconds = 240;
       const loadingSteps = [
         { title: "Planning research", detail: "Clarifying the question and rubric" },
         { title: "Searching live web", detail: "Discovering candidate sources" },
@@ -1019,7 +1044,9 @@
         { title: "Verifying answer", detail: "Scoring evidence and confidence" },
       ];
       let loadingTimer;
+      let loadingStepTimer;
       let loadingStepIndex = 0;
+      let loadingStartedAt = 0;
 
       document.querySelectorAll("[data-tab-target]").forEach((button) => {
         button.addEventListener("click", () => setActiveTab(button.dataset.tabTarget));
@@ -1249,15 +1276,21 @@
         submitLabel.textContent = isLoading ? "Running" : "Run research";
 
         window.clearInterval(loadingTimer);
+        window.clearInterval(loadingStepTimer);
         if (!isLoading) {
           loadingTimer = undefined;
+          loadingStepTimer = undefined;
           loadingStepIndex = 0;
+          loadingStartedAt = 0;
           return;
         }
 
+        loadingStartedAt = Date.now();
         loadingStepIndex = 0;
         updateLoadingStep();
-        loadingTimer = window.setInterval(updateLoadingStep, 3600);
+        updateLoadingClock();
+        loadingStepTimer = window.setInterval(updateLoadingStep, 3600);
+        loadingTimer = window.setInterval(updateLoadingClock, 1000);
       }
 
       function updateLoadingStep() {
@@ -1266,6 +1299,16 @@
         loadingDetail.textContent = step.detail;
         setPipeline("running", loadingStepIndex % pipelineSteps.length);
         loadingStepIndex += 1;
+      }
+
+      function updateLoadingClock() {
+        const elapsedSeconds = Math.max(0, Math.floor((Date.now() - loadingStartedAt) / 1000));
+        const remainingSeconds = estimatedRunSeconds - elapsedSeconds;
+        loadingElapsed.textContent = `Elapsed ${formatDuration(elapsedSeconds)}`;
+        loadingEta.textContent =
+          remainingSeconds > 0
+            ? `Estimated time until complete: ~${formatDuration(remainingSeconds)}`
+            : `Running longer than the ~${formatDuration(estimatedRunSeconds)} estimate`;
       }
 
       function setPipeline(state, activeIndex = 0) {
@@ -1315,6 +1358,12 @@
 
       function escapeAttr(value) {
         return escapeHtml(value).replace(/`/g, "&#96;");
+      }
+
+      function formatDuration(totalSeconds) {
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return `${minutes}:${String(seconds).padStart(2, "0")}`;
       }
 
       renderHistory();
