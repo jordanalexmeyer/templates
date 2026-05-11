@@ -18,5 +18,3 @@ permissions:
 jobs:
   playground-templates:
     uses: ./.github/workflows/playground.yml
-    with:
-      branch: test-production

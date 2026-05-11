@@ -8,11 +8,6 @@ name: Playground templates
 
 on:
   workflow_call:
-    inputs:
-      branch:
-        description: Target branch name (used only in log messages)
-        required: true
-        type: string
 
 permissions:
   contents: write
