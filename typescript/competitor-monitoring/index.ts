@@ -75,42 +75,44 @@ async function main(): Promise<void> {
   const screenshots: Array<{ name: string; base64: string }> = [];
   const savedFiles: string[] = [];
 
-  for (const target of targets) {
-    console.log(`[${target.name}] Navigating to ${target.url} ...`);
-    const page = await browser.newPage();
+  try {
+    for (const target of targets) {
+      console.log(`[${target.name}] Navigating to ${target.url} ...`);
+      const page = await browser.newPage();
 
-    await page.goto(target.url, { waitUntil: "domcontentloaded", timeout: 30_000 });
+      await page.goto(target.url, { waitUntil: "domcontentloaded", timeout: 30_000 });
 
-    await page
-      .waitForSelector('main, [role="main"], #main, .pricing', { timeout: 10_000 })
-      .catch(() => {
-        console.log(`  [${target.name}] Main selector not found — continuing anyway.`);
-      });
+      await page
+        .waitForSelector('main, [role="main"], #main, .pricing', { timeout: 10_000 })
+        .catch(() => {
+          console.log(`  [${target.name}] Main selector not found — continuing anyway.`);
+        });
 
-    await page.waitForTimeout(2000);
+      await page.waitForTimeout(2000);
 
-    console.log(`  [${target.name}] Page loaded. Taking screenshot...`);
-    const buffer = await page.screenshot({ type: "png", fullPage: true });
-    const base64 = buffer.toString("base64");
+      console.log(`  [${target.name}] Page loaded. Taking screenshot...`);
+      const buffer = await page.screenshot({ type: "png", fullPage: true });
+      const base64 = buffer.toString("base64");
 
-    const filename = `${target.name.toLowerCase()}.png`;
-    const filepath = path.join(SCREENSHOTS_DIR, filename);
-    fs.writeFileSync(filepath, buffer);
-    savedFiles.push(filepath);
+      const filename = `${target.name.toLowerCase()}.png`;
+      const filepath = path.join(SCREENSHOTS_DIR, filename);
+      fs.writeFileSync(filepath, buffer);
+      savedFiles.push(filepath);
 
-    screenshots.push({ name: target.name, base64 });
-    console.log(
-      `  [${target.name}] Screenshot saved → ${filepath} (${Math.round(buffer.length / 1024)} KB)\n`,
-    );
+      screenshots.push({ name: target.name, base64 });
+      console.log(
+        `  [${target.name}] Screenshot saved → ${filepath} (${Math.round(buffer.length / 1024)} KB)\n`,
+      );
 
-    await page.close();
+      await page.close();
+    }
+  } finally {
+    console.log("Closing browser session...");
+    await browser.close();
+    console.log("Browser session closed.\n");
   }
 
-  console.log("All screenshots captured. Closing browser session...");
-  await browser.close();
-  console.log("Browser session closed.\n");
-
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const anthropic = new Anthropic({ apiKey: process.env.MODEL_API_KEY });
 
   const imageBlocks = screenshots.map((s) => ({
     type: "image" as const,
