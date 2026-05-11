@@ -12,6 +12,9 @@ on:
       - test-production
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   playground-templates:
     uses: ./.github/workflows/playground.yml
