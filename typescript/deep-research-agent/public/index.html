@@ -418,13 +418,101 @@
         border-radius: 6px;
         background: var(--accent);
         color: #fff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
         font-weight: 800;
+        min-width: 150px;
         padding: 0 18px;
         white-space: nowrap;
       }
 
       .run-button:not(:disabled):hover {
         background: #115f4d;
+      }
+
+      .loading-spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255, 255, 255, 0.42);
+        border-top-color: #fff;
+        border-radius: 999px;
+        display: none;
+        flex: 0 0 auto;
+        animation: spin 0.8s linear infinite;
+      }
+
+      .run-button.is-loading .loading-spinner {
+        display: inline-block;
+      }
+
+      .loading-state {
+        margin-top: 14px;
+        border: 1px solid #c9ddd2;
+        border-radius: 6px;
+        background: var(--surface-2);
+        display: grid;
+        gap: 10px;
+        padding: 12px;
+      }
+
+      .loading-state[hidden] {
+        display: none;
+      }
+
+      .loading-state-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .loading-state strong {
+        font-size: 14px;
+      }
+
+      .loading-state span {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 750;
+        text-align: right;
+      }
+
+      .loading-bar {
+        height: 6px;
+        border-radius: 999px;
+        background: #dfe8dd;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .loading-bar::before {
+        content: "";
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 42%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--accent), var(--accent-2));
+        animation: loading-slide 1.65s ease-in-out infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes loading-slide {
+        0% {
+          transform: translateX(-110%);
+        }
+        50% {
+          transform: translateX(85%);
+        }
+        100% {
+          transform: translateX(245%);
+        }
       }
 
       .metrics {
@@ -495,6 +583,10 @@
       .step.active {
         border-color: #9ccbb8;
         background: var(--accent-soft);
+      }
+
+      .step.active strong {
+        color: var(--accent);
       }
 
       .step.done {
@@ -749,8 +841,18 @@
                 Research topic
                 <input id="topic" name="topic" maxlength="300" required value="Browserbase Fetch API" />
               </label>
-              <button class="run-button" id="submit" type="submit">Run research</button>
+              <button class="run-button" id="submit" type="submit">
+                <span class="loading-spinner" aria-hidden="true"></span>
+                <span id="submit-label">Run research</span>
+              </button>
             </form>
+            <div class="loading-state" id="loading-state" role="status" aria-live="polite" hidden>
+              <div class="loading-state-header">
+                <strong id="loading-title">Run in progress</strong>
+                <span id="loading-detail">Preparing request</span>
+              </div>
+              <div class="loading-bar" aria-hidden="true"></div>
+            </div>
           </section>
 
           <section class="brief-panel" aria-labelledby="brief-heading">
@@ -885,6 +987,10 @@
       const form = document.querySelector("#research-form");
       const topicInput = document.querySelector("#topic");
       const submit = document.querySelector("#submit");
+      const submitLabel = document.querySelector("#submit-label");
+      const loadingState = document.querySelector("#loading-state");
+      const loadingTitle = document.querySelector("#loading-title");
+      const loadingDetail = document.querySelector("#loading-detail");
       const statusText = document.querySelector("#status");
       const statusPill = document.querySelector("#status-pill");
       const apiStatus = document.querySelector("#api-status");
@@ -903,6 +1009,16 @@
       const apiBase = window.location.protocol === "file:" ? "http://localhost:3000" : "";
       const historyKey = "bb-research-engine-runs";
       const pipelineSteps = ["planning", "search", "fetch", "browser", "synthesis", "verify"];
+      const loadingSteps = [
+        { title: "Planning research", detail: "Clarifying the question and rubric" },
+        { title: "Searching live web", detail: "Discovering candidate sources" },
+        { title: "Fetching pages", detail: "Extracting source content" },
+        { title: "Checking browser fallbacks", detail: "Escalating dynamic pages when needed" },
+        { title: "Synthesizing findings", detail: "Building the cited brief" },
+        { title: "Verifying answer", detail: "Scoring evidence and confidence" },
+      ];
+      let loadingTimer;
+      let loadingStepIndex = 0;
 
       document.querySelectorAll("[data-tab-target]").forEach((button) => {
         button.addEventListener("click", () => setActiveTab(button.dataset.tabTarget));
@@ -919,9 +1035,8 @@
         const topic = topicInput.value.trim();
         if (!topic) return;
 
-        submit.disabled = true;
+        setLoading(true);
         setStatus("Running", "ready");
-        setPipeline("running");
         notice.innerHTML = "";
         panelOverview.innerHTML = `<div class="empty">Running ${escapeHtml(topic)}</div>`;
         panelFindings.innerHTML = `<div class="empty">No findings yet.</div>`;
@@ -948,9 +1063,9 @@
         } catch (error) {
           notice.innerHTML = `<div class="notice">${escapeHtml(error.message || String(error))}</div>`;
           setStatus("Error", "error");
-          setPipeline("failed");
+          setPipeline("failed", Math.max(0, (loadingStepIndex - 1) % pipelineSteps.length));
         } finally {
-          submit.disabled = false;
+          setLoading(false);
         }
       });
 
@@ -1117,18 +1232,47 @@
         statusPill.className = `status-pill ${state}`;
       }
 
-      function setPipeline(state) {
+      function setLoading(isLoading) {
+        submit.disabled = isLoading;
+        topicInput.disabled = isLoading;
+        submit.classList.toggle("is-loading", isLoading);
+        submit.setAttribute("aria-busy", String(isLoading));
+        loadingState.hidden = !isLoading;
+        submitLabel.textContent = isLoading ? "Running" : "Run research";
+
+        window.clearInterval(loadingTimer);
+        if (!isLoading) {
+          loadingTimer = undefined;
+          loadingStepIndex = 0;
+          return;
+        }
+
+        loadingStepIndex = 0;
+        updateLoadingStep();
+        loadingTimer = window.setInterval(updateLoadingStep, 3600);
+      }
+
+      function updateLoadingStep() {
+        const step = loadingSteps[loadingStepIndex % loadingSteps.length];
+        loadingTitle.textContent = step.title;
+        loadingDetail.textContent = step.detail;
+        setPipeline("running", loadingStepIndex % pipelineSteps.length);
+        loadingStepIndex += 1;
+      }
+
+      function setPipeline(state, activeIndex = 0) {
         pipelineSteps.forEach((step, index) => {
           const node = document.querySelector(`[data-step="${step}"]`);
           node.className = "step";
           if (state === "running") {
-            node.classList.toggle("active", index === 0);
+            node.classList.toggle("active", index === activeIndex);
+            node.classList.toggle("done", index < activeIndex);
           }
           if (state === "complete") {
             node.classList.add("done");
           }
           if (state === "failed") {
-            node.classList.toggle("failed", index === 0);
+            node.classList.toggle("failed", index === Math.max(0, Math.min(activeIndex, pipelineSteps.length - 1)));
           }
         });
       }
