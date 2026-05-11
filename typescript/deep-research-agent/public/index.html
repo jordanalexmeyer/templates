@@ -870,17 +870,11 @@
         position: relative;
       }
 
-      .brand::before {
-        content: "";
-        width: 30px;
-        height: 30px;
-        border-radius: 4px;
-        background:
-          linear-gradient(90deg, #100d0d 0 36%, transparent 36% 64%, #100d0d 64%),
-          var(--accent);
-        box-shadow: 0 0 0 1px rgba(16, 13, 13, 0.08);
+      .brand-logo {
         display: block;
+        height: 30px;
         margin-bottom: 14px;
+        width: 30px;
       }
 
       .brand p {
@@ -1264,6 +1258,7 @@
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand">
+          <img class="brand-logo" src="browserbase-logo.svg" alt="" />
           <p>Browserbase</p>
           <h1>bb research engine</h1>
         </div>
