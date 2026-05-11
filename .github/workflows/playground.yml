@@ -48,6 +48,6 @@ jobs:
           if git diff --staged --quiet; then
             echo "No javascript changes to commit."
           else
-            git commit -m "chore: regenerate playground javascript templates"
+            git commit --no-verify -m "chore: regenerate playground javascript templates"
             git push
           fi
