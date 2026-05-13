@@ -147,6 +147,29 @@ function isTypesPackage(depName) {
   return depName.startsWith("@types/");
 }
 
+/**
+ * `build` is rewritten for JS output: drop a compile-only `tsc` step. If the script
+ * is only `tsc` (plus flags), remove it entirely; if `tsc` is chained with `&&` /
+ * `||` / `;`, keep everything after the first separator so steps like `next build`
+ * are not lost.
+ *
+ * @param {string} buildScript
+ * @returns {string | null} `null` means delete the `build` script entry.
+ */
+function stripLeadingTscBuildCommand(buildScript) {
+  const trimmed = buildScript.trim();
+  // Match `tsc` as a CLI token (not `tscheck` / `tsc.exe`). Allow `tsc&&…` without spaces.
+  if (!/^\s*tsc(?=[\s;&]|$)/u.test(trimmed)) {
+    return buildScript;
+  }
+  const chain = /\s*(?:&&|\|\||;)\s*/u.exec(trimmed);
+  if (!chain) {
+    return null;
+  }
+  const rest = trimmed.slice(chain.index + chain[0].length).trim();
+  return rest.length > 0 ? rest : null;
+}
+
 function adaptPackageJsonForJavaScript(packageJson) {
   const pkg = JSON.parse(JSON.stringify(packageJson));
 
@@ -163,8 +186,13 @@ function adaptPackageJsonForJavaScript(packageJson) {
       if (typeof scriptValue !== "string") continue;
       scripts[key] = adaptScriptCommand(scriptValue);
     }
-    if (typeof scripts.build === "string" && /^\s*tsc(\s|$)/u.test(scripts.build)) {
-      delete scripts.build;
+    if (typeof scripts.build === "string") {
+      const nextBuild = stripLeadingTscBuildCommand(scripts.build);
+      if (nextBuild === null) {
+        delete scripts.build;
+      } else if (nextBuild !== scripts.build) {
+        scripts.build = nextBuild;
+      }
     }
     pkg.scripts = scripts;
   }
