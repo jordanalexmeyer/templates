@@ -22,16 +22,13 @@ const TYPESCRIPT_ONLY_DEV_DEPENDENCIES = new Set(["typescript", "tsx"]);
 async function buildJavaScriptTemplates() {
   // Get the command line arguments.
   const argv = process.argv.slice(2);
+  const options = parseBuildOptions(argv);
   // Filter function that determines which files to include in the build.
-  const fileFilter = createFileFilter(argv);
+  const fileFilter = createFileFilter(options);
   const allFiles = await getAllFilteredFiles(TYPESCRIPT_DIR, fileFilter);
 
-  const includeTemplates = new Set(parseListFlag(argv, "--include-template"));
-  const includePaths = parseListFlag(argv, "--include-path");
-  const excludePathOnly = parseListFlag(argv, "--exclude-path");
-
   // Avoid wiping unrelated templates when filters narrow the build (e.g. --include-template=foo).
-  if (includeTemplates.size > 0) {
+  if (options.includeTemplates.size > 0) {
     const templatesToRefresh = new Set();
     for (const filePath of allFiles) {
       const relativePath = path.relative(TYPESCRIPT_DIR, filePath);
@@ -45,7 +42,7 @@ async function buildJavaScriptTemplates() {
         rm(path.join(JAVASCRIPT_DIR, name), { recursive: true, force: true }),
       ),
     );
-  } else if (includePaths.length > 0 || excludePathOnly.length > 0) {
+  } else if (options.includePaths.length > 0 || options.excludePathOnly.length > 0) {
     await mkdir(JAVASCRIPT_DIR, { recursive: true });
     // Path-level filters can match a subset of files per template; only overwrites run.
   } else {
@@ -76,8 +73,16 @@ async function buildJavaScriptTemplates() {
 }
 
 /**
- * Creates a file filter function from command line arguments.
- * Returns a function that takes a source path and returns a boolean indicating whether the file should be included.
+ * @typedef {object} BuildOptions
+ * @property {Set<string>} includeTemplates
+ * @property {Set<string>} excludeTemplates
+ * @property {string[]} includePaths
+ * @property {string[]} excludePaths
+ * @property {string[]} excludePathOnly
+ */
+
+/**
+ * Parses build flags once so filtering and cleanup decisions stay in sync.
  * Flags:
  * --include-template=<name[,name2]>  Include only matching top-level template folders.
  * --exclude-template=<name[,name2]>  Exclude matching top-level template folders.
@@ -86,18 +91,27 @@ async function buildJavaScriptTemplates() {
  * --exclude=<token[,token2]>         Convenience alias: applies to both template-name and path excludes.
  * Each flag supports both "--flag value" and "--flag=value" forms.
  * @param {string[]} argv
+ * @returns {BuildOptions}
+ */
+function parseBuildOptions(argv) {
+  const genericExcludes = parseListFlag(argv, "--exclude");
+  const excludePathOnly = parseListFlag(argv, "--exclude-path");
+
+  return {
+    includeTemplates: new Set(parseListFlag(argv, "--include-template")),
+    excludeTemplates: new Set([...parseListFlag(argv, "--exclude-template"), ...genericExcludes]),
+    includePaths: parseListFlag(argv, "--include-path"),
+    excludePaths: [...excludePathOnly, ...genericExcludes],
+    excludePathOnly,
+  };
+}
+
+/**
+ * Creates a file filter function from parsed command line options.
+ * @param {BuildOptions} options
  * @returns {function(string): boolean}
  */
-function createFileFilter(argv) {
-  const includeTemplates = new Set(parseListFlag(argv, "--include-template"));
-  const genericExcludes = parseListFlag(argv, "--exclude");
-  const excludeTemplates = new Set([
-    ...parseListFlag(argv, "--exclude-template"),
-    ...genericExcludes,
-  ]);
-  const includePaths = parseListFlag(argv, "--include-path");
-  const excludePaths = [...parseListFlag(argv, "--exclude-path"), ...genericExcludes];
-
+function createFileFilter(options) {
   return (sourcePath) => {
     const relativePath = path.relative(TYPESCRIPT_DIR, sourcePath);
     const normalizedPath = normalizeRelativePath(relativePath);
@@ -109,14 +123,19 @@ function createFileFilter(argv) {
     const pathSegments = normalizedPath.split("/");
     if (pathSegments.some((segment) => DEFAULT_EXCLUDED_DIRS.has(segment))) return false;
 
-    if (includeTemplates.size > 0 && !includeTemplates.has(templateName)) return false;
-    if (excludeTemplates.has(templateName)) return false;
+    if (options.includeTemplates.size > 0 && !options.includeTemplates.has(templateName)) {
+      return false;
+    }
+    if (options.excludeTemplates.has(templateName)) return false;
 
-    if (includePaths.length > 0 && !includePaths.some((token) => normalizedPath.includes(token))) {
+    if (
+      options.includePaths.length > 0 &&
+      !options.includePaths.some((token) => normalizedPath.includes(token))
+    ) {
       return false;
     }
 
-    if (excludePaths.some((token) => normalizedPath.includes(token))) return false;
+    if (options.excludePaths.some((token) => normalizedPath.includes(token))) return false;
 
     return true;
   };
@@ -147,6 +166,29 @@ function isTypesPackage(depName) {
   return depName.startsWith("@types/");
 }
 
+/**
+ * `build` is rewritten for JS output: drop a compile-only `tsc` step. If the script
+ * is only `tsc` (plus flags), remove it entirely; if `tsc` is chained with `&&` /
+ * `||` / `;`, keep everything after the first separator so steps like `next build`
+ * are not lost.
+ *
+ * @param {string} buildScript
+ * @returns {string | null} `null` means delete the `build` script entry.
+ */
+function stripLeadingTscBuildCommand(buildScript) {
+  const trimmed = buildScript.trim();
+  // Match `tsc` as a CLI token (not `tscheck` / `tsc.exe`). Allow `tsc&&…` without spaces.
+  if (!/^\s*tsc(?=[\s;&]|$)/u.test(trimmed)) {
+    return buildScript;
+  }
+  const chain = /\s*(?:&&|\|\||;)\s*/u.exec(trimmed);
+  if (!chain) {
+    return null;
+  }
+  const rest = trimmed.slice(chain.index + chain[0].length).trim();
+  return rest.length > 0 ? rest : null;
+}
+
 function adaptPackageJsonForJavaScript(packageJson) {
   const pkg = JSON.parse(JSON.stringify(packageJson));
 
@@ -163,8 +205,13 @@ function adaptPackageJsonForJavaScript(packageJson) {
       if (typeof scriptValue !== "string") continue;
       scripts[key] = adaptScriptCommand(scriptValue);
     }
-    if (typeof scripts.build === "string" && /^\s*tsc(\s|$)/u.test(scripts.build)) {
-      delete scripts.build;
+    if (typeof scripts.build === "string") {
+      const nextBuild = stripLeadingTscBuildCommand(scripts.build);
+      if (nextBuild === null) {
+        delete scripts.build;
+      } else if (nextBuild !== scripts.build) {
+        scripts.build = nextBuild;
+      }
     }
     pkg.scripts = scripts;
   }
