@@ -1275,6 +1275,7 @@ async function extractRenderedEvidence(
       throw new Error("No page found in Browserbase session");
     }
 
+    // Stagehand's page wrapper uses timeoutMs rather than Playwright's timeout option.
     await page.goto(candidate.url, { waitUntil: "domcontentloaded", timeoutMs: 45000 });
     const finalUrl = normalizeUrl(page.url());
 
@@ -1698,8 +1699,10 @@ function buildDeterministicVerification(input: {
       : []),
   ];
 
+  const pass = overallScore >= input.rubric.passThreshold && missingCriteria.length === 0;
+
   return {
-    pass: overallScore >= input.rubric.passThreshold && missingCriteria.length === 0,
+    pass,
     processScore,
     outcomeScore,
     overallScore,
@@ -1713,10 +1716,9 @@ function buildDeterministicVerification(input: {
       ...controllableFailures,
       ...(weakOrUnsupportedClaimCount ? ["Move unsupported or weakly cited claims to gaps, or add sources that explicitly support them."] : []),
     ],
-    summary:
-      overallScore >= input.rubric.passThreshold
-        ? "Verification passed the conservative rubric."
-        : "Verification did not pass; review repair actions before using the report.",
+    summary: pass
+      ? "Verification passed the conservative rubric."
+      : "Verification did not pass; review repair actions before using the report.",
   };
 }
 
@@ -2002,8 +2004,11 @@ function rankEvidence(evidence: EvidenceSource[], topic: string): EvidenceSource
 
   for (const source of ranked) {
     if (selected.length >= MAX_SOURCES) break;
+    const count = domainCounts.get(source.domain) || 0;
+    if (count >= MAX_SOURCES_PER_DOMAIN) continue;
     if (!selected.some((selectedSource) => normalizeUrl(selectedSource.url) === normalizeUrl(source.url))) {
       selected.push(source);
+      domainCounts.set(source.domain, count + 1);
     }
   }
 

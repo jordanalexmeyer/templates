@@ -5,6 +5,7 @@ import {
   errorMessage,
   handleDashboardRequest,
   makeIndexHtmlReader,
+  makeTextFileReader,
   readBody,
   readTopic,
   runResearchForResponse,
@@ -13,7 +14,9 @@ import {
 
 const PORT = Number.parseInt(process.env.PORT || "3000", 10);
 const INDEX_HTML_URL = new URL("../public/index.html", import.meta.url);
+const LOGO_SVG_URL = new URL("../public/browserbase-logo.svg", import.meta.url);
 const readIndexHtml = makeIndexHtmlReader(INDEX_HTML_URL);
+const readLogoSvg = makeTextFileReader(LOGO_SVG_URL);
 
 let activeRun = false;
 
@@ -21,6 +24,7 @@ const server = createServer((request, response) =>
   handleDashboardRequest(request, response, {
     protocol: "http",
     readIndexHtml,
+    readLogoSvg,
     handleResearch,
   }),
 );
@@ -43,13 +47,13 @@ async function handleResearch(request: IncomingMessage, response: ServerResponse
     return sendJson(response, 500, { error: "Missing BROWSERBASE_API_KEY." });
   }
 
-  const topic = cleanTopic(readTopic(await readBody(request)));
-  if (!topic) {
-    return sendJson(response, 400, { error: "Enter a research topic." });
-  }
-
   activeRun = true;
   try {
+    const topic = cleanTopic(readTopic(await readBody(request)));
+    if (!topic) {
+      return sendJson(response, 400, { error: "Enter a research topic." });
+    }
+
     return sendJson(response, 200, await runResearchForResponse(topic, "web"));
   } catch (error) {
     return sendJson(response, 500, { error: errorMessage(error) });

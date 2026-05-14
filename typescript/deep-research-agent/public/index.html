@@ -1697,6 +1697,7 @@
       }
 
       function setPipeline(state, activeIndex = 0) {
+        const clampedActiveIndex = Math.max(0, Math.min(activeIndex, pipelineSteps.length - 1));
         pipelineSteps.forEach((step, index) => {
           const node = document.querySelector(`[data-step="${step}"]`);
           node.className = "step";
@@ -1708,7 +1709,8 @@
             node.classList.add("done");
           }
           if (state === "failed") {
-            node.classList.toggle("failed", index === Math.max(0, Math.min(activeIndex, pipelineSteps.length - 1)));
+            node.classList.toggle("done", index < clampedActiveIndex);
+            node.classList.toggle("failed", index === clampedActiveIndex);
           }
         });
       }

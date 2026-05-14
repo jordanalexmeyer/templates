@@ -38,10 +38,14 @@ export async function runResearchForResponse(topic: string, runIdPrefix: string)
 }
 
 export function makeIndexHtmlReader(indexHtmlUrl: URL): () => Promise<string> {
+  return makeTextFileReader(indexHtmlUrl);
+}
+
+export function makeTextFileReader(fileUrl: URL): () => Promise<string> {
   let cachedIndexHtml: string | undefined;
 
   return async () => {
-    cachedIndexHtml ||= await readFile(indexHtmlUrl, "utf8");
+    cachedIndexHtml ||= await readFile(fileUrl, "utf8");
     return cachedIndexHtml;
   };
 }
@@ -52,6 +56,7 @@ export async function handleDashboardRequest(
   options: {
     protocol: "http" | "https";
     readIndexHtml: () => Promise<string>;
+    readLogoSvg?: () => Promise<string>;
     handleResearch: (request: any, response: any) => Promise<void>;
   },
 ): Promise<void> {
@@ -66,12 +71,16 @@ export async function handleDashboardRequest(
       return sendHtml(response, 200, await options.readIndexHtml());
     }
 
+    if (request.method === "GET" && url.pathname === "/browserbase-logo.svg" && options.readLogoSvg) {
+      return sendText(response, 200, await options.readLogoSvg(), "image/svg+xml; charset=utf-8");
+    }
+
     if (request.method === "GET" && (url.pathname === "/health" || url.pathname === "/api/health")) {
       return sendJson(response, 200, { ok: true });
     }
 
     if (url.pathname === "/research" || url.pathname === "/api/research") {
-      return options.handleResearch(request, response);
+      return await options.handleResearch(request, response);
     }
 
     return sendJson(response, 404, { error: "Not found." });
@@ -109,10 +118,14 @@ export function sendJson(response: any, statusCode: number, payload: unknown): v
 }
 
 function sendHtml(response: any, statusCode: number, html: string): void {
+  sendText(response, statusCode, html, "text/html; charset=utf-8");
+}
+
+function sendText(response: any, statusCode: number, body: string, contentType: string): void {
   response.statusCode = statusCode;
   setCorsHeaders(response);
-  response.setHeader("content-type", "text/html; charset=utf-8");
-  response.end(html);
+  response.setHeader("content-type", contentType);
+  response.end(body);
 }
 
 function sendEmpty(response: any, statusCode: number): void {

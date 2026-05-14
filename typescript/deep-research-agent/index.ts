@@ -4,6 +4,7 @@ import {
   errorMessage,
   handleDashboardRequest,
   makeIndexHtmlReader,
+  makeTextFileReader,
   readBody,
   readTopic,
   runResearchForResponse,
@@ -15,12 +16,15 @@ export const config = {
 };
 
 const INDEX_HTML_URL = new URL("./public/index.html", import.meta.url);
+const LOGO_SVG_URL = new URL("./public/browserbase-logo.svg", import.meta.url);
 const readIndexHtml = makeIndexHtmlReader(INDEX_HTML_URL);
+const readLogoSvg = makeTextFileReader(LOGO_SVG_URL);
 
 export default async function handler(request: any, response: any): Promise<void> {
   return handleDashboardRequest(request, response, {
     protocol: "https",
     readIndexHtml,
+    readLogoSvg,
     handleResearch: runResearchHandler,
   });
 }
