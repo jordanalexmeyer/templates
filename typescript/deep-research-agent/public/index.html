@@ -196,6 +196,35 @@
         padding: 0 28px;
       }
 
+      .topbar-brand {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        min-width: 0;
+      }
+
+      .topbar-logo {
+        display: block;
+        flex: 0 0 auto;
+        height: 30px;
+        width: 30px;
+      }
+
+      .topbar-brand-copy {
+        display: grid;
+        gap: 1px;
+        min-width: 0;
+      }
+
+      .topbar-eyebrow {
+        color: var(--accent);
+        font-size: 10px;
+        font-weight: 850;
+        letter-spacing: 0.08em;
+        line-height: 1;
+        text-transform: uppercase;
+      }
+
       .topbar h2 {
         font-size: 16px;
         letter-spacing: 0;
@@ -271,7 +300,7 @@
         gap: 8px;
       }
 
-      .brief-panel span {
+      .brief-panel > span {
         color: var(--accent);
         font-size: 12px;
         font-weight: 850;
@@ -313,72 +342,14 @@
         max-width: 680px;
       }
 
-      .explain-grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 10px;
-      }
-
-      details {
-        border: 1px solid var(--line);
-        border-radius: 6px;
-        background: var(--surface-2);
-        padding: 0;
-      }
-
-      details[open] {
-        border-color: #b8d7ca;
-        background: #f4faf7;
-      }
-
-      summary {
-        min-height: 52px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        color: var(--ink);
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 850;
-        padding: 0 12px;
-      }
-
-      summary::-webkit-details-marker {
-        display: none;
-      }
-
-      summary::after {
-        content: "+";
-        color: var(--accent);
-        font-size: 18px;
-        font-weight: 800;
-        line-height: 1;
-      }
-
-      details[open] summary::after {
-        content: "-";
-      }
-
       .explain-body {
-        border-top: 1px solid var(--line);
         display: grid;
         gap: 8px;
-        padding: 12px;
       }
 
       .explain-body p {
         color: var(--muted);
         font-size: 13px;
-      }
-
-      .trust-note {
-        border-left: 3px solid var(--accent);
-        background: #ffffff;
-        color: var(--ink);
-        font-size: 13px;
-        font-weight: 700;
-        padding: 10px 12px;
       }
 
       form {
@@ -679,6 +650,11 @@
         color: var(--ink);
       }
 
+      .artifact-card p {
+        color: var(--muted);
+        margin-bottom: 12px;
+      }
+
       .summary-card + .summary-card {
         margin-top: 12px;
       }
@@ -782,8 +758,7 @@
 
         .metrics,
         .timeline,
-        .summary-grid,
-        .explain-grid {
+        .summary-grid {
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
       }
@@ -795,6 +770,10 @@
           padding: 16px;
         }
 
+        .topbar-brand {
+          align-items: flex-start;
+        }
+
         .workspace {
           padding: 16px;
         }
@@ -803,7 +782,6 @@
         .metrics,
         .timeline,
         .summary-grid,
-        .explain-grid,
         .side-nav {
           grid-template-columns: 1fr;
         }
@@ -816,12 +794,415 @@
           width: 100%;
         }
       }
+
+      /* Browserbase GTM demo inspired surface */
+      :root {
+        --bg: #f9f6f4;
+        --surface: #ffffff;
+        --surface-2: #fbfaf8;
+        --ink: #100d0d;
+        --muted: #514f4f;
+        --line: #cac8c7;
+        --line-strong: #9d9997;
+        --accent: #f03603;
+        --accent-2: #4da9e4;
+        --accent-soft: #fff1ec;
+        --warn: #a16207;
+        --error: #d23003;
+        --shadow: 0 18px 40px rgba(16, 13, 13, 0.08);
+      }
+
+      body {
+        background:
+          radial-gradient(circle at 20% 20%, rgba(240, 54, 3, 0.08), transparent 30%),
+          linear-gradient(to right, rgba(16, 13, 13, 0.045) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(16, 13, 13, 0.045) 1px, transparent 1px),
+          var(--bg);
+        background-size: auto, 32px 32px, 32px 32px, auto;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      .app-shell {
+        width: min(1600px, 100%);
+        margin: 0 auto;
+        background: var(--surface);
+        border-inline: 1px solid var(--line);
+        grid-template-columns: 340px minmax(0, 1fr);
+        position: relative;
+        z-index: 1;
+      }
+
+      .sidebar {
+        background: rgba(255, 255, 255, 0.92);
+        border-right: 1px solid var(--line);
+        gap: 0;
+        grid-template-rows: auto auto minmax(0, 1fr);
+        padding: 0;
+        position: sticky;
+        top: 0;
+      }
+
+      .brand {
+        border-bottom: 1px solid var(--line);
+        padding: 22px 24px;
+        position: relative;
+      }
+
+      .brand-logo {
+        display: block;
+        height: 30px;
+        margin-bottom: 14px;
+        width: 30px;
+      }
+
+      .brand p {
+        color: var(--accent);
+        font-size: 11px;
+        letter-spacing: 0.08em;
+      }
+
+      .brand h1 {
+        font-size: 22px;
+        line-height: 1.05;
+      }
+
+      .side-nav {
+        border-bottom: 1px solid var(--line);
+        gap: 6px;
+        padding: 14px;
+      }
+
+      .nav-button,
+      .history-button,
+      .tab-button {
+        border-radius: 2px;
+        color: var(--muted);
+      }
+
+      .nav-button.active,
+      .tab-button.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #ffffff;
+      }
+
+      .nav-button:not(.active):hover,
+      .history-button:hover,
+      .tab-button:not(.active):hover {
+        border-color: var(--ink);
+        color: var(--ink);
+      }
+
+      .history {
+        align-self: stretch;
+        padding: 18px;
+      }
+
+      .history h2 {
+        letter-spacing: 0.08em;
+      }
+
+      .history-button,
+      .history-empty,
+      .empty {
+        border-radius: 2px;
+        background: var(--surface-2);
+      }
+
+      .topbar {
+        min-height: 58px;
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
+        padding: 0 24px;
+      }
+
+      .topbar h2 {
+        font-size: 14px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .topbar-eyebrow {
+        letter-spacing: 0.1em;
+      }
+
+      .status-pill {
+        border-radius: 2px;
+        min-height: 30px;
+        font-size: 12px;
+        text-transform: uppercase;
+      }
+
+      .status-pill.ready .dot,
+      .status-pill.online .dot {
+        background: #90c94d;
+      }
+
+      .status-pill.error .dot,
+      .status-pill.offline .dot {
+        background: var(--accent);
+      }
+
+      .workspace {
+        background:
+          linear-gradient(to right, rgba(16, 13, 13, 0.035) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(16, 13, 13, 0.035) 1px, transparent 1px),
+          var(--surface-2);
+        background-size: 32px 32px;
+        padding: 24px;
+      }
+
+      .command-panel,
+      .brief-panel,
+      .explain-panel,
+      .panel,
+      .metric-card,
+      .timeline,
+      .notice {
+        border-radius: 2px;
+        box-shadow: none;
+      }
+
+      .command-panel {
+        border-color: var(--line);
+        padding: 16px;
+      }
+
+      form {
+        grid-template-columns: minmax(0, 1fr) 176px;
+      }
+
+      label {
+        color: var(--muted);
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+      }
+
+      input {
+        border-radius: 2px;
+        min-height: 52px;
+        font-size: 16px;
+      }
+
+      input:focus {
+        border-color: var(--accent);
+        outline: 3px solid rgba(240, 54, 3, 0.14);
+      }
+
+      .run-button {
+        background: var(--accent);
+        border-radius: 2px;
+        min-height: 52px;
+      }
+
+      .run-button:not(:disabled):hover {
+        background: var(--error);
+      }
+
+      .loading-state {
+        background: #fff8f5;
+        border-color: #f5c6b7;
+        border-radius: 2px;
+      }
+
+      .loading-bar {
+        background: #f2d9d1;
+      }
+
+      .loading-bar::before {
+        background: linear-gradient(90deg, var(--accent), var(--accent-2), #90c94d);
+      }
+
+      .brief-panel > span {
+        color: var(--accent);
+        letter-spacing: 0.08em;
+      }
+
+      .brief-panel,
+      .explain-panel,
+      .panel,
+      .metric-card {
+        background: rgba(255, 255, 255, 0.94);
+      }
+
+      .metrics {
+        grid-template-columns: repeat(4, minmax(150px, 1fr));
+      }
+
+      .metric-card strong {
+        font-size: 34px;
+      }
+
+      .timeline {
+        align-items: stretch;
+        background: transparent;
+        border: 0;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        padding: 0;
+      }
+
+      .step {
+        background: var(--surface);
+        border-color: var(--line);
+        border-radius: 2px;
+        display: grid;
+        min-height: 176px;
+        overflow: hidden;
+        padding: 0;
+        position: relative;
+      }
+
+      .step::before {
+        background:
+          radial-gradient(circle at 16px 50%, var(--accent) 0 4px, transparent 5px),
+          radial-gradient(circle at 30px 50%, #f4ba41 0 4px, transparent 5px),
+          radial-gradient(circle at 44px 50%, #90c94d 0 4px, transparent 5px),
+          #f7f3f0;
+        border-bottom: 1px solid var(--line);
+        content: "";
+        height: 26px;
+        inset: 0 0 auto;
+        position: absolute;
+      }
+
+      .step span {
+        color: var(--accent);
+        letter-spacing: 0.08em;
+      }
+
+      .step strong {
+        font-size: 24px;
+        line-height: 1.08;
+      }
+
+      .step-content {
+        display: grid;
+        gap: 9px;
+        padding: 54px 18px 18px;
+      }
+
+      .step .explain-body {
+        background: transparent;
+      }
+
+      .step .explain-body p {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.42;
+      }
+
+      .step.active {
+        border-color: var(--accent);
+        background: #fff8f5;
+      }
+
+      .step.active strong {
+        color: var(--accent);
+      }
+
+      .step.done {
+        border-color: #90c94d;
+        background: #f8fff1;
+      }
+
+      .step.failed {
+        border-color: var(--accent);
+        background: #fff1ec;
+      }
+
+      .tabs {
+        margin-bottom: 0;
+        padding: 12px 12px 0;
+      }
+
+      .panel {
+        border-top-left-radius: 0;
+        border-top-right-radius: 0;
+        min-height: 340px;
+      }
+
+      .summary-card,
+      .finding,
+      .source-card,
+      .artifact-card,
+      .sources-table-wrap,
+      pre {
+        border-radius: 2px;
+      }
+
+      .finding:hover,
+      .summary-card:hover {
+        border-color: var(--ink);
+      }
+
+      .notice {
+        background: #fff1ec;
+      }
+
+      @media (max-width: 1100px) {
+        .app-shell {
+          grid-template-columns: 280px minmax(0, 1fr);
+        }
+
+        .timeline {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 980px) {
+        .app-shell {
+          border-inline: 0;
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          border-bottom: 1px solid var(--line);
+          border-right: 0;
+          min-height: unset;
+          position: static;
+        }
+
+        .side-nav {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .history {
+          display: none;
+        }
+      }
+
+      @media (max-width: 680px) {
+        .workspace {
+          padding: 14px;
+        }
+
+        form,
+        .metrics,
+        .timeline {
+          grid-template-columns: 1fr;
+        }
+
+        .topbar h2 {
+          font-size: 13px;
+        }
+      }
+
+      .app-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        display: none;
+      }
     </style>
   </head>
   <body>
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand">
+          <img class="brand-logo" src="browserbase-logo.svg" alt="" />
           <p>Browserbase</p>
           <h1>bb research engine</h1>
         </div>
@@ -829,7 +1210,7 @@
           <button class="nav-button active" type="button" data-tab-target="overview">Overview</button>
           <button class="nav-button" type="button" data-tab-target="findings">Findings</button>
           <button class="nav-button" type="button" data-tab-target="sources">Sources</button>
-          <button class="nav-button" type="button" data-tab-target="artifacts">Artifacts</button>
+          <button class="nav-button" type="button" data-tab-target="artifacts">Raw output</button>
         </nav>
         <section class="history" aria-labelledby="history-heading">
           <h2 id="history-heading">Runs</h2>
@@ -839,7 +1220,13 @@
 
       <div class="main">
         <header class="topbar">
-          <h2 id="workspace-title">Research workspace</h2>
+          <div class="topbar-brand">
+            <img class="topbar-logo" src="browserbase-logo.svg" alt="Browserbase logo" />
+            <div class="topbar-brand-copy">
+              <span class="topbar-eyebrow">Browserbase</span>
+              <h2 id="workspace-title">Research workspace</h2>
+            </div>
+          </div>
           <div class="status-row">
             <div class="status-pill ready" id="status-pill">
               <span class="dot" aria-hidden="true"></span>
@@ -878,71 +1265,76 @@
           </section>
 
           <section class="brief-panel" aria-labelledby="brief-heading">
-            <span>System brief</span>
-            <h2 id="brief-heading">Evidence-first web research, backed by Browserbase</h2>
+            <span>What this does</span>
+            <h2 id="brief-heading">Turn a research question into a cited brief.</h2>
             <p>
-              bb research engine turns a research question into a cited, auditable brief by searching the live web,
-              fetching source content, falling back to Browserbase/Stagehand browser sessions when pages are dynamic or
-              blocked, extracting evidence, synthesizing key findings, and scoring the final answer with a verification
-              pass. We find this to be increasingly essential because it moves research from "ask a model and trust it"
-              to a repeatable evidence pipeline where sources, claims, gaps, and confidence are visible. The value prop
-              is that it combines cheap search/fetch workflows with real browser automation only when needed, so teams
-              can produce higher-trust research faster without manually opening dozens of tabs or losing track of why an
-              answer is credible.
+              Enter a topic and bb research engine runs a repeatable evidence pipeline: discover sources, extract usable
+              evidence, synthesize the answer, then verify confidence before showing the final result.
             </p>
           </section>
 
           <section class="explain-panel" aria-labelledby="explain-heading">
             <div class="explain-heading">
               <div>
-                <h2 id="explain-heading">How the engine works</h2>
-                <p>Open each stage to see what it contributes to the research pipeline.</p>
+                <h2 id="explain-heading">Pipeline details</h2>
+                <p>Six static steps from planning to verified output.</p>
               </div>
             </div>
-            <div class="explain-grid">
-              <details>
-                <summary>Search</summary>
-                <div class="explain-body">
-                  <p>Uses Browserbase Search to discover candidate URLs from the live web without launching a browser for every page.</p>
-                  <p>This keeps discovery fast and cheap while preserving useful metadata like titles, URLs, and result context.</p>
+            <div class="timeline" aria-label="Run pipeline details">
+              <article class="step" data-step="planning">
+                <div class="step-content">
+                  <span>01</span>
+                  <strong>Planning</strong>
+                  <div class="explain-body">
+                    <p>Clarifies the question, source strategy, and quality rubric before any web calls run.</p>
+                  </div>
                 </div>
-              </details>
-              <details>
-                <summary>Fetch</summary>
-                <div class="explain-body">
-                  <p>Uses Browserbase Fetch to retrieve page content through Browserbase infrastructure and parse usable text locally.</p>
-                  <p>Fetch is the default path because it avoids browser-session cost when static content is enough.</p>
+              </article>
+              <article class="step" data-step="search">
+                <div class="step-content">
+                  <span>02</span>
+                  <strong>Search</strong>
+                  <div class="explain-body">
+                    <p>Discovers candidate URLs quickly while preserving titles, links, and result context.</p>
+                  </div>
                 </div>
-              </details>
-              <details>
-                <summary>Browser fallback</summary>
-                <div class="explain-body">
-                  <p>Escalates to Stagehand browser sessions only when a page is dynamic, blocked, too thin, or needs rendered-page extraction.</p>
-                  <p>This makes real browser automation a precision tool instead of the expensive default for every source.</p>
+              </article>
+              <article class="step" data-step="fetch">
+                <div class="step-content">
+                  <span>03</span>
+                  <strong>Fetch</strong>
+                  <div class="explain-body">
+                    <p>Retrieves page content first, avoiding browser-session cost when static content is enough.</p>
+                  </div>
                 </div>
-              </details>
-              <details>
-                <summary>Evidence extraction</summary>
-                <div class="explain-body">
-                  <p>Normalizes accepted pages into source records, extracts claim-level evidence, scores source quality, and keeps retrieval traces.</p>
-                  <p>The output stays inspectable because claims remain connected to source IDs, domains, word counts, and reliability scores.</p>
+              </article>
+              <article class="step" data-step="browser">
+                <div class="step-content">
+                  <span>04</span>
+                  <strong>Browser</strong>
+                  <div class="explain-body">
+                    <p>Uses Stagehand only when a source is dynamic, blocked, thin, or needs rendered-page extraction.</p>
+                  </div>
                 </div>
-              </details>
-              <details>
-                <summary>Synthesis</summary>
-                <div class="explain-body">
-                  <p>Turns the ranked evidence set into an executive brief with key findings, gaps, contradictions, and follow-up questions.</p>
-                  <p>The synthesizer is constrained by gathered evidence, so the UI can show why a conclusion was included.</p>
+              </article>
+              <article class="step" data-step="synthesis">
+                <div class="step-content">
+                  <span>05</span>
+                  <strong>Synthesis</strong>
+                  <div class="explain-body">
+                    <p>Turns accepted evidence into findings, source records, gaps, contradictions, and follow-up questions.</p>
+                  </div>
                 </div>
-              </details>
-              <details open>
-                <summary>Verifier</summary>
-                <div class="explain-body">
-                  <p>The verifier is the trust layer. It evaluates the final brief against an explicit rubric, source coverage, confidence signals, gaps, and process quality.</p>
-                  <p>It is maximally trustworthy for this workflow because it is separate from the synthesis step, uses the collected evidence as its audit surface, and reports a score, pass state, and summary instead of hiding uncertainty.</p>
-                  <div class="trust-note">The verifier does not ask you to blindly trust the answer. It makes the reasons to trust, question, or improve the answer visible.</div>
+              </article>
+              <article class="step" data-step="verify">
+                <div class="step-content">
+                  <span>06</span>
+                  <strong>Verify</strong>
+                  <div class="explain-body">
+                    <p>Scores source coverage, missing angles, confidence signals, and process quality so uncertainty stays visible.</p>
+                  </div>
                 </div>
-              </details>
+              </article>
             </div>
           </section>
 
@@ -969,15 +1361,6 @@
             </div>
           </section>
 
-          <section class="timeline" aria-label="Run timeline">
-            <div class="step" data-step="planning"><span>01</span><strong>Planning</strong></div>
-            <div class="step" data-step="search"><span>02</span><strong>Search</strong></div>
-            <div class="step" data-step="fetch"><span>03</span><strong>Fetch</strong></div>
-            <div class="step" data-step="browser"><span>04</span><strong>Browser</strong></div>
-            <div class="step" data-step="synthesis"><span>05</span><strong>Synthesis</strong></div>
-            <div class="step" data-step="verify"><span>06</span><strong>Verify</strong></div>
-          </section>
-
           <div id="notice"></div>
 
           <section class="results-shell">
@@ -985,7 +1368,7 @@
               <button class="tab-button active" type="button" data-tab-target="overview">Overview</button>
               <button class="tab-button" type="button" data-tab-target="findings">Findings</button>
               <button class="tab-button" type="button" data-tab-target="sources">Sources</button>
-              <button class="tab-button" type="button" data-tab-target="artifacts">Artifacts</button>
+              <button class="tab-button" type="button" data-tab-target="artifacts">Raw output</button>
             </div>
 
             <section class="panel" id="panel-overview">
@@ -998,7 +1381,7 @@
               <div class="empty">No sources yet.</div>
             </section>
             <section class="panel" id="panel-artifacts" hidden>
-              <div class="empty">No artifacts yet.</div>
+              <div class="empty">No raw output yet.</div>
             </section>
           </section>
         </main>
@@ -1069,7 +1452,7 @@
         panelOverview.innerHTML = `<div class="empty">Running ${escapeHtml(topic)}</div>`;
         panelFindings.innerHTML = `<div class="empty">No findings yet.</div>`;
         panelSources.innerHTML = `<div class="empty">No sources yet.</div>`;
-        panelArtifacts.innerHTML = `<div class="empty">No artifacts yet.</div>`;
+        panelArtifacts.innerHTML = `<div class="empty">No raw output yet.</div>`;
         resetMetrics();
         setActiveTab("overview");
 
@@ -1160,6 +1543,8 @@
 
         panelArtifacts.innerHTML = `
           <div class="artifact-card">
+            <h2>Raw output</h2>
+            <p>This engineer-facing payload is useful for debugging and audit checks. Most demo readers can stay in Overview, Findings, and Sources.</p>
             <pre>${escapeHtml(JSON.stringify(result.artifacts || {}, null, 2))}</pre>
           </div>
         `;
