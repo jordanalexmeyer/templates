@@ -4,7 +4,6 @@ import {
   cleanTopic,
   errorMessage,
   handleDashboardRequest,
-  makeIndexHtmlReader,
   makeTextFileReader,
   readBody,
   readTopic,
@@ -15,7 +14,7 @@ import {
 const PORT = Number.parseInt(process.env.PORT || "3000", 10);
 const INDEX_HTML_URL = new URL("../public/index.html", import.meta.url);
 const LOGO_SVG_URL = new URL("../public/browserbase-logo.svg", import.meta.url);
-const readIndexHtml = makeIndexHtmlReader(INDEX_HTML_URL);
+const readIndexHtml = makeTextFileReader(INDEX_HTML_URL);
 const readLogoSvg = makeTextFileReader(LOGO_SVG_URL);
 
 let activeRun = false;

@@ -37,10 +37,6 @@ export async function runResearchForResponse(topic: string, runIdPrefix: string)
   return buildResearchResponse(result, startedAt);
 }
 
-export function makeIndexHtmlReader(indexHtmlUrl: URL): () => Promise<string> {
-  return makeTextFileReader(indexHtmlUrl);
-}
-
 export function makeTextFileReader(fileUrl: URL): () => Promise<string> {
   let cachedIndexHtml: string | undefined;
 
