@@ -1724,19 +1724,24 @@ function buildDeterministicVerification(input: {
 
 function normalizeVerification(result: VerificationResult, rubric: VerificationRubric): VerificationResult {
   const overallScore = clamp(Math.round(result.overallScore), 0, 100);
+  const missingCriteria = result.missingCriteria || [];
+  const pass = Boolean(result.pass) && overallScore >= rubric.passThreshold && missingCriteria.length === 0;
+
   return {
-    pass: Boolean(result.pass) && overallScore >= rubric.passThreshold,
+    pass,
     processScore: clamp(Math.round(result.processScore), 0, 100),
     outcomeScore: clamp(Math.round(result.outcomeScore), 0, 100),
     overallScore,
     unsupportedClaims: result.unsupportedClaims || [],
     weakCitations: result.weakCitations || [],
-    missingCriteria: result.missingCriteria || [],
+    missingCriteria,
     controllableFailures: result.controllableFailures || [],
     uncontrollableFailures: result.uncontrollableFailures || [],
     evidenceRelevance: result.evidenceRelevance || [],
     repairActions: result.repairActions || [],
-    summary: result.summary || "Verifier completed.",
+    summary: pass
+      ? "Verification passed the conservative rubric."
+      : "Verification did not pass; review repair actions before using the report.",
   };
 }
 
