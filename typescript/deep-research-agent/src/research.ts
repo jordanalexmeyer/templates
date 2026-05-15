@@ -787,7 +787,7 @@ function normalizeRubric(rubric: VerificationRubric, topic: string, plan: Resear
     researchQuestion: rubric.researchQuestion || topic,
     processCriteria: (rubric.processCriteria?.length ? rubric.processCriteria : fallback.processCriteria).slice(0, 8),
     outcomeCriteria: (rubric.outcomeCriteria?.length ? rubric.outcomeCriteria : fallback.outcomeCriteria).slice(0, 8),
-    passThreshold: clamp(Math.round(rubric.passThreshold || VERIFICATION_PASS_SCORE), 0, 100),
+    passThreshold: clamp(Math.round(rubric.passThreshold ?? VERIFICATION_PASS_SCORE), 0, 100),
     notes: unique(rubric.notes?.length ? rubric.notes : fallback.notes).slice(0, 10),
   };
 }
