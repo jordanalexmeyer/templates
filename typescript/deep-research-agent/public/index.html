@@ -66,45 +66,9 @@
       .app-shell {
         min-height: 100vh;
         display: grid;
-        grid-template-columns: 260px minmax(0, 1fr);
+        grid-template-columns: 1fr;
       }
 
-      .sidebar {
-        min-height: 100vh;
-        border-right: 1px solid var(--line);
-        background: #fbfcf9;
-        padding: 22px 18px;
-        display: grid;
-        grid-template-rows: auto auto 1fr;
-        gap: 24px;
-      }
-
-      .brand {
-        display: grid;
-        gap: 4px;
-      }
-
-      .brand h1 {
-        font-size: 20px;
-        letter-spacing: 0;
-        line-height: 1.2;
-      }
-
-      .brand p {
-        color: var(--muted);
-        font-size: 12px;
-        font-weight: 700;
-        text-transform: uppercase;
-      }
-
-      .side-nav,
-      .history-list {
-        display: grid;
-        gap: 8px;
-      }
-
-      .nav-button,
-      .history-button,
       .tab-button {
         border: 1px solid transparent;
         background: transparent;
@@ -116,60 +80,12 @@
         font-weight: 700;
       }
 
-      .nav-button.active,
       .tab-button.active {
         background: var(--accent-soft);
         border-color: #bfddd1;
         color: var(--accent);
       }
 
-      .history {
-        align-self: end;
-        display: grid;
-        gap: 10px;
-        min-height: 0;
-      }
-
-      .history h2 {
-        color: var(--muted);
-        font-size: 12px;
-        font-weight: 800;
-        text-transform: uppercase;
-      }
-
-      .history-list {
-        max-height: 34vh;
-        overflow: auto;
-      }
-
-      .history-button {
-        min-height: unset;
-        padding: 10px;
-        background: var(--surface);
-        border-color: var(--line);
-      }
-
-      .history-button strong,
-      .history-button span {
-        display: block;
-      }
-
-      .history-button strong {
-        color: var(--ink);
-        font-size: 13px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      .history-button span {
-        color: var(--muted);
-        font-size: 12px;
-        font-weight: 650;
-        margin-top: 2px;
-      }
-
-      .history-empty,
       .empty {
         color: var(--muted);
         font-size: 13px;
@@ -741,21 +657,6 @@
           grid-template-columns: 1fr;
         }
 
-        .sidebar {
-          min-height: unset;
-          grid-template-rows: auto auto;
-          border-right: 0;
-          border-bottom: 1px solid var(--line);
-        }
-
-        .side-nav {
-          grid-template-columns: repeat(4, minmax(0, 1fr));
-        }
-
-        .history {
-          display: none;
-        }
-
         .metrics,
         .timeline,
         .summary-grid {
@@ -781,8 +682,7 @@
         form,
         .metrics,
         .timeline,
-        .summary-grid,
-        .side-nav {
+        .summary-grid {
           grid-template-columns: 1fr;
         }
 
@@ -827,83 +727,27 @@
         margin: 0 auto;
         background: var(--surface);
         border-inline: 1px solid var(--line);
-        grid-template-columns: 340px minmax(0, 1fr);
+        grid-template-columns: 1fr;
         position: relative;
         z-index: 1;
       }
 
-      .sidebar {
-        background: rgba(255, 255, 255, 0.92);
-        border-right: 1px solid var(--line);
-        gap: 0;
-        grid-template-rows: auto auto minmax(0, 1fr);
-        padding: 0;
-        position: sticky;
-        top: 0;
-      }
-
-      .brand {
-        border-bottom: 1px solid var(--line);
-        padding: 22px 24px;
-        position: relative;
-      }
-
-      .brand-logo {
-        display: block;
-        height: 30px;
-        margin-bottom: 14px;
-        width: 30px;
-      }
-
-      .brand p {
-        color: var(--accent);
-        font-size: 11px;
-        letter-spacing: 0.08em;
-      }
-
-      .brand h1 {
-        font-size: 22px;
-        line-height: 1.05;
-      }
-
-      .side-nav {
-        border-bottom: 1px solid var(--line);
-        gap: 6px;
-        padding: 14px;
-      }
-
-      .nav-button,
-      .history-button,
       .tab-button {
         border-radius: 2px;
         color: var(--muted);
       }
 
-      .nav-button.active,
       .tab-button.active {
         background: var(--accent);
         border-color: var(--accent);
         color: #ffffff;
       }
 
-      .nav-button:not(.active):hover,
-      .history-button:hover,
       .tab-button:not(.active):hover {
         border-color: var(--ink);
         color: var(--ink);
       }
 
-      .history {
-        align-self: stretch;
-        padding: 18px;
-      }
-
-      .history h2 {
-        letter-spacing: 0.08em;
-      }
-
-      .history-button,
-      .history-empty,
       .empty {
         border-radius: 2px;
         background: var(--surface-2);
@@ -1143,7 +987,7 @@
 
       @media (max-width: 1100px) {
         .app-shell {
-          grid-template-columns: 280px minmax(0, 1fr);
+          grid-template-columns: 1fr;
         }
 
         .timeline {
@@ -1155,21 +999,6 @@
         .app-shell {
           border-inline: 0;
           grid-template-columns: 1fr;
-        }
-
-        .sidebar {
-          border-bottom: 1px solid var(--line);
-          border-right: 0;
-          min-height: unset;
-          position: static;
-        }
-
-        .side-nav {
-          grid-template-columns: repeat(4, minmax(0, 1fr));
-        }
-
-        .history {
-          display: none;
         }
       }
 
@@ -1189,35 +1018,10 @@
         }
       }
 
-      .app-shell {
-        grid-template-columns: 1fr;
-      }
-
-      .sidebar {
-        display: none;
-      }
     </style>
   </head>
   <body>
     <div class="app-shell">
-      <aside class="sidebar">
-        <div class="brand">
-          <img class="brand-logo" src="browserbase-logo.svg" alt="" />
-          <p>Browserbase</p>
-          <h1>bb research engine</h1>
-        </div>
-        <nav class="side-nav" aria-label="Workspace">
-          <button class="nav-button active" type="button" data-tab-target="overview">Overview</button>
-          <button class="nav-button" type="button" data-tab-target="findings">Findings</button>
-          <button class="nav-button" type="button" data-tab-target="sources">Sources</button>
-          <button class="nav-button" type="button" data-tab-target="artifacts">Raw output</button>
-        </nav>
-        <section class="history" aria-labelledby="history-heading">
-          <h2 id="history-heading">Runs</h2>
-          <div class="history-list" id="history-list"></div>
-        </section>
-      </aside>
-
       <div class="main">
         <header class="topbar">
           <div class="topbar-brand">
@@ -1403,7 +1207,6 @@
       const apiStatus = document.querySelector("#api-status");
       const apiPill = document.querySelector("#api-pill");
       const notice = document.querySelector("#notice");
-      const historyList = document.querySelector("#history-list");
       const panelOverview = document.querySelector("#panel-overview");
       const panelFindings = document.querySelector("#panel-findings");
       const panelSources = document.querySelector("#panel-sources");
@@ -1415,7 +1218,6 @@
       const metricPass = document.querySelector("#metric-pass");
       let apiBase = window.location.protocol === "file:" ? "http://localhost:3000" : "";
       const localApiCandidates = ["http://localhost:3000", "http://localhost:3210"];
-      const historyKey = "bb-research-engine-runs";
       const pipelineSteps = ["planning", "search", "fetch", "browser", "synthesis", "verify"];
       const estimatedRunSeconds = 240;
       const loadingSteps = [
@@ -1433,12 +1235,6 @@
 
       document.querySelectorAll("[data-tab-target]").forEach((button) => {
         button.addEventListener("click", () => setActiveTab(button.dataset.tabTarget));
-      });
-
-      historyList.addEventListener("click", (event) => {
-        const button = event.target.closest("button[data-topic]");
-        if (!button) return;
-        topicInput.value = button.dataset.topic;
       });
 
       form.addEventListener("submit", async (event) => {
@@ -1467,8 +1263,6 @@
             throw new Error(payload.error || "Research failed.");
           }
           renderResults(payload);
-          saveRun(payload);
-          renderHistory();
           setStatus("Ready", "ready");
           setPipeline("complete");
         } catch (error) {
@@ -1603,40 +1397,6 @@
         `;
       }
 
-      function saveRun(result) {
-        const runs = readHistory();
-        const verification = result.verification || {};
-        const sources = result.sources || [];
-        const nextRun = {
-          topic: result.topic,
-          durationSec: result.durationSec || 0,
-          sourceCount: sources.length,
-          score: verification.overallScore ?? "n/a",
-          createdAt: new Date().toISOString(),
-        };
-        localStorage.setItem(historyKey, JSON.stringify([nextRun, ...runs].slice(0, 8)));
-      }
-
-      function readHistory() {
-        try {
-          return JSON.parse(localStorage.getItem(historyKey) || "[]");
-        } catch {
-          return [];
-        }
-      }
-
-      function renderHistory() {
-        const runs = readHistory();
-        historyList.innerHTML = runs.length
-          ? runs.map((run) => `
-              <button class="history-button" type="button" data-topic="${escapeAttr(run.topic)}">
-                <strong>${escapeHtml(run.topic)}</strong>
-                <span>${escapeHtml(run.sourceCount)} sources | ${escapeHtml(run.score)} score</span>
-              </button>
-            `).join("")
-          : `<div class="history-empty">No saved runs.</div>`;
-      }
-
       function setActiveTab(tabName) {
         document.querySelectorAll("[data-tab-target]").forEach((button) => {
           button.classList.toggle("active", button.dataset.tabTarget === tabName);
@@ -1702,8 +1462,8 @@
           const node = document.querySelector(`[data-step="${step}"]`);
           node.className = "step";
           if (state === "running") {
-            node.classList.toggle("active", index === activeIndex);
-            node.classList.toggle("done", index < activeIndex);
+            node.classList.toggle("active", index === clampedActiveIndex);
+            node.classList.toggle("done", index < clampedActiveIndex);
           }
           if (state === "complete") {
             node.classList.add("done");
@@ -1753,7 +1513,6 @@
         return `${minutes}:${String(seconds).padStart(2, "0")}`;
       }
 
-      renderHistory();
       checkHealth();
     </script>
   </body>
