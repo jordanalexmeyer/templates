@@ -1252,7 +1252,7 @@
         } catch (error) {
           notice.innerHTML = `<div class="notice">${escapeHtml(error.message || String(error))}</div>`;
           setStatus("Error", "error");
-          setPipeline("failed", Math.max(0, (loadingStepIndex - 1) % pipelineSteps.length));
+          setPipeline("failed", Math.max(0, Math.min(pipelineSteps.length - 1, loadingStepIndex - 1)));
         } finally {
           setLoading(false);
         }
