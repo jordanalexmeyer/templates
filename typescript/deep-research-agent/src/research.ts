@@ -2002,16 +2002,6 @@ function rankEvidence(evidence: EvidenceSource[], topic: string): EvidenceSource
     if (selected.length >= MAX_SOURCES) break;
   }
 
-  for (const source of ranked) {
-    if (selected.length >= MAX_SOURCES) break;
-    const count = domainCounts.get(source.domain) || 0;
-    if (count >= MAX_SOURCES_PER_DOMAIN) continue;
-    if (!selected.some((selectedSource) => normalizeUrl(selectedSource.url) === normalizeUrl(source.url))) {
-      selected.push(source);
-      domainCounts.set(source.domain, count + 1);
-    }
-  }
-
   return selected.map((source, index) => ({ ...source, id: index + 1 }));
 }
 
