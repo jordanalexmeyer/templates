@@ -21,7 +21,8 @@
     "@browserbasehq/stagehand": "^3.0.0",
     "boxen": "^8.0.1",
     "chalk": "^5.3.0",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "playwright-core": "^1.58.2"
   },
   "devDependencies": {
     "@types/node": "^20.17.10",
