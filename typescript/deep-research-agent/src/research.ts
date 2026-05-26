@@ -756,9 +756,9 @@ function buildDeterministicRubric(topic: string, plan: ResearchPlan): Verificati
     },
     {
       id: "O3",
-      description: "The report explicitly lists contradictions, gaps, and uncertainty.",
+      description: "The report explicitly lists gaps, uncertainty, and any source disagreements found.",
       weight: 4,
-      requiredEvidence: "contradictions and gaps sections are populated",
+      requiredEvidence: "gaps are populated and contradictions are listed when sources disagree",
     },
     {
       id: "O4",
@@ -1681,7 +1681,6 @@ function buildDeterministicVerification(input: {
     ...(distinctDomains < MIN_DISTINCT_DOMAINS ? ["P2: source diversity threshold not met"] : []),
     ...(weakOrUnsupportedClaimCount ? ["O2: some claims are not clearly supported by cited evidence"] : []),
     ...(input.report.gaps.length === 0 ? ["O3: gaps are missing"] : []),
-    ...(input.report.contradictions.length === 0 ? ["O3: contradictions or disagreement analysis is missing"] : []),
   ];
 
   const uncontrollableFailures = input.rejected
