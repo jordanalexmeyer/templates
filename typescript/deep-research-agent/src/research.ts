@@ -2715,13 +2715,14 @@ function parseDelimitedLine(line: string, delimiter: string): string[] {
 }
 
 function benchmarkSuccess(verification: VerificationResult): boolean {
+  const verifierPassed = verification.pass && verification.missingCriteria.length === 0;
   if (BENCH_SUCCESS_CRITERION === "process") {
     return verification.processScore >= VERIFICATION_PASS_SCORE;
   }
   if (BENCH_SUCCESS_CRITERION === "both") {
-    return verification.pass && verification.processScore >= VERIFICATION_PASS_SCORE && verification.outcomeScore >= VERIFICATION_PASS_SCORE;
+    return verifierPassed && verification.processScore >= VERIFICATION_PASS_SCORE && verification.outcomeScore >= VERIFICATION_PASS_SCORE;
   }
-  return verification.outcomeScore >= VERIFICATION_PASS_SCORE && verification.unsupportedClaims.length === 0;
+  return verifierPassed && verification.outcomeScore >= VERIFICATION_PASS_SCORE && verification.unsupportedClaims.length === 0;
 }
 
 async function writeBenchmarkResults(resultsPath: string, results: BenchmarkResult[]): Promise<void> {
