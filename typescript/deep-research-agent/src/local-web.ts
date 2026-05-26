@@ -14,8 +14,10 @@ import {
 const PORT = Number.parseInt(process.env.PORT || "3000", 10);
 const INDEX_HTML_URL = new URL("../public/index.html", import.meta.url);
 const LOGO_SVG_URL = new URL("../public/browserbase-logo.svg", import.meta.url);
+const STYLES_CSS_URL = new URL("../public/styles.css", import.meta.url);
 const readIndexHtml = makeTextFileReader(INDEX_HTML_URL);
 const readLogoSvg = makeTextFileReader(LOGO_SVG_URL);
+const readStylesCss = makeTextFileReader(STYLES_CSS_URL);
 
 let activeRun = false;
 
@@ -24,6 +26,7 @@ const server = createServer((request, response) =>
     protocol: "http",
     readIndexHtml,
     readLogoSvg,
+    readStylesCss,
     handleResearch,
   }),
 );

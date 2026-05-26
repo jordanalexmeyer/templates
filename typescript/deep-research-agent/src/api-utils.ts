@@ -53,6 +53,7 @@ export async function handleDashboardRequest(
     protocol: "http" | "https";
     readIndexHtml: () => Promise<string>;
     readLogoSvg?: () => Promise<string>;
+    readStylesCss?: () => Promise<string>;
     handleResearch: (request: any, response: any) => Promise<void>;
   },
 ): Promise<void> {
@@ -69,6 +70,10 @@ export async function handleDashboardRequest(
 
     if (request.method === "GET" && url.pathname === "/browserbase-logo.svg" && options.readLogoSvg) {
       return sendText(response, 200, await options.readLogoSvg(), "image/svg+xml; charset=utf-8");
+    }
+
+    if (request.method === "GET" && url.pathname === "/styles.css" && options.readStylesCss) {
+      return sendText(response, 200, await options.readStylesCss(), "text/css; charset=utf-8");
     }
 
     if (request.method === "GET" && (url.pathname === "/health" || url.pathname === "/api/health")) {
