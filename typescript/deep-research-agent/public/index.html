@@ -280,16 +280,17 @@
 
       function renderResults(result) {
         const report = result.report || {};
-        const quality = result.qualityEval || {};
         const verification = result.verification || {};
         const findings = report.keyFindings || [];
         const sources = result.sources || [];
+        const sourceDomainCount =
+          result.sourceDomainCount ?? new Set(sources.map((source) => source.domain).filter(Boolean)).size;
         const followUps = report.followUpQuestions || [];
         const gaps = report.gaps || [];
 
         metricDuration.textContent = String(result.durationSec || 0);
         metricSources.textContent = String(sources.length);
-        metricDomains.textContent = String(quality.distinctDomains || 0);
+        metricDomains.textContent = String(sourceDomainCount);
         metricVerification.textContent = verification.overallScore ?? "n/a";
         metricPass.textContent = verification.pass ? "passed" : "review";
         metricPass.className = verification.pass ? "pass" : "fail";

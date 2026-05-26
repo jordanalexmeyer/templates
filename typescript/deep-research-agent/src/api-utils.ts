@@ -9,6 +9,7 @@ export type ResearchResponse = {
   report: ResearchRunResult["report"];
   verification: ResearchRunResult["verification"];
   qualityEval?: ResearchRunResult["traces"][number]["qualityEval"];
+  sourceDomainCount: number;
   sources: Array<{
     id: number;
     title: string;
@@ -143,6 +144,16 @@ function setCorsHeaders(response: any): void {
 
 function buildResearchResponse(result: ResearchRunResult, startedAt: number): ResearchResponse {
   const latestQuality = result.traces[result.traces.length - 1]?.qualityEval;
+  const sources = result.evidence.map((source) => ({
+    id: source.id,
+    title: source.title,
+    url: source.url,
+    domain: source.domain,
+    sourceType: source.sourceType,
+    wordCount: source.wordCount,
+    reliabilityScore: source.reliabilityScore,
+    score: Number(source.score.toFixed(3)),
+  }));
 
   return {
     topic: result.topic,
@@ -150,16 +161,8 @@ function buildResearchResponse(result: ResearchRunResult, startedAt: number): Re
     report: result.report,
     verification: result.verification,
     qualityEval: latestQuality,
-    sources: result.evidence.map((source) => ({
-      id: source.id,
-      title: source.title,
-      url: source.url,
-      domain: source.domain,
-      sourceType: source.sourceType,
-      wordCount: source.wordCount,
-      reliabilityScore: source.reliabilityScore,
-      score: Number(source.score.toFixed(3)),
-    })),
+    sourceDomainCount: new Set(sources.map((source) => source.domain)).size,
+    sources,
     artifacts: {
       workspace: result.workspace.root,
       markdown: result.paths.markdownPath,
