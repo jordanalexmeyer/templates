@@ -1,10 +1,17 @@
 // Stagehand + Browserbase: Context Authentication Example - See README.md for full documentation
 
 import "dotenv/config";
-import { Stagehand } from "@browserbasehq/stagehand";
+import { browserbase, Stagehand } from "@browserbasehq/stagehand";
 import { Browserbase } from "@browserbasehq/sdk";
-import { z } from "zod";
+import { z } from "zod/v4";
 import axios from "axios";
+import fs from "fs";
+
+async function uploadStagehandExtension(bb: Browserbase): Promise<{ id: string }> {
+  const stagehandEntry = import.meta.resolve("@browserbasehq/stagehand");
+  const archive = new URL("./assets/stagehand-extension.zip", stagehandEntry);
+  return bb.extensions.create({ file: fs.createReadStream(archive) });
+}
 
 async function createSessionContextID() {
   console.log("Creating new Browserbase context...");
@@ -16,7 +23,9 @@ async function createSessionContextID() {
 
   // Create a single session using the context ID to perform initial login.
   console.log("Creating session for initial login...");
+  const extension = await uploadStagehandExtension(bb);
   const session = await bb.sessions.create({
+    extensionId: extension.id,
     browserSettings: {
       context: {
         id: context.id,
@@ -28,16 +37,20 @@ async function createSessionContextID() {
 
   // Connect Stagehand to the existing session (no new session created).
   console.log("Connecting Stagehand to session...");
-  const stagehand = new Stagehand({
-    env: "BROWSERBASE",
-    model: "openai/gpt-4.1",
-    verbose: 1,
-    browserbaseSessionID: session.id,
+  const browser = await browserbase.connect({
+    apiKey: process.env.BROWSERBASE_API_KEY!,
+    sessionId: session.id,
+    extensionId: extension.id,
+  });
+  const stagehand = await Stagehand.create({
+    browser: browser,
+    model: { modelName: "openai/gpt-4.1" },
+    logging: { level: "info" },
   });
 
-  await stagehand.init(); // Connect to existing session for login process.
+  // Connect to existing session for login process.
 
-  const page = stagehand.context.pages()[0];
+  const page = (await browser.context.pages())[0];
   const email = process.env.SF_REC_PARK_EMAIL;
   const password = process.env.SF_REC_PARK_PASSWORD;
 
@@ -50,14 +63,16 @@ async function createSessionContextID() {
 
   // Perform login sequence: each step is atomic to handle dynamic page changes.
   console.log("Starting login sequence...");
-  await page.act("Click the Login button");
-  await page.act(`Fill in the email or username field with "${email}"`);
-  await page.act("Click the next, continue, or submit button to proceed");
-  await page.act(`Fill in the password field with "${password}"`);
-  await page.act("Click the login, sign in, or submit button");
+  await stagehand.act("Click the Login button");
+  await stagehand.act(`Fill in the email or username field with "${email}"`);
+  await stagehand.act("Click the next, continue, or submit button to proceed");
+  await stagehand.act(`Fill in the password field with "${password}"`);
+  await stagehand.act("Click the login, sign in, or submit button");
   console.log("Login sequence completed!");
 
   await stagehand.close();
+  await browser.close();
+  await bb.extensions.delete(extension.id, { headers: { "Content-Type": null } });
   console.log("Authentication state saved to context");
 
   // Return the context ID for reuse in future sessions.
@@ -88,25 +103,25 @@ async function main() {
 
   // Initialize new session using existing context to inherit authentication state.
   // persist: true ensures any new changes (cookies, cache) are saved back to context.
-  const stagehand = new Stagehand({
-    env: "BROWSERBASE",
-    model: "openai/gpt-4.1",
-    verbose: 1,
-    browserbaseSessionCreateParams: {
-      browserSettings: {
-        context: {
-          id: contextId.id,
-          persist: true,
-        },
+  const browser = await browserbase.launch({
+    apiKey: process.env.BROWSERBASE_API_KEY!,
+    browserSettings: {
+      context: {
+        id: contextId.id,
+        persist: true,
       },
     },
   });
+  const stagehand = await Stagehand.create({
+    browser: browser,
+    model: { modelName: "openai/gpt-4.1" },
+    logging: { level: "info" },
+  });
 
-  await stagehand.init(); // Creates session with inherited login state from context.
+  // Creates session with inherited login state from context.
   console.log("Authenticated session ready!");
-  console.log("Live view: https://browserbase.com/sessions/" + stagehand.browserbaseSessionID);
 
-  const page = stagehand.context.pages()[0];
+  const page = (await browser.context.pages())[0];
 
   // Navigate to authenticated area - should skip login due to persisted cookies.
   console.log("Navigating to authenticated area (should skip login)...");
@@ -116,23 +131,24 @@ async function main() {
   });
 
   // Navigate to user-specific area to access personal data.
-  await page.act("Click on the reservations button");
+  await stagehand.act("Click on the reservations button");
 
   // Extract structured user data using Zod schema for type safety.
   // Schema ensures consistent data format and validates extracted content.
   console.log("Extracting user profile data...");
-  const userData = await page.extract({
-    instruction: "Extract the user's full name and address",
-    schema: z.object({
+  const { data: userData } = await stagehand.extract(
+    "Extract the user's full name and address",
+    z.object({
       fullName: z.string().describe("the user's full name"),
       address: z.string().describe("the user's address"),
     }),
-  });
+  );
 
   console.log("Extracted user data:", userData);
 
   // Always close session to release resources and save any context changes.
   await stagehand.close();
+  await browser.close();
   console.log("Session closed successfully");
 
   // Clean up context to prevent accumulation and ensure security.
@@ -145,6 +161,6 @@ main().catch((err) => {
   console.error("  - Check .env file has SF_REC_PARK_EMAIL and SF_REC_PARK_PASSWORD");
   console.error("  - Verify BROWSERBASE_API_KEY is set");
   console.error("  - Ensure credentials are valid for SF Rec & Park");
-  console.error("Docs: https://docs.stagehand.dev/v3/first-steps/introduction");
+  console.error("Docs: https://docs.stagehand.dev/v4/first-steps/introduction");
   process.exit(1);
 });

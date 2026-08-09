@@ -2,10 +2,16 @@
 
 import "dotenv/config";
 import { Browserbase } from "@browserbasehq/sdk";
-import { Stagehand } from "@browserbasehq/stagehand";
+import { browserbase, Stagehand } from "@browserbasehq/stagehand";
 import fs from "fs";
 import path from "path";
 import reductoai from "reductoai";
+
+async function uploadStagehandExtension(bb: Browserbase): Promise<{ id: string }> {
+  const stagehandEntry = import.meta.resolve("@browserbasehq/stagehand");
+  const archive = new URL("./assets/stagehand-extension.zip", stagehandEntry);
+  return bb.extensions.create({ file: fs.createReadStream(archive) });
+}
 import AdmZip from "adm-zip";
 
 // Net sales data structure extracted from financial statements
@@ -240,28 +246,34 @@ async function main(): Promise<void> {
     apiKey: process.env.BROWSERBASE_API_KEY as string,
   });
 
+  const extension = await uploadStagehandExtension(bb);
+  const session = await bb.sessions.create({ extensionId: extension.id });
+
   // Initialize Reducto AI client for PDF data extraction
   const reductoaiClient = new reductoai({
     apiKey: process.env.REDUCTOAI_API_KEY,
   });
 
   // Initialize Stagehand with Browserbase for cloud-based browser automation
-  const stagehand = new Stagehand({
-    env: "BROWSERBASE",
-    verbose: 0,
-    // 0 = errors only, 1 = info, 2 = debug
-    // (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.)
-    model: "google/gemini-2.5-pro",
+  const browser = await browserbase.connect({
+    apiKey: process.env.BROWSERBASE_API_KEY!,
+    sessionId: session.id,
+    extensionId: extension.id,
+  });
+  const stagehand = await Stagehand.create({
+    browser: browser,
+    model: { modelName: "google/gemini-2.5-pro" },
+    logging: { level: "error" },
   });
 
   try {
     // Initialize browser session to start automation
-    await stagehand.init();
+
     console.log("Stagehand initialized successfully!");
-    const page = stagehand.context.pages()[0];
+    const page = (await browser.context.pages())[0];
 
     // Get live view URL for monitoring browser session in real-time
-    const liveViewLinks = await bb.sessions.debug(stagehand.browserbaseSessionId!);
+    const liveViewLinks = await bb.sessions.debug(session.id);
     console.log(`Live View Link: ${liveViewLinks.debuggerFullscreenUrl}`);
 
     // Navigate to Apple homepage.
@@ -282,11 +294,7 @@ async function main(): Promise<void> {
 
     // Retrieve all downloads triggered during this session from Browserbase API
     console.log("Retrieving downloads from Browserbase...");
-    const { promise: downloadPromise, stopPolling } = saveDownloadsWithRetry(
-      bb,
-      stagehand.browserbaseSessionId!,
-      45,
-    );
+    const { promise: downloadPromise, stopPolling } = saveDownloadsWithRetry(bb, session.id, 45);
 
     try {
       await downloadPromise;
@@ -302,25 +310,25 @@ async function main(): Promise<void> {
     } catch (error) {
       stopPolling();
       throw error;
-    } finally {
-      // Always close session to release resources and clean up
-      await stagehand.close();
-      console.log("Session closed successfully");
     }
   } catch (error) {
     console.error("Error during automation:", error);
     throw error;
+  } finally {
+    // Always close the session and remove the temporary Stagehand extension.
+    await stagehand.close();
+    await browser.close();
+    await bb.extensions.delete(extension.id, { headers: { "Content-Type": null } });
+    console.log("Session closed successfully");
   }
 }
 
 main().catch((err) => {
   console.error("Application error:", err);
   console.error("Common issues:");
-  console.error(
-    "  - Check .env file has BROWSERBASE_API_KEY and REDUCTOAI_API_KEY",
-  );
+  console.error("  - Check .env file has BROWSERBASE_API_KEY and REDUCTOAI_API_KEY");
   console.error("  - Verify internet connection and Apple website accessibility");
   console.error("  - Ensure sufficient timeout for slow-loading pages");
-  console.error("Docs: https://docs.stagehand.dev/v3/first-steps/introduction");
+  console.error("Docs: https://docs.stagehand.dev/v4/first-steps/introduction");
   process.exit(1);
 });

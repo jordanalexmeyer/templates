@@ -27,7 +27,7 @@
 ## EXPECTED OUTPUT
 
 - Initializes Stagehand session with Browserbase
-- Displays live session link for monitoring
+- Retries with a fresh TOTP code when the first authentication attempt fails
 - Navigates to TOTP challenge demo page (authenticationtest.com/totpChallenge/)
 - Extracts test credentials (email, password) and TOTP secret from the page
 - Generates TOTP code using RFC 6238 algorithm
@@ -65,7 +65,7 @@
 
 ## HELPFUL RESOURCES
 
-📚 Stagehand Docs: https://docs.stagehand.dev/v3/first-steps/introduction
+📚 Stagehand Docs: https://docs.stagehand.dev/v4/first-steps/introduction
 🎮 Browserbase: https://www.browserbase.com
 💡 Try it out: https://www.browserbase.com/playground
 🔧 Templates: https://www.browserbase.com/templates

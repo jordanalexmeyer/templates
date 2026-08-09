@@ -30,7 +30,7 @@
 
 ## EXPECTED OUTPUT
 
-- Initializes Stagehand session with Browserbase and shows live view URL
+- Initializes Stagehand V4 with an explicit Browserbase browser handle
 - Navigates to SEC EDGAR company search
 - Enters search query, submits, and selects the matching company
 - Extracts company name and CIK from the filings page
@@ -44,7 +44,7 @@
 - "Cannot find module": run npm install in sec-filing-research
 - Missing credentials: ensure .env has BROWSERBASE_API_KEY
 - No company match: use a valid company name, ticker, or CIK; SEC search is case-sensitive for some queries
-- Extraction errors: SEC page layout changes can break selectors; check live view and adjust act/extract prompts if needed
+- Extraction errors: SEC page layout changes can break selectors; adjust act/extract prompts if needed
 - Rate limiting: avoid excessive runs; SEC may throttle heavy or automated traffic
 
 ## USE CASES
@@ -63,7 +63,7 @@
 
 ## HELPFUL RESOURCES
 
-📚 Stagehand Docs: https://docs.stagehand.dev/v3/first-steps/introduction
+📚 Stagehand Docs: https://docs.stagehand.dev/v4/first-steps/introduction
 🎮 Browserbase: https://www.browserbase.com
 💡 Try it out: https://www.browserbase.com/playground
 🔧 Templates: https://www.browserbase.com/templates

@@ -4,14 +4,14 @@
 
 - Goal: Automatically extract and format website value propositions into concise one-liners for email personalization
 - Demonstrates Stagehand's `extract` method with Zod schemas to pull structured data from landing pages
-- Shows direct LLM API usage via `stagehand.llmClient` to transform extracted content with custom prompts
+- Shows how to chain Stagehand V4 extractions to transform grounded page content with custom prompts
 - Includes placeholder page detection and validation logic to filter out non-functional sites
-- Docs → https://docs.stagehand.dev/v3/basics/extract
+- Docs → https://docs.stagehand.dev/v4/basics/extract
 
 ## GLOSSARY
 
 - Extract: Stagehand method that uses AI to pull structured data from pages using natural language instructions
-  Docs → https://docs.stagehand.dev/v3/basics/extract
+  Docs → https://docs.stagehand.dev/v4/basics/extract
 - Value Proposition: The core benefit or unique selling point a company communicates to customers
 
 ## QUICKSTART
@@ -25,7 +25,7 @@
 ## EXPECTED OUTPUT
 
 - Stagehand initializes and creates a Browserbase session
-- Displays live session link for monitoring
+- Chains two Stagehand V4 extractions to produce the formatted one-liner
 - Navigates to target domain and waits for page load
 - Checks for placeholder pages via meta tag inspection
 - Extracts value proposition from landing page using AI
@@ -56,7 +56,7 @@
 
 ## HELPFUL RESOURCES
 
-📚 Stagehand Docs: https://docs.stagehand.dev/v3/first-steps/introduction
+📚 Stagehand Docs: https://docs.stagehand.dev/v4/first-steps/introduction
 🎮 Browserbase: https://www.browserbase.com
 💡 Templates: https://www.browserbase.com/templates
 📧 Need help? support@browserbase.com

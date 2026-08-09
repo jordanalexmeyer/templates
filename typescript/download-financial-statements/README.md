@@ -32,7 +32,7 @@
 - Clicks each Financial Statements PDF link (triggers downloads)
 - Polls Browserbase API until downloads are ready
 - Saves all PDFs as `downloaded_files.zip` in current directory
-- Displays session history and closes cleanly
+- Displays Stagehand metrics and closes cleanly
 
 ## COMMON PITFALLS
 
@@ -56,7 +56,7 @@
 
 ## HELPFUL RESOURCES
 
-📚 Stagehand Docs: https://docs.stagehand.dev/v3/first-steps/introduction
+📚 Stagehand Docs: https://docs.stagehand.dev/v4/first-steps/introduction
 🎮 Browserbase: https://www.browserbase.com
 💡 Try it out: https://www.browserbase.com/playground
 🔧 Templates: https://www.browserbase.com/templates

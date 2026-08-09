@@ -2,12 +2,18 @@
 
 import "dotenv/config";
 import { Browserbase } from "@browserbasehq/sdk";
-import { Stagehand } from "@browserbasehq/stagehand";
+import { browserbase, Stagehand } from "@browserbasehq/stagehand";
 import fs from "fs";
 import path from "path";
 import AdmZip from "adm-zip";
 import { ExtendClient } from "extend-ai";
 import open from "open";
+
+async function uploadStagehandExtension(bb: Browserbase): Promise<{ id: string }> {
+  const stagehandEntry = import.meta.resolve("@browserbasehq/stagehand");
+  const archive = new URL("./assets/stagehand-extension.zip", stagehandEntry);
+  return bb.extensions.create({ file: fs.createReadStream(archive) });
+}
 
 // Opens a URL in the default browser (cross-platform)
 function openInBrowser(url: string): void {
@@ -259,7 +265,7 @@ async function parseReceiptsWithExtend(filePaths: string[]): Promise<void> {
           const blob = new Blob([fileBuffer]);
           const uploadResponse = await client.files.upload(
             blob as Parameters<typeof client.files.upload>[0],
-            { maxRetries: 4 },
+            {},
           );
           const fileId = uploadResponse.id;
 
@@ -346,24 +352,29 @@ async function main(): Promise<void> {
     apiKey: process.env.BROWSERBASE_API_KEY as string,
   });
 
+  const extension = await uploadStagehandExtension(bb);
+  const session = await bb.sessions.create({ extensionId: extension.id });
+
   // Initialize Stagehand with Browserbase for cloud-based browser automation
-  const stagehand = new Stagehand({
-    env: "BROWSERBASE",
-    verbose: 1,
-    // 0 = errors only, 1 = info, 2 = debug
-    // (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.)
-    // https://docs.stagehand.dev/configuration/logging
-    model: "google/gemini-2.5-flash", // Routed through Model Gateway
+  const browser = await browserbase.connect({
+    apiKey: process.env.BROWSERBASE_API_KEY!,
+    sessionId: session.id,
+    extensionId: extension.id,
+  });
+  const stagehand = await Stagehand.create({
+    browser: browser,
+    model: { modelName: "google/gemini-2.5-flash" },
+    logging: { level: "info" },
   });
 
   let sessionId: string | undefined;
 
   try {
     // Initialize browser session to start automation
-    await stagehand.init();
+
     console.log("Stagehand initialized successfully!");
-    const page = stagehand.context.pages()[0];
-    sessionId = stagehand.browserbaseSessionId;
+    const page = (await browser.context.pages())[0];
+    sessionId = session.id;
 
     // Get live view URL for monitoring browser session in real-time
     if (sessionId) {
@@ -380,7 +391,7 @@ async function main(): Promise<void> {
 
     // Use observe to find all individual download buttons (not the Download All button)
     console.log("\nFinding all individual download buttons...");
-    const downloadButtons = await stagehand.observe(
+    const { data: downloadButtons } = await stagehand.observe(
       "Find all the small Download links on individual receipt cards.",
     );
 
@@ -394,7 +405,7 @@ async function main(): Promise<void> {
       try {
         await stagehand.act(action, { page });
         successCount++;
-      } catch (clickError) {
+      } catch (_clickError) {
         // If click fails, scroll element into view and retry
         console.log(`  Could not click download button ${i + 1}, trying to scroll and retry...`);
         try {
@@ -422,6 +433,8 @@ async function main(): Promise<void> {
 
       // Close the browser session before fetching downloads
       await stagehand.close();
+      await browser.close();
+      await bb.extensions.delete(extension.id, { headers: { "Content-Type": null } });
 
       // Wait for session to finalize downloads before polling
       await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -452,6 +465,8 @@ async function main(): Promise<void> {
     console.error("Error during automation:", error);
     try {
       await stagehand.close();
+      await browser.close();
+      await bb.extensions.delete(extension.id, { headers: { "Content-Type": null } });
     } catch {
       // Ignore close errors during cleanup
     }
@@ -465,6 +480,6 @@ main().catch((err) => {
   console.error("  - Check .env file has BROWSERBASE_API_KEY");
   console.error("  - Add EXTEND_API_KEY to .env to enable receipt parsing with Extend AI");
   console.error("  - Verify internet connection and expense portal accessibility");
-  console.error("Docs: https://docs.stagehand.dev/v3/first-steps/introduction");
+  console.error("Docs: https://docs.stagehand.dev/v4/first-steps/introduction");
   process.exit(1);
 });

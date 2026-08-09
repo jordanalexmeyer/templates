@@ -1,10 +1,9 @@
 // Stagehand + Browserbase + Exa: AI-Powered Job Search and Application - See README.md for full documentation
 
 import "dotenv/config";
-import { Stagehand } from "@browserbasehq/stagehand";
+import { browserbase, Stagehand } from "@browserbasehq/stagehand";
 import Exa from "exa-js";
-import { z } from "zod";
-import { chromium } from "playwright-core";
+import { z } from "zod/v4";
 
 // Candidate application details - customize these for your job search
 const applicationDetails = {
@@ -51,94 +50,18 @@ interface CareersPage {
   careersUrl: string;
 }
 
-// System prompt for the job application agent
-const agentSystemPrompt = `You are an intelligent job application assistant with decision-making power.
-
-Your responsibilities:
-- First, navigate to find a job posting and click through to its application page before filling out the form
-- Analyze the job description to understand what the company is looking for
-- Tailor responses to align with job requirements when available
-- Craft thoughtful responses that highlight relevant experience/skills
-- For cover letter or "why interested" fields, reference specific aspects of the job/company
-- For location/relocation questions, use the willingToRelocate flag to guide your answer
-- For visa/sponsorship questions, answer honestly based on requiresSponsorship
-- Skip resume/file upload fields - the resume will be uploaded automatically
-- Use the provided application details as the source of truth for factual information
-- IMPORTANT: Do NOT click the submit button - this is for testing purposes only
-
-Think critically about each field and present the candidate in the best professional light.`;
-
-// Builds the instruction prompt for the agent based on available job description
-function buildAgentInstruction(jobDescription: z.infer<typeof jobDescriptionSchema>): string {
-  const hasJobDescription = jobDescription.jobTitle || jobDescription.fullDescription;
-
-  if (hasJobDescription) {
-    return `You are filling out a job application. Here is the job description that was found:
-
-JOB DESCRIPTION:
-${JSON.stringify(jobDescription, null, 2)}
-
-CANDIDATE INFORMATION:
-${JSON.stringify(applicationDetails, null, 2)}
-
-YOUR TASK:
-- Fill out all text fields in the application form
-- Reference specific aspects of the job description
-- Highlight relevant skills/experience from the candidate's background
-- Show alignment between candidate and role
-- Skip file upload fields (resume will be handled separately)
-
-Remember: Your goal is to fill out this application in a way that maximizes the candidate's chances by showing strong alignment with this specific role.`;
-  }
-
-  return `You are filling out a job application. No detailed job description was found on this page.
-
-CANDIDATE INFORMATION:
-${JSON.stringify(applicationDetails, null, 2)}
-
-YOUR TASK:
-- Fill out all text fields in the application form
-- Write professional, thoughtful responses
-- Highlight the candidate's general strengths and qualifications
-- Express genuine interest and enthusiasm
-- Skip file upload fields (resume will be handled separately)
-
-Remember: Even without a job description, present the candidate professionally and enthusiastically.`;
-}
-
-// Uploads resume file using Playwright, checking main page and iframes
+// Uploads the resume with Stagehand V4's locator API.
 async function uploadResume(stagehand: Stagehand, logPrefix: string = ""): Promise<void> {
   console.log(`${logPrefix}Attempting to upload resume...`);
 
-  const browser = await chromium.connectOverCDP(stagehand.connectURL());
-  const pwContext = browser.contexts()[0];
-  const pwPage = pwContext.pages()[0];
+  const page = await stagehand.browser.context.activePage();
+  if (!page) throw new Error("No active page is available for resume upload");
+  const fileInputs = await page.locator('input[type="file"]').count();
 
-  // Check main page for file input
-  const mainPageInputs = await pwPage.locator('input[type="file"]').count();
-
-  if (mainPageInputs > 0) {
-    await pwPage.locator('input[type="file"]').first().setInputFiles(applicationDetails.resumePath);
+  if (fileInputs > 0) {
+    await page.locator('input[type="file"]').first().setInputFiles(applicationDetails.resumePath);
     console.log(`${logPrefix}Resume uploaded successfully from main page!`);
     return;
-  }
-
-  // Check inside iframes for file input
-  const frames = pwPage.frames();
-  for (const frame of frames) {
-    try {
-      const frameInputCount = await frame.locator('input[type="file"]').count();
-      if (frameInputCount > 0) {
-        await frame
-          .locator('input[type="file"]')
-          .first()
-          .setInputFiles(applicationDetails.resumePath);
-        console.log(`${logPrefix}Resume uploaded successfully from iframe!`);
-        return;
-      }
-    } catch {
-      // Frame not accessible, continue to next
-    }
   }
 
   console.log(`${logPrefix}No file upload field found on page`);
@@ -158,43 +81,46 @@ async function applyToJob(careersPage: CareersPage, index: number): Promise<Appl
   const logPrefix = `[${index + 1}/${searchConfig.numCompanies}] ${careersPage.company}: `;
   console.log(`\n${logPrefix}Starting application...`);
 
-  const stagehand = new Stagehand({
-    env: "BROWSERBASE",
-    verbose: 0,
-    experimental: true,
-    model: "google/gemini-2.5-pro",
-    // Browserbase session configuration (proxies require Developer plan or higher)
-    browserbaseSessionCreateParams: {
-      proxies: searchConfig.useProxy,
-    },
+  const browser = await browserbase.launch({
+    apiKey: process.env.BROWSERBASE_API_KEY!,
+    proxies: searchConfig.useProxy,
+  });
+  const stagehand = await Stagehand.create({
+    browser: browser,
+    model: { modelName: "google/gemini-2.5-pro" },
+    logging: { level: "error" },
   });
 
   try {
-    await stagehand.init();
-    const sessionUrl = `https://browserbase.com/sessions/${stagehand.browserbaseSessionId}`;
-    console.log(`${logPrefix}Session started: ${sessionUrl}`);
+    console.log(`${logPrefix}Session started`);
 
-    const page = stagehand.context.pages()[0];
+    const page = (await browser.context.pages())[0];
     await page.goto(careersPage.careersUrl);
 
+    await stagehand.act("Open the first relevant job posting on this careers page");
+
     // Extract job description
-    const jobDescription = await stagehand.extract(
+    const { data: jobDescription } = await stagehand.extract(
       "extract the full job description including title, requirements, responsibilities, and any important details about the role",
       jobDescriptionSchema,
     );
 
-    // Initialize and run agent
-    const agent = stagehand.agent({
-      mode: "hybrid",
-      model: "google/gemini-3-flash-preview",
-      systemPrompt: agentSystemPrompt,
-    });
-
-    const instruction = buildAgentInstruction(jobDescription);
-    const result = await agent.execute({
-      instruction,
-      maxSteps: 50,
-    });
+    await stagehand.act("Open the application form for this job");
+    await stagehand.act(`Fill the applicant name field with ${applicationDetails.name}`);
+    await stagehand.act(`Fill the email field with ${applicationDetails.email}`);
+    await stagehand.act(`Fill the phone field with ${applicationDetails.phone}`);
+    await stagehand.act(`Fill the LinkedIn field with ${applicationDetails.linkedInUrl}`);
+    await stagehand.act(`Fill the portfolio field with ${applicationDetails.portfolioUrl}`);
+    await stagehand.act(`Fill the location field with ${applicationDetails.currentLocation}`);
+    await stagehand.act(
+      `Answer relocation questions with ${applicationDetails.willingToRelocate ? "yes" : "no"}`,
+    );
+    await stagehand.act(
+      `Answer sponsorship questions with ${applicationDetails.requiresSponsorship ? "yes" : "no"}`,
+    );
+    await stagehand.act(
+      `Fill the cover letter field with: ${applicationDetails.coverLetter} Relevant role: ${jobDescription.jobTitle ?? "the selected position"}`,
+    );
 
     // Upload resume after form filling
     try {
@@ -203,18 +129,13 @@ async function applyToJob(careersPage: CareersPage, index: number): Promise<Appl
       console.log(`${logPrefix}Could not upload resume:`, uploadError);
     }
 
-    if (result.success) {
-      console.log(`${logPrefix}Form filled successfully!`);
-    } else {
-      console.log(`${logPrefix}Form filling may be incomplete`);
-    }
+    console.log(`${logPrefix}Form filled successfully!`);
 
     return {
       company: careersPage.company,
       careersUrl: careersPage.careersUrl,
-      success: result.success,
-      message: result.message,
-      sessionUrl,
+      success: true,
+      message: "Application form filled without submitting",
     };
   } catch (error) {
     console.error(`${logPrefix}Error:`, error);
@@ -226,6 +147,7 @@ async function applyToJob(careersPage: CareersPage, index: number): Promise<Appl
     };
   } finally {
     await stagehand.close();
+    await browser.close();
     console.log(`${logPrefix}Session closed`);
   }
 }
@@ -351,11 +273,9 @@ async function main() {
 main().catch((err) => {
   console.error("Error in Exa + Browserbase job application:", err);
   console.error("Common issues:");
-  console.error(
-    "  - Check .env file has BROWSERBASE_API_KEY and EXA_API_KEY",
-  );
+  console.error("  - Check .env file has BROWSERBASE_API_KEY and EXA_API_KEY");
   console.error("  - Verify companies exist for the search query");
   console.error("  - Ensure careers pages are accessible");
-  console.error("Docs: https://docs.stagehand.dev/v3/first-steps/introduction");
+  console.error("Docs: https://docs.stagehand.dev/v4/first-steps/introduction");
   process.exit(1);
 });

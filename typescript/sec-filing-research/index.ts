@@ -1,8 +1,8 @@
 // Stagehand + Browserbase: SEC Filing Downloader - See README.md for full documentation
 
 import "dotenv/config";
-import { Stagehand } from "@browserbasehq/stagehand";
-import { z } from "zod";
+import { browserbase, Stagehand } from "@browserbasehq/stagehand";
+import { z } from "zod/v4";
 
 // Search query - can be company name, ticker symbol, or CIK number
 // Examples: "Apple Inc", "AAPL", "0000320193"
@@ -55,27 +55,21 @@ async function main(): Promise<void> {
   console.log(`Retrieving ${NUM_FILINGS} most recent filings\n`);
 
   // Initialize Stagehand with Browserbase for cloud-based browser automation
-  const stagehand = new Stagehand({
-    env: "BROWSERBASE",
-    apiKey: process.env.BROWSERBASE_API_KEY,
-    verbose: 1,
-    // 0 = errors only, 1 = info, 2 = debug
-    // (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.)
-    // https://docs.stagehand.dev/configuration/logging
-    model: "google/gemini-2.5-flash",
+  const browser = await browserbase.launch({
+    apiKey: process.env.BROWSERBASE_API_KEY!,
+  });
+  const stagehand = await Stagehand.create({
+    browser: browser,
+    model: { modelName: "google/gemini-2.5-flash" },
+    logging: { level: "info" },
   });
 
   try {
     // Initialize browser session
-    await stagehand.init();
+
     console.log("Stagehand initialized successfully!");
 
-    const page = stagehand.context.pages()[0];
-
-    // Provide live session URL for debugging and monitoring
-    if (stagehand.browserbaseSessionId) {
-      console.log(`Live View: https://browserbase.com/sessions/${stagehand.browserbaseSessionId}`);
-    }
+    const page = (await browser.context.pages())[0];
 
     // Navigate to modern SEC EDGAR company search page
     console.log("\nNavigating to SEC EDGAR...");
@@ -100,7 +94,7 @@ async function main(): Promise<void> {
     let companyInfo = { companyName: SEARCH_QUERY, cik: "Unknown" };
 
     try {
-      const extractedInfo = await stagehand.extract(
+      const { data: extractedInfo } = await stagehand.extract(
         "Extract the company name and CIK number from the page header or company information section. The CIK should be a numeric identifier.",
         CompanyInfoSchema,
       );
@@ -114,7 +108,7 @@ async function main(): Promise<void> {
 
     // Extract filing metadata from the filings table using structured schema
     console.log(`Extracting the ${NUM_FILINGS} most recent filings...`);
-    const filingsData = await stagehand.extract(
+    const { data: filingsData } = await stagehand.extract(
       `Extract the ${NUM_FILINGS} most recent SEC filings from the filings table. For each filing, get: the filing type (column: Filings, like 10-K, 10-Q, 8-K), the filing date (column: Filing Date), description, accession number (from the link or description), and file/film number if shown.`,
       FilingSchema,
     );
@@ -163,6 +157,7 @@ async function main(): Promise<void> {
   } finally {
     // Always close session to release resources and clean up
     await stagehand.close();
+    await browser.close();
     console.log("\nSession closed successfully");
   }
 }
@@ -174,6 +169,6 @@ main().catch((err) => {
   console.error("  - Check .env file has BROWSERBASE_API_KEY");
   console.error("  - Verify internet connection and SEC website accessibility");
   console.error("  - Ensure the search query is valid (company name, ticker, or CIK)");
-  console.error("\nDocs: https://docs.stagehand.dev/v3/first-steps/introduction");
+  console.error("\nDocs: https://docs.stagehand.dev/v4/first-steps/introduction");
   process.exit(1);
 });

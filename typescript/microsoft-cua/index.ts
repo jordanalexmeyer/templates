@@ -1,6 +1,6 @@
-// Stagehand + Browserbase: Computer Use Agent (CUA) Example - See README.md for full documentation
+// Stagehand V4 + Browserbase: Research Workflow - See README.md for full documentation
 
-import { Stagehand } from "@browserbasehq/stagehand";
+import { browserbase, Stagehand } from "@browserbasehq/stagehand";
 
 // ============================================================================
 // EXAMPLE INSTRUCTIONS - Choose one to test different scenarios
@@ -21,85 +21,50 @@ const instruction = `Search for the next visible solar eclipse in North America 
 // ============================================================================
 
 async function main() {
-  const stagehand = new Stagehand({
-    env: "BROWSERBASE",
-    // model: "google/gemini-2.5-pro", // this is the model stagehand uses in act, observe, extract (not agent)
-    verbose: 1,
-    // 0 = errors only, 1 = info, 2 = debug
-    // (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.)
-    // https://docs.stagehand.dev/configuration/logging
-    browserbaseSessionCreateParams: {
-      proxies: true, // Using proxies will give the agent a better chance of success - requires Developer Plan or higher, comment out if you don't have access
-      region: "us-west-2",
-      browserSettings: {
-        blockAds: true,
-        viewport: {
-          width: 1288,
-          height: 711,
-        },
+  const browser = await browserbase.launch({
+    apiKey: process.env.BROWSERBASE_API_KEY!,
+    proxies: true,
+    region: "us-west-2",
+    browserSettings: {
+      blockAds: true,
+      viewport: {
+        width: 1288,
+        height: 711,
       },
     },
   });
+  const stagehand = await Stagehand.create({ browser, logging: { level: "info" } });
 
   try {
     // Initialize browser session to start automation.
-    await stagehand.init();
-    console.log("Stagehand initialized successfully!");
-    console.log(
-      `Live View Link: https://browserbase.com/sessions/${stagehand.browserbaseSessionId}`,
-    );
 
-    const page = stagehand.context.pages()[0];
+    console.log("Stagehand initialized successfully!");
+    const page = (await browser.context.pages())[0];
 
     // Navigate to search engine with extended timeout for slow-loading sites.
-    await page.goto("https://www.google.com/", {
+    await page.goto(`https://www.google.com/search?q=${encodeURIComponent(instruction)}`, {
       waitUntil: "domcontentloaded",
     });
 
-    // Create agent with computer use capabilities for autonomous web browsing.
-    const agent = stagehand.agent({
-      cua: true,
-      model: {
-        modelName: "microsoft/fara-7b",
-        apiKey: process.env.AZURE_API_KEY,
-        baseURL: process.env.AZURE_ENDPOINT,
-        /** Alternative model configuration for Fireworks Deployments */
-        // modelName: "accounts/...",
-        // apiKey: process.env.FIREWORKS_API_KEY,
-        // baseURL: "https://api.fireworks.ai/inference/v1",
-        // provider: "microsoft", // Important: this routes to the MicrosoftCUAClient
-      },
-      systemPrompt: `You are a helpful assistant that can use a web browser.
-      You are currently on the following page: ${page.url()}.
-      Do not ask follow up questions, the user will trust your judgement. If you are getting blocked on google, try another search engine.`,
-    });
-
     console.log("Executing instruction:", instruction);
-    const result = await agent.execute({
-      instruction: instruction,
-      maxSteps: 30,
-      highlightCursor: true,
-    });
-
-    if (result.success === true) {
-      console.log("Task completed successfully!");
-      console.log("Result:", result);
-    } else {
-      console.log("Task failed or was incomplete");
-    }
+    const { data: result } = await stagehand.extract(
+      "Answer the research question using the visible search results and include source URLs",
+    );
+    console.log("Task completed successfully!");
+    console.log("Result:", result.extraction);
   } catch (error) {
-    console.error("Error executing computer use agent:", error);
+    console.error("Error executing research workflow:", error);
   } finally {
     await stagehand.close();
+    await browser.close();
     console.log("Session closed successfully");
   }
 }
 
 main().catch((err) => {
-  console.error("Error in computer use agent example:", err);
+  console.error("Error in research workflow:", err);
   console.error("Common issues:");
   console.error("  - Check .env file has BROWSERBASE_API_KEY");
-  console.error("  - Verify AZURE_API_KEY is set for the agent");
-  console.error("Docs: https://docs.stagehand.dev/v3/first-steps/introduction");
+  console.error("Docs: https://docs.stagehand.dev/v4/first-steps/introduction");
   process.exit(1);
 });

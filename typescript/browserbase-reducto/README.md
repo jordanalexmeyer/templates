@@ -52,7 +52,7 @@ Docs → https://docs.reducto.ai/parse/best-practices#2-enable-agentic-mode-only
 
 ## HELPFUL RESOURCES
 
-📚 Stagehand Docs: https://docs.stagehand.dev/v3/first-steps/introduction
+📚 Stagehand Docs: https://docs.stagehand.dev/v4/first-steps/introduction
 📚 Browserbase Downloads: https://docs.browserbase.com/features/downloads
 📚 Reducto Best Practices: https://docs.reducto.ai/parse/best-practices
 🎮 Browserbase: https://www.browserbase.com

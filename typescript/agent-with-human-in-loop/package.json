@@ -10,11 +10,11 @@
   },
   "dependencies": {
     "@browserbasehq/sdk": "^2.9.0",
-    "@browserbasehq/stagehand": "^3.2.0",
+    "@browserbasehq/stagehand": "github:browserbase/stagehand#089f2aaeaea75696685949e0835aece95db54358&path:/packages/sdk-ts",
     "next": "16.2.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "zod": "^4.3.6"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -25,5 +25,10 @@
     "eslint-config-next": "16.2.1",
     "tailwindcss": "^4",
     "typescript": "^5"
-  }
+  },
+  "//": "TODO: Replace this commit pin with @browserbasehq/stagehand@4.0.0 after it is published.",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "packageManager": "pnpm@10.24.0"
 }

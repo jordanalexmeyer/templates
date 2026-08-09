@@ -64,7 +64,7 @@
 
 ## HELPFUL RESOURCES
 
-📚 Stagehand Docs: https://docs.stagehand.dev/v3/first-steps/introduction
+📚 Stagehand Docs: https://docs.stagehand.dev/v4/first-steps/introduction
 📚 Browserbase Downloads: https://docs.browserbase.com/features/downloads
 📚 Extend AI: https://docs.extend.app
 🎮 Browserbase: https://www.browserbase.com

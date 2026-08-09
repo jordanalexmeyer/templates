@@ -1,8 +1,8 @@
 // Stagehand + Browserbase: Website Link Tester - See README.md for full documentation
 
 import "dotenv/config";
-import { Stagehand } from "@browserbasehq/stagehand";
-import { z } from "zod/v3";
+import { browserbase, Stagehand, type StagehandBrowser } from "@browserbasehq/stagehand";
+import { z } from "zod/v4";
 
 // Base URL whose links we want to crawl and verify
 const URL = "https://www.browserbase.com";
@@ -45,13 +45,17 @@ const SOCIAL_DOMAINS = [
   "discord.com",
 ];
 
-// Creates a preconfigured Stagehand instance for Browserbase sessions
-function createStagehand() {
-  return new Stagehand({
-    env: "BROWSERBASE",
-    verbose: 0,
-    model: "google/gemini-2.5-pro",
+// Creates a preconfigured Stagehand V4 instance and its Browserbase browser handle.
+async function createStagehand(): Promise<{ stagehand: Stagehand; browser: StagehandBrowser }> {
+  const browser = await browserbase.launch({
+    apiKey: process.env.BROWSERBASE_API_KEY!,
   });
+  const stagehand = await Stagehand.create({
+    browser,
+    model: { modelName: "google/gemini-2.5-pro" },
+    logging: { level: "error" },
+  });
+  return { stagehand, browser };
 }
 
 // Removes duplicate links by URL while preserving the first occurrence
@@ -72,15 +76,10 @@ function deduplicateLinks(extractedLinks: { links: Link[] }): Link[] {
  * Returns a de-duplicated array of link objects that we will later verify.
  */
 async function collectLinksFromHomepage(): Promise<Link[]> {
-  const stagehand = createStagehand();
+  const { stagehand, browser } = await createStagehand();
 
   try {
-    // Start a fresh browser session for link collection
-    await stagehand.init();
-
-    console.log(`Watch live: https://browserbase.com/sessions/${stagehand.browserbaseSessionId}`);
-
-    const page = stagehand.context.pages()[0];
+    const page = (await browser.context.pages())[0];
 
     // Navigate to the base URL where we will harvest links
     console.log(`Navigating to ${URL}...`);
@@ -88,7 +87,7 @@ async function collectLinksFromHomepage(): Promise<Link[]> {
 
     console.log(`Successfully loaded ${URL}. Extracting links...`);
 
-    const extractedLinks = await stagehand.extract(
+    const { data: extractedLinks } = await stagehand.extract(
       "extract all links on the page with their link text",
       z.object({
         links: z.array(
@@ -110,6 +109,7 @@ async function collectLinksFromHomepage(): Promise<Link[]> {
 
     console.log("\nClosing initial browser...");
     await stagehand.close();
+    await browser.close();
     console.log("Initial browser closed");
 
     return uniqueLinks;
@@ -117,6 +117,7 @@ async function collectLinksFromHomepage(): Promise<Link[]> {
     console.error("Error while collecting links:", error);
     // Ensure the browser is closed even when link collection fails
     await stagehand.close();
+    await browser.close();
     throw error;
   }
 }
@@ -130,21 +131,21 @@ async function collectLinksFromHomepage(): Promise<Link[]> {
 async function verifySingleLink(link: Link): Promise<LinkCheckResult> {
   console.log(`\nChecking: ${link.linkText} (${link.url})`);
 
-  let browser: Stagehand | null = null;
+  let browser: StagehandBrowser | null = null;
+  let stagehand: Stagehand | null = null;
 
   try {
-    browser = createStagehand();
-    await browser.init();
+    ({ browser, stagehand } = await createStagehand());
 
-    const page = browser.context.pages()[0];
+    const page = (await browser.context.pages())[0];
 
     // Detect if this is a social link (we treat those differently)
     const isSocialLink = SOCIAL_DOMAINS.some((domain) => link.url.includes(domain));
 
-    await page.goto(link.url, { timeoutMs: 30000 });
+    await page.goto(link.url, { timeout: 30000 });
     await page.waitForLoadState("domcontentloaded");
 
-    const currentUrl = page.url();
+    const currentUrl = await page.url();
 
     // Guard against pages that never load or redirect to an invalid URL
     if (!currentUrl || currentUrl === "about:blank") {
@@ -168,7 +169,7 @@ async function verifySingleLink(link: Link): Promise<LinkCheckResult> {
     }
 
     // Ask the model to read the page and decide whether it matches the link text
-    const verification = await browser.extract(
+    const { data: verification } = await stagehand.extract(
       `Does the page content match what the link text "${link.linkText}" suggests? Extract the page title and provide a brief assessment (maximum 8 words).`,
       z.object({
         pageTitle: z.string(),
@@ -204,6 +205,9 @@ async function verifySingleLink(link: Link): Promise<LinkCheckResult> {
       error: errorMessage,
     };
   } finally {
+    if (stagehand) {
+      await stagehand.close();
+    }
     if (browser) {
       // Always close the browser to free resources, even on error
       await browser.close();

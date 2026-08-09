@@ -1,55 +1,37 @@
-# Stagehand + Browserbase: Computer Use Agent (CUA) Example
+# Stagehand V4 + Browserbase: Research Workflow
 
 ## AT A GLANCE
 
-- Goal: demonstrate autonomous web browsing using Microsoft's Computer Use Agent with Stagehand and Browserbase.
-- Uses Stagehand Agent to automate complex workflows with AI powered browser agents
-- Leverages Microsoft's fara-7b model for autonomous web interaction and decision-making.
-
-## GLOSSARY
-
-- agent: create an autonomous AI agent that can execute complex multi-step tasks
-  Docs → https://docs.stagehand.dev/basics/agent#what-is-agent
+- Goal: demonstrate the Stagehand V4 replacement for the former computer-use-agent example.
+- Uses explicit browser navigation and `extract()` through Browserbase Model Gateway.
+- Stagehand V4 intentionally has no `agent()` or CUA orchestration API; application code owns the steps.
 
 ## QUICKSTART
 
-1.  npm install
-2.  cp .env.example .env
-3.  Add your Browserbase API key, Azure API key, and Azure endpoint to .env
-4.  npm start
+1. `pnpm install`
+2. `cp .env.example .env`
+3. Add `BROWSERBASE_API_KEY` to `.env`
+4. `pnpm start`
 
 ## EXPECTED OUTPUT
 
-- Initializes Stagehand session with Browserbase
-- Navigates to Google search engine
-- Executes autonomous search and data extraction task
-- Displays live session link for monitoring
-- Returns structured results or completion status
-- Closes session cleanly
+- Launches a Browserbase browser with `browserbase.launch()`
+- Creates Stagehand with `Stagehand.create({ browser })`
+- Opens search results for the configured question
+- Extracts and prints an answer from the visible results
+- Closes both Stagehand and the browser handle
 
 ## COMMON PITFALLS
 
-- "Cannot find module": ensure all dependencies are installed
-- Missing credentials: verify .env contains BROWSERBASE_API_KEY, AZURE_API_KEY, and AZURE_ENDPOINT
-- Microsoft API access: ensure you have access to Microsoft's fara-7b model via Azure or Fireworks
-
-## USE CASES
-
-• Autonomous research: Let AI agents independently research topics, gather information, and compile reports without manual intervention.
-• Complex web workflows: Automate multi-step processes that require decision-making, form filling, and data extraction across multiple pages.
-• Content discovery: Search for specific information, verify data accuracy, and cross-reference sources autonomously.
-
-## NEXT STEPS
-
-• Customize instructions: Modify the instruction variable to test different autonomous tasks and scenarios.
-• Add error handling: Implement retry logic, fallback strategies, and better error recovery for failed agent actions.
-• Extend capabilities: Add support for file downloads, form submissions, and more complex interaction patterns.
+- Missing credentials: verify `.env` contains `BROWSERBASE_API_KEY`
+- V4 primitives return `{ data, metadata }`; read the answer from `result.data`
+- For autonomous runtime orchestration, expose V4 browser methods to your agent framework as tools
 
 ## HELPFUL RESOURCES
 
-📚 Stagehand Docs: https://docs.stagehand.dev/v3/first-steps/introduction
+📚 Stagehand V4 Migration: https://docs.stagehand.dev/v4/migrations/v3
+📚 Stagehand V4 Docs: https://docs.stagehand.dev/v4/first-steps/introduction
 🎮 Browserbase: https://www.browserbase.com
 💡 Try it out: https://www.browserbase.com/playground
 🔧 Templates: https://www.browserbase.com/templates
-📧 Need help? support@browserbase.com
 💬 Discord: http://stagehand.dev/discord

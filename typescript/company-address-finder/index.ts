@@ -1,7 +1,7 @@
 // Stagehand + Browserbase: Company Address Finder - See README.md for full documentation
 import "dotenv/config";
-import { Stagehand } from "@browserbasehq/stagehand";
-import { z } from "zod";
+import { browserbase, Stagehand, type StagehandBrowser } from "@browserbasehq/stagehand";
+import { z } from "zod/v4";
 
 // Companies to process (modify this array to add/remove companies)
 const COMPANY_NAMES: string[] = ["Browserbase", "Mintlify", "Wordware", "Reducto"];
@@ -45,46 +45,34 @@ async function withRetry<T>(
 }
 
 // Processes a single company: finds homepage, extracts ToS/Privacy links, and extracts physical address
-// Uses CUA agent to navigate and Stagehand extract() for structured data extraction
+// Uses explicit V4 navigation, act(), and extract() for structured data extraction
 // Falls back to Privacy Policy if address not found in Terms of Service
 async function processCompany(companyName: string): Promise<CompanyData> {
   console.log(`\nProcessing: ${companyName}`);
 
   let stagehand: Stagehand | null = null;
+  let browser: StagehandBrowser | null = null;
 
   try {
     // Initialize Stagehand with Browserbase
-    stagehand = new Stagehand({
-      env: "BROWSERBASE",
-      verbose: 0,
-      // 0 = errors only, 1 = info, 2 = debug
-      // (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.)
-      // https://docs.stagehand.dev/configuration/logging
-      browserbaseSessionCreateParams: {
-        region: "us-east-1",
-        timeout: 900,
-        browserSettings: {
-          viewport: {
-            width: 1920,
-            height: 1080,
-          },
+    browser = await browserbase.launch({
+      apiKey: process.env.BROWSERBASE_API_KEY!,
+      region: "us-east-1",
+      timeout: 900,
+      browserSettings: {
+        viewport: {
+          width: 1920,
+          height: 1080,
         },
       },
     });
+    stagehand = await Stagehand.create({ browser: browser, logging: { level: "error" } });
 
     console.log(`[${companyName}] Initializing browser session...`);
-    await stagehand.init();
-    const sessionId = stagehand.browserbaseSessionId;
 
-    if (!sessionId) {
-      throw new Error(`Failed to initialize browser session for ${companyName}`);
-    }
+    const page = (await browser.context.pages())[0];
 
-    console.log(`[${companyName}] Live View Link: https://browserbase.com/sessions/${sessionId}`);
-
-    const page = stagehand.context.pages()[0];
-
-    // Navigate to Google as starting point for CUA agent to search and find company homepage
+    // Search Google, then use one Stagehand action to open the official homepage.
     console.log(`[${companyName}] Navigating to Google...`);
     await withRetry(async () => {
       await page.goto("https://www.google.com/", {
@@ -92,29 +80,15 @@ async function processCompany(companyName: string): Promise<CompanyData> {
       });
     }, `[${companyName}] Initial navigation to Google`);
 
-    // Create CUA agent for autonomous navigation
-    // Agent can interact with the browser like a human: search, click, scroll, and navigate
-    const agent = stagehand.agent({
-      cua: true,
-      model: {
-        modelName: "google/gemini-2.5-computer-use-preview-10-2025",
-        apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-      },
-      systemPrompt: `You are a helpful assistant that can use a web browser.
-      You are currently on the following page: ${page.url()}.
-      Do not ask follow up questions, the user will trust your judgement.`,
-    });
-
-    console.log(`[${companyName}] Finding company homepage using CUA agent...`);
+    console.log(`[${companyName}] Finding company homepage...`);
     await withRetry(async () => {
-      await agent.execute({
-        instruction: `Navigate to the ${companyName} website`,
-        maxSteps: 5,
-        highlightCursor: true,
-      });
+      await page.goto(
+        `https://www.google.com/search?q=${encodeURIComponent(`${companyName} official website`)}`,
+      );
+      await stagehand!.act(`Open the official website result for ${companyName}`);
     }, `[${companyName}] Navigation to website`);
 
-    const homepageUrl = page.url();
+    const homepageUrl = await page.url();
     console.log(`[${companyName}] Homepage found: ${homepageUrl}`);
 
     // Extract both legal document links in parallel for speed (independent operations)
@@ -138,12 +112,12 @@ async function processCompany(companyName: string): Promise<CompanyData> {
     let privacyPolicyLink = "";
 
     if (termsResult.status === "fulfilled" && termsResult.value) {
-      termsOfServiceLink = termsResult.value.termsOfServiceLink || "";
+      termsOfServiceLink = termsResult.value.data.termsOfServiceLink || "";
       console.log(`[${companyName}] Terms of Service: ${termsOfServiceLink}`);
     }
 
     if (privacyResult.status === "fulfilled" && privacyResult.value) {
-      privacyPolicyLink = privacyResult.value.privacyPolicyLink || "";
+      privacyPolicyLink = privacyResult.value.data.privacyPolicyLink || "";
       console.log(`[${companyName}] Privacy Policy: ${privacyPolicyLink}`);
     }
 
@@ -157,7 +131,7 @@ async function processCompany(companyName: string): Promise<CompanyData> {
       }, `[${companyName}] Navigate to Terms of Service`);
 
       try {
-        const addressResult = await stagehand.extract(
+        const { data: addressResult } = await stagehand.extract(
           "Extract the physical company mailing address (street, city, state, postal code, and country if present) from the Terms of Service page. Ignore phone numbers or email addresses.",
           z.object({
             companyAddress: z.string(),
@@ -186,7 +160,7 @@ async function processCompany(companyName: string): Promise<CompanyData> {
       }, `[${companyName}] Navigate to Privacy Policy`);
 
       try {
-        const addressResult = await stagehand.extract(
+        const { data: addressResult } = await stagehand.extract(
           "Extract the physical company mailing  address(street, city, state, postal code, and country if present) from the Privacy Policy page. Ignore phone numbers or email addresses.",
           z.object({
             companyAddress: z.string(),
@@ -231,9 +205,10 @@ async function processCompany(companyName: string): Promise<CompanyData> {
       address: `Error: ${error instanceof Error ? error.message : "Failed to process"}`,
     };
   } finally {
-    if (stagehand) {
+    if (stagehand && browser) {
       try {
         await stagehand.close();
+        await browser.close();
         console.log(`[${companyName}] Session closed successfully`);
       } catch (closeError) {
         console.error(`[${companyName}] Error closing browser:`, closeError);
@@ -299,6 +274,6 @@ main().catch((err) => {
   console.error("  - Check .env file has BROWSERBASE_API_KEY");
   console.error("  - Verify GOOGLE_GENERATIVE_AI_API_KEY is set");
   console.error("  - Ensure COMPANY_NAMES is configured in the config section");
-  console.error("Docs: https://docs.stagehand.dev/v3/first-steps/introduction");
+  console.error("Docs: https://docs.stagehand.dev/v4/first-steps/introduction");
   process.exit(1);
 });

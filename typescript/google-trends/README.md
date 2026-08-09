@@ -24,7 +24,7 @@
 ## EXPECTED OUTPUT
 
 - Initializes Stagehand session with Browserbase
-- Displays live session link for monitoring
+- Closes both the Stagehand instance and browser handle after extraction
 - Navigates to Google Trends trending page with configured country/language
 - Dismisses any consent dialogs if present
 - Extracts trending keywords with rank positions
@@ -53,7 +53,7 @@
 
 ## HELPFUL RESOURCES
 
-📚 Stagehand Docs: https://docs.stagehand.dev/v3/first-steps/introduction
+📚 Stagehand Docs: https://docs.stagehand.dev/v4/first-steps/introduction
 🎮 Browserbase: https://www.browserbase.com
 💡 Try it out: https://www.browserbase.com/playground
 🔧 Templates: https://www.browserbase.com/templates

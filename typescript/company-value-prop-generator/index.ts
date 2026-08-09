@@ -1,8 +1,8 @@
 // Stagehand + Browserbase: Value Prop One-Liner Generator - See README.md for full documentation
 
 import "dotenv/config";
-import { Stagehand } from "@browserbasehq/stagehand";
-import { z } from "zod";
+import { browserbase, Stagehand } from "@browserbasehq/stagehand";
+import { z } from "zod/v4";
 
 // Domain to analyze - change this to target a different website
 const targetDomain = "www.browserbase.com"; // Or extract from email: email.split("@")[1]
@@ -12,34 +12,32 @@ const targetDomain = "www.browserbase.com"; // Or extract from email: email.spli
  * Extracts the value prop using Stagehand, then uses an LLM to format it into a short phrase starting with "your".
  */
 async function generateOneLiner(domain: string): Promise<string> {
-  const stagehand = new Stagehand({
-    env: "BROWSERBASE",
-    model: "openai/gpt-4.1",
-    verbose: 0, //  0 = errors only, 1 = info, 2 = debug
+  const browser = await browserbase.launch({
+    apiKey: process.env.BROWSERBASE_API_KEY!,
+  });
+  const stagehand = await Stagehand.create({
+    browser: browser,
+    model: { modelName: "openai/gpt-4.1" },
+    logging: { level: "error" },
   });
 
   try {
-    await stagehand.init();
     console.log("Stagehand initialized successfully!");
-    console.log(
-      `Live View Link: https://browserbase.com/sessions/${stagehand.browserbaseSessionId}`,
-    );
-
-    const page = stagehand.context.pages()[0];
+    const page = (await browser.context.pages())[0];
 
     // Navigate to domain
     console.log(`🌐 Navigating to https://${domain}...`);
     // 5min timeout to handle slow-loading sites or network issues
     await page.goto(`https://${domain}/`, {
       waitUntil: "domcontentloaded",
-      timeoutMs: 300000,
+      timeout: 300000,
     });
 
     console.log(`✅ Successfully loaded ${domain}`);
 
     // Extract value proposition from landing page
     console.log(`📝 Extracting value proposition for ${domain}...`);
-    const valueProp = await stagehand.extract(
+    const { data: valueProp } = await stagehand.extract(
       "extract the value proposition from the landing page",
       z.object({
         value_prop: z.string(),
@@ -58,39 +56,16 @@ async function generateOneLiner(domain: string): Promise<string> {
       throw new Error(`No value prop found for ${domain}`);
     }
 
-    // Generate one-liner using OpenAI
-    // Prompt uses few-shot examples to guide LLM toward concise, "your X" format
-    // System prompt enforces constraints (9 words max, no quotes, must start with "your")
+    // Generate the one-liner with a second V4 extraction. Including the first extraction
+    // keeps the request grounded while Stagehand's configured model handles formatting.
     console.log(`🤖 Generating email one-liner for ${domain}...`);
 
-    const response = await stagehand.llmClient.createChatCompletion({
-      logger: () => {}, // Suppress verbose LLM logs
-      options: {
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are an expert at generating concise, unique descriptions of companies. Generate ONLY a concise description (no greetings or extra text). Don't use generic adjectives like 'comprehensive', 'innovative', or 'powerful'. Keep it short and concise, no more than 9 words. DO NOT USE QUOTES. Only use English. You MUST start the response with 'your'.",
-          },
-          {
-            role: "user",
-            content: `The response will be inserted into this template: "{response}"
+    const { data: formatted } = await stagehand.extract(
+      `Using the company's value proposition "${valueProp.value_prop}", write a unique English description that starts with "your", uses no quotes, avoids generic adjectives, and is no more than 9 words`,
+      z.object({ one_liner: z.string() }),
+    );
 
-Examples:
-Value prop: "Supercharge your investment team with AI-powered research"
-Response: "your AI-powered investment research platform"
-
-Value prop: "The video-first food delivery app"
-Response: "your video-first approach to food delivery"
-
-Value prop: "${valueProp.value_prop}"
-Response:`,
-          },
-        ],
-      },
-    });
-
-    const oneLiner = String(response.choices?.[0]?.message?.content || "").trim();
+    const oneLiner = formatted.one_liner.trim();
 
     // Validate LLM response is usable (not empty, not generic placeholder)
     console.log(`🔍 Validating generated one-liner...`);
@@ -112,6 +87,7 @@ Response:`,
     throw error;
   } finally {
     await stagehand.close();
+    await browser.close();
     console.log("Session closed successfully");
   }
 }

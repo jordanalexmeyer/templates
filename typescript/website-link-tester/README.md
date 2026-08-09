@@ -32,7 +32,7 @@
 
 - **Initial setup**
   - Initializes a Stagehand session with Browserbase
-  - Prints a live session link for monitoring the browser in real time
+  - Closes both the Stagehand instance and browser handle after every link check
 - **Link collection**
   - Navigates to the configured `URL` (default: `https://www.browserbase.com`)
   - Extracts all links and their link text from the homepage
@@ -95,7 +95,7 @@
 
 ### HELPFUL RESOURCES
 
-- 📚 **Stagehand Docs**: `https://docs.stagehand.dev/v3/first-steps/introduction`
+- 📚 **Stagehand Docs**: `https://docs.stagehand.dev/v4/first-steps/introduction`
 - 🎮 **Browserbase**: `https://www.browserbase.com`
 - 💡 **Try it out**: `https://www.browserbase.com/playground`
 - 🔧 **Templates**: `https://www.browserbase.com/templates`

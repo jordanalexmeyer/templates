@@ -1,7 +1,7 @@
 // Stagehand + Browserbase: Basic Caching - See README.md for full documentation
 
 import "dotenv/config";
-import { Stagehand } from "@browserbasehq/stagehand";
+import { browserbase, Stagehand } from "@browserbasehq/stagehand";
 import fs from "fs";
 import path from "path";
 
@@ -12,18 +12,17 @@ async function runWithoutCache() {
 
   const startTime = Date.now();
 
-  const stagehand = new Stagehand({
-    env: "BROWSERBASE",
-    verbose: 0,
-    // 0 = errors only, 1 = info, 2 = debug
-    // (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.)
-    // https://docs.stagehand.dev/configuration/logging
-    model: "google/gemini-2.5-flash",
-    enableCaching: false,
+  const browser = await browserbase.launch({
+    apiKey: process.env.BROWSERBASE_API_KEY!,
+  });
+  const stagehand = await Stagehand.create({
+    browser: browser,
+    model: { modelName: "google/gemini-2.5-flash" },
+    cache: false,
+    logging: { level: "error" },
   });
 
-  await stagehand.init();
-  const page = stagehand.context.pages()[0];
+  const page = (await browser.context.pages())[0];
 
   try {
     console.log("Navigating to Stripe checkout...");
@@ -43,11 +42,13 @@ async function runWithoutCache() {
     console.log("API calls: 4 (one per action)\n");
 
     await stagehand.close();
+    await browser.close();
 
     return { elapsed, llmCalls: 4 };
   } catch (error) {
-    console.error("Error:", error.message);
+    console.error("Error:", error instanceof Error ? error.message : String(error));
     await stagehand.close();
+    await browser.close();
     throw error;
   }
 }
@@ -57,19 +58,17 @@ async function runWithCache() {
 
   const startTime = Date.now();
 
-  const stagehand = new Stagehand({
-    env: "BROWSERBASE",
-    verbose: 0,
-    // 0 = errors only, 1 = info, 2 = debug
-    // (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.)
-    // https://docs.stagehand.dev/configuration/logging
-    model: "google/gemini-2.5-flash",
-    enableCaching: true,
-    cacheDir: CACHE_DIR,
+  const browser = await browserbase.launch({
+    apiKey: process.env.BROWSERBASE_API_KEY!,
+  });
+  const stagehand = await Stagehand.create({
+    browser: browser,
+    model: { modelName: "google/gemini-2.5-flash" },
+    cache: true,
+    logging: { level: "error" },
   });
 
-  await stagehand.init();
-  const page = stagehand.context.pages()[0];
+  const page = (await browser.context.pages())[0];
 
   try {
     console.log("Navigating to Stripe checkout...");
@@ -100,11 +99,13 @@ async function runWithCache() {
     console.log();
 
     await stagehand.close();
+    await browser.close();
 
     return { elapsed, llmCalls: cacheFiles > 0 ? 0 : 4 };
   } catch (error) {
-    console.error("Error:", error.message);
+    console.error("Error:", error instanceof Error ? error.message : String(error));
     await stagehand.close();
+    await browser.close();
     throw error;
   }
 }
@@ -157,6 +158,6 @@ main().catch((err) => {
   console.error("Error in caching demo:", err);
   console.error("Common issues:");
   console.error("  - Check .env file has BROWSERBASE_API_KEY");
-  console.error("Docs: https://docs.stagehand.dev/v3/first-steps/introduction");
+  console.error("Docs: https://docs.stagehand.dev/v4/first-steps/introduction");
   process.exit(1);
 });

@@ -30,7 +30,7 @@
 - Navigates to contact form page
 - Analyzes available form fields using observe
 - Fills form with sample data using variable substitution
-- Displays session recording link for monitoring
+- Closes both the Stagehand instance and browser handle after the workflow
 - Closes session cleanly
 
 ## COMMON PITFALLS
@@ -55,7 +55,7 @@
 
 ## HELPFUL RESOURCES
 
-📚 Stagehand Docs: https://docs.stagehand.dev/v3/first-steps/introduction
+📚 Stagehand Docs: https://docs.stagehand.dev/v4/first-steps/introduction
 🎮 Browserbase: https://www.browserbase.com
 💡 Try it out: https://www.browserbase.com/playground
 🔧 Templates: https://www.browserbase.com/templates

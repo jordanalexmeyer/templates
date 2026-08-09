@@ -1,53 +1,31 @@
-# Stagehand + Browserbase: Gemini 3 Flash Agent Example
+# Stagehand V4 + Browserbase: Gemini 3 Flash Research
 
 ## AT A GLANCE
 
-- Goal: demonstrate autonomous web browsing using Google's Gemini 3 Flash with Stagehand and Browserbase.
-- Uses Stagehand Agent to automate complex workflows with AI powered browser agents.
-- Leverages Gemini 3 Flash model for autonomous web interaction and decision-making.
-
-## GLOSSARY
-
-- agent: create an autonomous AI agent that can execute complex multi-step tasks
-  Docs → https://docs.stagehand.dev/basics/agent#what-is-agent
+- Goal: use Gemini 3 Flash through Browserbase Model Gateway for a Stagehand V4 research flow.
+- Application code navigates to search results and `extract()` returns the answer.
+- Stagehand V4 intentionally has no `agent()` API; multi-step control flow stays in the application.
 
 ## QUICKSTART
 
-1.  npm install
-2.  cp .env.example .env
-3.  Add your Browserbase API key to .env
-4.  npm start
+1. `pnpm install`
+2. `cp .env.example .env`
+3. Add `BROWSERBASE_API_KEY` to `.env`
+4. `pnpm start`
 
 ## EXPECTED OUTPUT
 
-- Initializes Stagehand session with Browserbase
-- Navigates to Google search engine
-- Executes autonomous search and data extraction task
-- Displays live session link for monitoring
-- Returns structured results or completion status
-- Closes session cleanly
-
-## COMMON PITFALLS
-
-- "Cannot find module": ensure all dependencies are installed
-- Missing credentials: verify .env contains BROWSERBASE_API_KEY
-
-## USE CASES
-
-• Autonomous research: Let AI agents independently research topics, gather information, and compile reports without manual intervention.
-• Complex web workflows: Automate multi-step processes that require decision-making, form filling, and data extraction across multiple pages.
-• Content discovery: Search for specific information, verify data accuracy, and cross-reference sources autonomously.
-
-## NEXT STEPS
-
-• Customize instructions: Modify the instruction variable to test different autonomous tasks and scenarios.
-• Add error handling: Implement retry logic, fallback strategies, and better error recovery for failed agent actions.
-• Extend capabilities: Add support for file downloads, form submissions, and more complex interaction patterns.
+- Launches a Browserbase browser
+- Creates Stagehand with `google/gemini-3-flash-preview`
+- Opens results for the configured research question
+- Prints the extracted answer
+- Closes Stagehand and the browser handle
 
 ## HELPFUL RESOURCES
 
-📚 Stagehand Docs: https://docs.stagehand.dev/v3/first-steps/introduction
+📚 Stagehand V4 Docs: https://docs.stagehand.dev/v4/first-steps/introduction
+📚 Stagehand Extract: https://docs.stagehand.dev/v4/basics/extract
 🎮 Browserbase: https://www.browserbase.com
 💡 Try it out: https://www.browserbase.com/playground
 🔧 Templates: https://www.browserbase.com/templates
-📧 Need help? support@browserbase.com
+💬 Discord: http://stagehand.dev/discord

@@ -21,15 +21,14 @@
 
 1. cd proxies-weather-template
 2. pnpm install
-3. pnpm install @browserbasehq/sdk @browserbasehq/stagehand zod
-4. cp .env.example .env
-5. Add your Browserbase API key to .env
-6. pnpm start
+3. cp .env.example .env
+4. Add your Browserbase API key to .env
+5. pnpm start
 
 ## EXPECTED OUTPUT
 
 - Creates Browserbase sessions with geolocation proxies for each location (New York, London, Tokyo, São Paulo)
-- Displays session URLs for each location for monitoring
+- Closes each Stagehand instance and Browserbase browser handle after extraction
 - Navigates to weather service (windy.com) through location-specific proxies
 - Extracts temperature and unit for each location
 - Displays formatted results showing different weather data based on proxy location
@@ -46,7 +45,7 @@
 
 ## HELPFUL RESOURCES
 
-📚 Stagehand Docs: https://docs.stagehand.dev/v3/first-steps/introduction
+📚 Stagehand Docs: https://docs.stagehand.dev/v4/first-steps/introduction
 🎮 Browserbase: https://www.browserbase.com
 💡 Try it out: https://www.browserbase.com/playground
 🔧 Templates: https://www.browserbase.com/templates

@@ -1,8 +1,8 @@
 // Stagehand + Browserbase: Weather Proxy Demo - See README.md for full documentation
 
 import "dotenv/config";
-import { Stagehand } from "@browserbasehq/stagehand";
-import { z } from "zod";
+import { browserbase, Stagehand } from "@browserbasehq/stagehand";
+import { z } from "zod/v4";
 
 interface GeolocationConfig {
   city: string;
@@ -27,33 +27,28 @@ async function getWeatherForLocation(geolocation: GeolocationConfig): Promise<We
 
   // Initialize Stagehand with geolocation proxy configuration
   // This ensures all browser traffic routes through the specified geographic location
-  const stagehand = new Stagehand({
-    env: "BROWSERBASE",
-    verbose: 0,
-    // 0 = errors only, 1 = info, 2 = debug
-    // (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.)
-    // https://docs.stagehand.dev/configuration/logging
-    browserbaseSessionCreateParams: {
-      proxies: [
-        {
-          type: "browserbase", // Use Browserbase's managed proxy infrastructure for reliable geolocation routing
-          geolocation: {
-            city: geolocation.city, // City name (case-insensitive, e.g., "NEW_YORK", "new_york", "New York" all work)
-            country: geolocation.country, // ISO country code (case-insensitive, e.g., "US", "us", "gb", "GB" all work)
-            ...(geolocation.state && { state: geolocation.state }), // State required for US locations (case-insensitive)
-          },
+  const browser = await browserbase.launch({
+    apiKey: process.env.BROWSERBASE_API_KEY!,
+    proxies: [
+      {
+        type: "browserbase", // Use Browserbase's managed proxy infrastructure for reliable geolocation routing
+        geolocation: {
+          city: geolocation.city, // City name (case-insensitive, e.g., "NEW_YORK", "new_york", "New York" all work)
+          country: geolocation.country, // ISO country code (case-insensitive, e.g., "US", "us", "gb", "GB" all work)
+          ...(geolocation.state && { state: geolocation.state }), // State required for US locations (case-insensitive)
         },
-      ],
-    },
+      },
+    ],
   });
+  const stagehand = await Stagehand.create({ browser: browser, logging: { level: "error" } });
 
   try {
     // Initialize browser session to start automation
     console.log(`Initializing Stagehand for ${cityName}...`);
-    await stagehand.init();
+
     console.log(`Stagehand initialized successfully for ${cityName}`);
 
-    const page = stagehand.context.pages()[0];
+    const page = (await browser.context.pages())[0];
 
     // Navigate to weather service - geolocation proxy ensures location-specific weather data
     console.log(`Navigating to weather service for ${cityName}...`);
@@ -67,7 +62,7 @@ async function getWeatherForLocation(geolocation: GeolocationConfig): Promise<We
 
     // Extract structured temperature data using Stagehand and Zod schema for type safety
     console.log(`Extracting temperature data for ${cityName}...`);
-    const extractResult = await stagehand.extract(
+    const { data: extractResult } = await stagehand.extract(
       "Extract the current temperature and its unit",
       z.object({
         temperature: z.number().describe("The current temperature value"),
@@ -81,6 +76,7 @@ async function getWeatherForLocation(geolocation: GeolocationConfig): Promise<We
 
     // Close Stagehand session to release resources
     await stagehand.close();
+    await browser.close();
 
     return {
       city: cityName,
@@ -90,6 +86,7 @@ async function getWeatherForLocation(geolocation: GeolocationConfig): Promise<We
     };
   } catch (error) {
     await stagehand.close();
+    await browser.close();
     console.error(`Error getting weather for ${cityName}:`, error);
     return {
       city: cityName,
@@ -173,6 +170,6 @@ main().catch((err) => {
     "  - Verify geolocation proxy locations are valid (see https://docs.browserbase.com/features/proxies)",
   );
   console.error("  - Ensure locations array is properly configured");
-  console.error("Docs: https://docs.stagehand.dev/v3/first-steps/introduction");
+  console.error("Docs: https://docs.stagehand.dev/v4/first-steps/introduction");
   process.exit(1);
 });

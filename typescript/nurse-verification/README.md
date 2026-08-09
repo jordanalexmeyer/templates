@@ -32,7 +32,7 @@
 - For each record: navigates to verification site, fills form, searches
 - Extracts verification results: name, license number, status, info URL
 - Displays structured JSON output with all verification results
-- Provides live session URL for monitoring
+- Closes both the Stagehand instance and browser handle after verification
 - Closes session cleanly
 
 ## COMMON PITFALLS
@@ -57,7 +57,7 @@
 
 ## HELPFUL RESOURCES
 
-📚 Stagehand Docs: https://docs.stagehand.dev/v3/first-steps/introduction
+📚 Stagehand Docs: https://docs.stagehand.dev/v4/first-steps/introduction
 🎮 Browserbase: https://www.browserbase.com
 📧 Need help? support@browserbase.com
 💬 Discord: http://stagehand.dev/discord

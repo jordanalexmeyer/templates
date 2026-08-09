@@ -1,8 +1,8 @@
 // Amazon Global Price Comparison - See README.md for full documentation
 
 import "dotenv/config";
-import { Stagehand } from "@browserbasehq/stagehand";
-import { z } from "zod";
+import { browserbase, Stagehand } from "@browserbasehq/stagehand";
+import { z } from "zod/v4";
 
 // Schema for a single product with structured extraction fields
 const ProductSchema = z.object({
@@ -77,27 +77,21 @@ async function getProductsForCountry(
 
   // Initialize Stagehand with geolocation proxy configuration
   // This ensures all browser traffic routes through the specified geographic location
-  const stagehand = new Stagehand({
-    env: "BROWSERBASE",
-    verbose: 0,
-    // 0 = errors only, 1 = info, 2 = debug
-    // (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.)
-    // https://docs.stagehand.dev/configuration/logging
-    browserbaseSessionCreateParams: {
-      proxies: [
-        {
-          type: "browserbase", // Use Browserbase's managed proxy infrastructure for reliable geolocation routing
-          geolocation,
-        },
-      ],
-    },
+  const browser = await browserbase.launch({
+    apiKey: process.env.BROWSERBASE_API_KEY!,
+    proxies: [
+      {
+        type: "browserbase", // Use Browserbase's managed proxy infrastructure for reliable geolocation routing
+        geolocation,
+      },
+    ],
   });
+  const stagehand = await Stagehand.create({ browser: browser, logging: { level: "error" } });
 
   try {
     console.log(`Initializing browser session with ${country.name} proxy...`);
-    await stagehand.init();
 
-    const page = stagehand.context.pages()[0];
+    const page = (await browser.context.pages())[0];
 
     // Alternative: Skip the search bar and go straight to results by building the search URL.
     // Uncomment below to use direct navigation instead of stagehand.act() typing + clicking.
@@ -120,7 +114,7 @@ async function getProductsForCountry(
     // Extract products from search results using Stagehand's structured extraction
     console.log(`[${country.name}] Extracting top ${resultsCount} products...`);
 
-    const extractionResult = await stagehand.extract(
+    const { data: extractionResult } = await stagehand.extract(
       `Extract the first ${resultsCount} product search results from this Amazon page. For each product, extract:
       1. name: the full product title
       2. price: the displayed price WITH currency symbol (like $599.99 or 599,99 EUR). If no price shown, use "N/A"
@@ -146,6 +140,7 @@ async function getProductsForCountry(
     console.log(`Found ${cleanedProducts.length} products in ${country.name}`);
 
     await stagehand.close();
+    await browser.close();
 
     return {
       country: country.name,
@@ -156,6 +151,7 @@ async function getProductsForCountry(
   } catch (error) {
     console.error(`Error fetching products from ${country.name}:`, error);
     await stagehand.close();
+    await browser.close();
 
     return {
       country: country.name,
@@ -260,6 +256,6 @@ main().catch((err) => {
     "  - Verify geolocation proxy locations are valid (see https://docs.browserbase.com/features/proxies)",
   );
   console.error("  - Ensure you have sufficient Browserbase credits");
-  console.error("Docs: https://docs.stagehand.dev/v3/first-steps/introduction");
+  console.error("Docs: https://docs.stagehand.dev/v4/first-steps/introduction");
   process.exit(1);
 });

@@ -1,9 +1,9 @@
 // Stagehand + Browserbase: AI-Powered Gift Finder - See README.md for full documentation
 
 import "dotenv/config";
-import { Stagehand } from "@browserbasehq/stagehand";
+import { browserbase, Stagehand } from "@browserbasehq/stagehand";
 import OpenAI from "openai";
-import { z } from "zod";
+import { z } from "zod/v4";
 
 // ============= CONFIGURATION =============
 // Update these values to customize your gift search
@@ -228,45 +228,25 @@ async function main(): Promise<void> {
 
     // Create separate Stagehand instance for each search to run concurrently
     // Each session searches independently to maximize speed
-    const sessionStagehand = new Stagehand({
-      env: "BROWSERBASE",
-      verbose: 1,
-      // 0 = errors only, 1 = info, 2 = debug
-      // (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.)
-      // https://docs.stagehand.dev/configuration/logging
-      model: "openai/gpt-4.1",
-      browserbaseSessionCreateParams: {
-        // Proxies require Developer Plan or higher - comment in if you have a Developer Plan or higher
-        //   proxies: [
-        //     {
-        //       "type": "browserbase",
-        //       "geolocation": {
-        //         "city": "LONDON",
-        //         "country": "GB"
-        //       }
-        //     }
-        //   ],
-        region: "us-east-1",
-        timeout: 900,
-        browserSettings: {
-          viewport: {
-            width: 1920,
-            height: 1080,
-          },
+    const sessionBrowser = await browserbase.launch({
+      apiKey: process.env.BROWSERBASE_API_KEY!,
+      region: "us-east-1",
+      timeout: 900,
+      browserSettings: {
+        viewport: {
+          width: 1920,
+          height: 1080,
         },
       },
     });
+    const sessionStagehand = await Stagehand.create({
+      browser: sessionBrowser,
+      model: { modelName: "openai/gpt-4.1" },
+      logging: { level: "info" },
+    });
 
     try {
-      await sessionStagehand.init();
-      const sessionPage = sessionStagehand.context.pages()[0];
-
-      // Display live view URL for debugging and monitoring
-      const sessionId = sessionStagehand.browserbaseSessionID;
-      if (sessionId) {
-        const liveViewUrl = `https://www.browserbase.com/sessions/${sessionId}`;
-        console.log(`Session ${sessionIndex + 1} Live View: ${liveViewUrl}`);
-      }
+      const sessionPage = (await sessionBrowser.context.pages())[0];
 
       // Navigate to European gift site - proxies help with regional access
       console.log(`Session ${sessionIndex + 1}: Navigating to Firebox.eu...`);
@@ -280,7 +260,7 @@ async function main(): Promise<void> {
 
       // Extract structured product data using Zod schema for type safety
       console.log(`Session ${sessionIndex + 1}: Extracting product data...`);
-      const productsData = await sessionStagehand.extract(
+      const { data: productsData } = await sessionStagehand.extract(
         "Extract the first 3 products from the search results",
         z.object({
           products: z
@@ -306,6 +286,7 @@ async function main(): Promise<void> {
       );
 
       await sessionStagehand.close();
+      await sessionBrowser.close();
 
       return {
         query,
@@ -317,6 +298,7 @@ async function main(): Promise<void> {
 
       try {
         await sessionStagehand.close();
+        await sessionBrowser.close();
       } catch (closeError) {
         console.error(`Error closing session ${sessionIndex + 1}:`, closeError);
       }
@@ -332,7 +314,7 @@ async function main(): Promise<void> {
   const searchPromises = searchQueries.map((query, index) => runSingleSearch(query, index));
 
   console.log("\nBrowser Sessions Starting...");
-  console.log("Live view links will appear as each session initializes");
+  console.log("Search sessions are running concurrently");
 
   // Wait for all concurrent searches to complete
   const allResults = await Promise.all(searchPromises);

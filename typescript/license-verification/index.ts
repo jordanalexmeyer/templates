@@ -1,8 +1,8 @@
 // Real Estate License Verification - See README.md for full documentation
 
 import "dotenv/config";
-import { Stagehand } from "@browserbasehq/stagehand";
-import { z } from "zod";
+import { browserbase, Stagehand } from "@browserbasehq/stagehand";
+import { z } from "zod/v4";
 
 // License verification variables
 const variables = {
@@ -11,23 +11,20 @@ const variables = {
 
 async function main() {
   // Initialize Stagehand with Browserbase for cloud-based browser automation.
-  const stagehand = new Stagehand({
-    env: "BROWSERBASE", // Use Browserbase cloud browsers for reliable automation.
-    verbose: 1,
-    model: "openai/gpt-4.1",
-    // 0 = errors only, 1 = info, 2 = debug
-    // (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.)
-    // https://docs.stagehand.dev/configuration/logging
+  const browser = await browserbase.launch({
+    apiKey: process.env.BROWSERBASE_API_KEY!,
+  });
+  const stagehand = await Stagehand.create({
+    browser: browser,
+    model: { modelName: "openai/gpt-4.1" },
+    logging: { level: "info" },
   });
 
   // Initialize browser session to start data extraction process.
-  await stagehand.init();
+
   console.log(`Stagehand Session Started`);
 
-  // Provide live session URL for debugging and monitoring extraction process.
-  console.log(`Watch live: https://browserbase.com/sessions/${stagehand.browserbaseSessionID}`);
-
-  const page = stagehand.context.pages()[0];
+  const page = (await browser.context.pages())[0];
 
   // Navigate to California DRE license verification website for data extraction.
   console.log("Navigating to: https://www2.dre.ca.gov/publicasp/pplinfo.asp");
@@ -43,7 +40,7 @@ async function main() {
 
   // Extract structured license data using Zod schema for type safety and validation.
   console.log(`Extracting: extract all the license verification details for DRE#02237476`);
-  const extractedData4 = await stagehand.extract(
+  const { data: extractedData4 } = await stagehand.extract(
     `extract all the license verification details for DRE#02237476`,
     z.object({
       licenseType: z.string().optional(), // Type of real estate license
@@ -65,6 +62,7 @@ async function main() {
 
   // Always close session to release resources and clean up.
   await stagehand.close();
+  await browser.close();
 }
 
 main().catch((err) => {

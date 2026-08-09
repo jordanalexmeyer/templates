@@ -1,7 +1,7 @@
 // Stagehand + Browserbase: Form Filling Automation - See README.md for full documentation
 
 import "dotenv/config";
-import { Stagehand } from "@browserbasehq/stagehand";
+import { browserbase, Stagehand } from "@browserbasehq/stagehand";
 
 // Form data variables - using random/fake data for testing
 // Set your own variables below to customize the form submission
@@ -17,21 +17,20 @@ async function main() {
   console.log("Starting Form Filling Example...");
 
   // Initialize Stagehand with Browserbase for cloud-based browser automation.
-  const stagehand = new Stagehand({
-    env: "BROWSERBASE",
-    model: "openai/gpt-4.1",
-    verbose: 1,
+  const browser = await browserbase.launch({
+    apiKey: process.env.BROWSERBASE_API_KEY!,
+  });
+  const stagehand = await Stagehand.create({
+    browser: browser,
+    model: { modelName: "openai/gpt-4.1" },
+    logging: { level: "info" },
   });
 
   try {
     // Initialize browser session to start automation.
-    await stagehand.init();
-    console.log("Stagehand initialized successfully!");
-    console.log(
-      `Live View Link: https://browserbase.com/sessions/${stagehand.browserbaseSessionID}`,
-    );
 
-    const page = stagehand.context.pages()[0];
+    console.log("Stagehand initialized successfully!");
+    const page = (await browser.context.pages())[0];
 
     // Navigate to contact page with extended timeout for slow-loading sites.
     console.log("Navigating to Browserbase contact page...");
@@ -41,7 +40,7 @@ async function main() {
     });
 
     // Single observe call to plan all form filling
-    const formFields = await stagehand.observe(
+    const { data: formFields } = await stagehand.observe(
       "Find form fields for: first name, last name, company, job title, email, message",
     );
 
@@ -82,6 +81,7 @@ async function main() {
   } finally {
     // Always close session to release resources and clean up.
     await stagehand.close();
+    await browser.close();
     console.log("Session closed successfully");
   }
 }
@@ -91,6 +91,6 @@ main().catch((err) => {
   console.error("Common issues:");
   console.error("  - Check .env file has BROWSERBASE_API_KEY");
   console.error("  - Ensure form fields are available on the contact page");
-  console.error("Docs: https://docs.stagehand.dev/v3/first-steps/introduction");
+  console.error("Docs: https://docs.stagehand.dev/v4/first-steps/introduction");
   process.exit(1);
 });

@@ -1,8 +1,8 @@
 // Stagehand + Browserbase: Amazon Product Scraping - See README.md for full documentation
 
 import "dotenv/config";
-import { Stagehand } from "@browserbasehq/stagehand";
-import { z } from "zod";
+import { browserbase, Stagehand } from "@browserbasehq/stagehand";
+import { z } from "zod/v4";
 
 // ============= CONFIGURATION =============
 // Update this value to search for different products
@@ -27,21 +27,20 @@ async function main(): Promise<void> {
   console.log("Starting Amazon Product Scraping...");
 
   // Initialize Stagehand with Browserbase for cloud-based browser automation.
-  const stagehand = new Stagehand({
-    env: "BROWSERBASE",
-    verbose: 1,
-    model: "google/gemini-2.5-flash",
+  const browser = await browserbase.launch({
+    apiKey: process.env.BROWSERBASE_API_KEY!,
+  });
+  const stagehand = await Stagehand.create({
+    browser: browser,
+    model: { modelName: "google/gemini-2.5-flash" },
+    logging: { level: "info" },
   });
 
   try {
     // Initialize browser session to start automation.
-    await stagehand.init();
-    console.log("Stagehand initialized successfully!");
-    console.log(
-      `Live View Link: https://browserbase.com/sessions/${stagehand.browserbaseSessionID}`,
-    );
 
-    const page = stagehand.context.pages()[0];
+    console.log("Stagehand initialized successfully!");
+    const page = (await browser.context.pages())[0];
 
     // Alternative: skip the search bar and go straight to results by building the search URL.
     // Uncomment below to use direct navigation instead of stagehand.act() typing + clicking.
@@ -65,7 +64,7 @@ async function main(): Promise<void> {
 
     // Extract structured product data using Zod schema for type safety.
     console.log("Extracting product data...");
-    const products = await stagehand.extract(
+    const { data: products } = await stagehand.extract(
       "Extract the details of the FIRST 3 products in the search results. Get the product name, price, star rating, number of reviews, and the URL link to the product page.",
       ProductsSchema,
     );
@@ -77,6 +76,7 @@ async function main(): Promise<void> {
   } finally {
     // Always close session to release resources and clean up.
     await stagehand.close();
+    await browser.close();
     console.log("Session closed successfully");
   }
 }

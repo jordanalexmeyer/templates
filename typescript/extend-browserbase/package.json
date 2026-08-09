@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@browserbasehq/sdk": "^2.9.0",
-    "@browserbasehq/stagehand": "latest",
+    "@browserbasehq/stagehand": "github:browserbase/stagehand#089f2aaeaea75696685949e0835aece95db54358&path:/packages/sdk-ts",
     "adm-zip": "^0.5.16",
     "dotenv": "^17.2.4",
     "extend-ai": "^1.0.2",
@@ -20,5 +20,9 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },
-  "packageManager": "pnpm@9.0.0"
+  "packageManager": "pnpm@10.24.0",
+  "//": "TODO: Replace this commit pin with @browserbasehq/stagehand@4.0.0 after it is published.",
+  "engines": {
+    "node": ">=22.18.0"
+  }
 }

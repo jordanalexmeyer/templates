@@ -1,8 +1,8 @@
 // Stagehand + Browserbase: Automated Nurse License Verification - See README.md for full documentation
 
 import "dotenv/config";
-import { Stagehand } from "@browserbasehq/stagehand";
-import { z } from "zod";
+import { browserbase, Stagehand } from "@browserbasehq/stagehand";
+import { z } from "zod/v4";
 
 // License records to verify - add more records as needed
 const LicenseRecords = [
@@ -18,25 +18,22 @@ async function main() {
   console.log("Starting Nurse License Verification Automation...");
 
   // Initialize Stagehand with Browserbase for cloud-based browser automation
-  const stagehand = new Stagehand({
-    env: "BROWSERBASE",
-    verbose: 1,
-    // 0 = errors only, 1 = info, 2 = debug
-    // (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.)
-    // https://docs.stagehand.dev/configuration/logging
-    model: "openai/gpt-4.1",
+  const browser = await browserbase.launch({
+    apiKey: process.env.BROWSERBASE_API_KEY!,
+  });
+  const stagehand = await Stagehand.create({
+    browser: browser,
+    model: { modelName: "openai/gpt-4.1" },
+    logging: { level: "info" },
   });
 
   try {
     // Initialize browser session
     console.log("Initializing browser session...");
-    await stagehand.init();
+
     console.log("Stagehand session started successfully");
 
-    // Provide live session URL for debugging and monitoring
-    console.log(`Watch live: https://browserbase.com/sessions/${stagehand.browserbaseSessionID}`);
-
-    const page = stagehand.context.pages()[0];
+    const page = (await browser.context.pages())[0];
 
     // Process each license record sequentially
     for (const LicenseRecord of LicenseRecords) {
@@ -62,7 +59,7 @@ async function main() {
 
       // Extract license verification results
       console.log("Extracting license verification results...");
-      const results = await stagehand.extract(
+      const { data: results } = await stagehand.extract(
         "Extract ALL the license verification results from the page, including name, license number and status",
         z.object({
           list_of_licenses: z.array(
@@ -93,6 +90,7 @@ async function main() {
     // Clean up browser session
     console.log("Closing browser session...");
     await stagehand.close();
+    await browser.close();
     console.log("Session closed successfully");
   }
 }

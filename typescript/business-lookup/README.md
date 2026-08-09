@@ -1,33 +1,31 @@
-# Stagehand + Browserbase: Business Lookup with Agent
+# Stagehand V4 + Browserbase: Business Lookup
 
 ## AT A GLANCE
 
-- Goal: Automate business registry searches using an autonomous AI agent with computer-use capabilities.
-- Uses Stagehand Agent in CUA mode to navigate complex UI elements, apply filters, and extract structured business data.
+- Goal: automate business registry searches with explicit Stagehand V4 actions.
+- Uses individual `act()` calls to apply filters and open details, then `extract()` for structured data.
 - Demonstrates extraction with Zod schema validation for consistent data retrieval.
-- Docs → https://docs.stagehand.dev/basics/agent
+- Docs → https://docs.stagehand.dev/v4/basics/act
 
 ## GLOSSARY
 
-- agent: create an autonomous AI agent that can execute complex multi-step tasks
-  Docs → https://docs.stagehand.dev/basics/agent#what-is-agent
+- act: perform one model-backed action from a natural-language instruction
+  Docs → https://docs.stagehand.dev/v4/basics/act
 - extract: extract structured data from web pages using natural language instructions
   Docs → https://docs.stagehand.dev/basics/extract
 
 ## QUICKSTART
 
-1. npm install
+1. pnpm install
 2. cp .env.example .env
 3. Add required API keys/IDs to .env
-4. npm start
+4. pnpm start
 
 ## EXPECTED OUTPUT
 
 - Initializes Stagehand session with Browserbase
-- Displays live session link for monitoring
 - Navigates to SF Business Registry search page
-- Agent searches for business using DBA Name filter
-- Agent completes search and opens business details
+- Explicit actions search by DBA Name and open business details
 - Extracts structured business information (DBA Name, Account Number, NAICS Code, etc.)
 - Outputs extracted data as JSON
 - Closes session cleanly
@@ -35,9 +33,8 @@
 ## COMMON PITFALLS
 
 - Dependency install errors: ensure npm install completed
-- Missing credentials: verify .env contains BROWSERBASE_API_KEY and GOOGLE_API_KEY
-- Google API access: ensure you have access to Google's gemini-2.5-computer-use-preview-10-2025 model
-- Agent failures: check that the business name exists in the registry and that maxSteps is sufficient for complex searches
+- Missing credentials: verify `.env` contains `BROWSERBASE_API_KEY`
+- Action failures: check that the business exists and make the failing instruction more specific
 - Find more information on your Browserbase dashboard -> https://www.browserbase.com/sign-in
 
 ## USE CASES
@@ -54,7 +51,7 @@
 
 ## HELPFUL RESOURCES
 
-📚 Stagehand Docs: https://docs.stagehand.dev/v3/first-steps/introduction
+📚 Stagehand Docs: https://docs.stagehand.dev/v4/first-steps/introduction
 🎮 Browserbase: https://www.browserbase.com
 💡 Try it out: https://www.browserbase.com/playground
 🔧 Templates: https://www.browserbase.com/templates

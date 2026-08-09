@@ -5,8 +5,8 @@
 // and the Browserbase proxy. Works for any image format (JPG, PNG, WebP, etc.).
 
 import "dotenv/config";
-import { Stagehand } from "@browserbasehq/stagehand";
-import { z } from "zod";
+import { browserbase, Stagehand } from "@browserbasehq/stagehand";
+import { z } from "zod/v4";
 import fs from "fs";
 import path from "path";
 
@@ -65,32 +65,33 @@ async function main(): Promise<void> {
   console.log(`Max images: ${MAX_IMAGES} | Output: ${OUTPUT_DIR}/<hostname>/\n`);
 
   // Initialize Stagehand with Browserbase for cloud-based browser automation.
-  const stagehand = new Stagehand({
-    env: "BROWSERBASE",
-    model: "google/gemini-2.5-flash",
-    verbose: 1,
+  const browser = await browserbase.launch({
+    apiKey: process.env.BROWSERBASE_API_KEY!,
+  });
+  const stagehand = await Stagehand.create({
+    browser: browser,
+    model: { modelName: "google/gemini-2.5-flash" },
+    logging: { level: "info" },
   });
 
   try {
     // Initialize browser session to start automation.
-    await stagehand.init();
-    console.log("Stagehand initialized successfully!");
-    console.log(
-      `Live View Link: https://browserbase.com/sessions/${stagehand.browserbaseSessionID}`,
-    );
 
-    const page = stagehand.context.pages()[0];
+    console.log("Stagehand initialized successfully!");
+    const page = (await browser.context.pages())[0];
 
     // Navigate and wait for network activity to settle so JS-injected images are in the DOM.
     console.log(`\nNavigating to ${targetUrl}...`);
     await page.goto(targetUrl, {
       waitUntil: "networkidle", // Wait for network to settle so JS-injected images are in the DOM.
-      timeoutMs: 60000, // Extended timeout for reliable page loading.
+      timeout: 60000, // Extended timeout for reliable page loading.
     });
 
     // Use extract() with a URL schema so Stagehand knows to look for image URLs.
     console.log("Extracting image URLs from page...");
-    const { urls: allUrls } = await stagehand.extract(
+    const {
+      data: { urls: allUrls },
+    } = await stagehand.extract(
       "extract all image URLs on this page, including src attributes from <img> tags and any background image URLs",
       z.object({ urls: z.array(z.string().url()) }),
     );
@@ -200,6 +201,7 @@ async function main(): Promise<void> {
   } finally {
     // Always close session to release resources and clean up.
     await stagehand.close();
+    await browser.close();
     console.log("Session closed successfully");
   }
 }
@@ -209,6 +211,6 @@ main().catch((err) => {
   console.error("Common issues:");
   console.error("  - Check .env file has BROWSERBASE_API_KEY");
   console.error("  - Verify the target URL is accessible");
-  console.error("Docs: https://docs.stagehand.dev/v3/first-steps/introduction");
+  console.error("Docs: https://docs.stagehand.dev/v4/first-steps/introduction");
   process.exit(1);
 });

@@ -1,58 +1,44 @@
 // Business Lookup with Agent - See README.md for full documentation
 
 import "dotenv/config";
-import { Stagehand } from "@browserbasehq/stagehand";
-import { z } from "zod";
+import { browserbase, Stagehand } from "@browserbasehq/stagehand";
+import { z } from "zod/v4";
 
 // Business search variables
 const businessName = "Jalebi Street";
 
 async function main() {
   // Initialize Stagehand with Browserbase for cloud-based browser automation.
-  const stagehand = new Stagehand({
-    env: "BROWSERBASE",
-    verbose: 1,
-    model: "openai/gpt-4.1",
+  const browser = await browserbase.launch({
+    apiKey: process.env.BROWSERBASE_API_KEY!,
+  });
+  const stagehand = await Stagehand.create({
+    browser: browser,
+    model: { modelName: "openai/gpt-4.1" },
+    logging: { level: "info" },
   });
 
   try {
     // Initialize browser session to start automation.
-    await stagehand.init();
-    console.log("Stagehand initialized successfully!");
-    console.log(
-      `Live View Link: https://browserbase.com/sessions/${stagehand.browserbaseSessionId}`,
-    );
 
-    const page = stagehand.context.pages()[0];
+    console.log("Stagehand initialized successfully!");
+    const page = (await browser.context.pages())[0];
 
     // Navigate to SF Business Registry search page.
     console.log(`Navigating to SF Business Registry...`);
     await page.goto("https://data.sfgov.org/stories/s/Registered-Business-Lookup/k6sk-2y6w/");
 
-    // Create agent with computer use capabilities for autonomous business search.
-    const agent = stagehand.agent({
-      cua: true, // Enable Computer Use Agent mode
-      model: {
-        modelName: "google/gemini-2.5-computer-use-preview-10-2025",
-        apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-      },
-      systemPrompt:
-        "You are a helpful assistant that can use a web browser to search for business information.",
-    });
-
     console.log(`Searching for business: ${businessName}`);
-    const result = await agent.execute({
-      instruction: `Find and look up the business "${businessName}" in the SF Business Registry. Use the DBA Name filter to search for "${businessName}", apply the filter, and click on the business row to view detailed information. Scroll towards the right to see the NAICS code.`,
-      maxSteps: 30,
-    });
-
-    if (!result.success) {
-      throw new Error("Agent failed to complete the search");
-    }
+    await stagehand.act("Open the business registry filter controls");
+    await stagehand.act("Choose DBA Name as the filter field");
+    await stagehand.act(`Type "${businessName}" into the filter value field`);
+    await stagehand.act("Apply the business registry filter");
+    await stagehand.act(`Open the result row for "${businessName}"`);
+    await stagehand.act("Scroll the business details horizontally to reveal the NAICS code");
 
     // Extract comprehensive business information after agent completes the search.
     console.log("Extracting business information...");
-    const businessInfo = await stagehand.extract(
+    const { data: businessInfo } = await stagehand.extract(
       "Extract all visible business information including DBA Name, Ownership Name, Business Account Number, Location Id, Street Address, Business Start Date, Business End Date, Neighborhood, NAICS Code, and NAICS Code Description",
       z.object({
         dbaName: z.string(),
@@ -76,6 +62,7 @@ async function main() {
   } finally {
     // Always close session to release resources and clean up.
     await stagehand.close();
+    await browser.close();
     console.log("Session closed successfully");
   }
 }
@@ -84,7 +71,6 @@ main().catch((err) => {
   console.error("Error in business lookup:", err);
   console.error("Common issues:");
   console.error("  - Check .env file has BROWSERBASE_API_KEY");
-  console.error("  - Verify GOOGLE_API_KEY is set for the agent");
-  console.error("Docs: https://docs.stagehand.dev/v3/first-steps/introduction");
+  console.error("Docs: https://docs.stagehand.dev/v4/first-steps/introduction");
   process.exit(1);
 });

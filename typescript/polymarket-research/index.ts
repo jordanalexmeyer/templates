@@ -1,8 +1,8 @@
 // Stagehand + Browserbase: Polymarket prediction market research - See README.md for full documentation
 
 import "dotenv/config";
-import { Stagehand } from "@browserbasehq/stagehand";
-import { z } from "zod";
+import { browserbase, Stagehand } from "@browserbasehq/stagehand";
+import { z } from "zod/v4";
 
 /**
  * Searches Polymarket for a prediction market and extracts current odds, pricing, and volume data.
@@ -13,25 +13,22 @@ async function main() {
 
   // Initialize Stagehand with Browserbase for cloud-based browser automation
   // Using BROWSERBASE environment to run in cloud rather than locally
-  const stagehand = new Stagehand({
-    env: "BROWSERBASE",
-    verbose: 1,
-    // 0 = errors only, 1 = info, 2 = debug
-    // (When handling sensitive data like passwords or API keys, set verbose: 0 to prevent secrets from appearing in logs.)
-    // https://docs.stagehand.dev/configuration/logging
-    model: "openai/gpt-4.1",
+  const browser = await browserbase.launch({
+    apiKey: process.env.BROWSERBASE_API_KEY!,
+  });
+  const stagehand = await Stagehand.create({
+    browser: browser,
+    model: { modelName: "openai/gpt-4.1" },
+    logging: { level: "info" },
   });
 
   try {
     // Initialize browser session
     console.log("Initializing browser session...");
-    await stagehand.init();
+
     console.log("Stagehand session started successfully");
 
-    // Provide live session URL for debugging and monitoring
-    console.log(`Watch live: https://browserbase.com/sessions/${stagehand.browserbaseSessionID}`);
-
-    const page = stagehand.context.pages()[0];
+    const page = (await browser.context.pages())[0];
 
     // Navigate to Polymarket
     console.log("Navigating to: https://polymarket.com/");
@@ -54,7 +51,7 @@ async function main() {
 
     // Extract market data using AI to parse the structured information
     console.log("Extracting market information...");
-    const marketData = await stagehand.extract(
+    const { data: marketData } = await stagehand.extract(
       "Extract the current odds and market information for the prediction market",
       z.object({
         marketTitle: z.string().optional().describe("the title of the market"),
@@ -82,6 +79,7 @@ async function main() {
     // Clean up browser session
     console.log("Closing browser session...");
     await stagehand.close();
+    await browser.close();
     console.log("Session closed successfully");
   }
 }

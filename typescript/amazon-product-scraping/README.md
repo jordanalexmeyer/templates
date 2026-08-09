@@ -27,7 +27,7 @@
 ## EXPECTED OUTPUT
 
 - Initializes Stagehand session with Browserbase
-- Displays live session link for monitoring
+- Returns structured product details through a Stagehand V4 extraction result
 - Navigates to Amazon and performs search (or direct URL navigation if uncommented)
 - Extracts the first 3 products with name, price, rating, reviews count, and product URL
 - Outputs JSON to console
