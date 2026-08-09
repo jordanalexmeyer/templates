@@ -37,9 +37,9 @@ async function main() {
     console.log("Clicking calendar from the navigation menu");
     await stagehand.act("click calendar from the navigation menu");
 
-    // Select 2025 from the month dropdown
-    console.log("Selecting 2025 from the month dropdown");
-    await stagehand.act("select 2025 from the month dropdown");
+    // Select 2025 from the year dropdown
+    console.log("Selecting 2025 from the year dropdown");
+    await stagehand.act("select 2025 from the year dropdown");
 
     // Extract event data using AI to parse the structured information
     console.log("Extracting event information...");

@@ -30,7 +30,7 @@
 
 - Navigates to Philadelphia Council website
 - Clicks calendar from the navigation menu
-- Selects 2025 from the month dropdown
+- Selects 2025 from the year dropdown
 - Extracts structured event data including name, date, and time
 - Returns typed object with event information
 

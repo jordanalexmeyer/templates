@@ -17,7 +17,7 @@ const businessSchema = z.object({
   businessStartDate: z.string().nullable(),
   businessEndDate: z.string().nullable(),
   neighborhood: z.string().nullable(),
-  naicsCode: z.string(),
+  naicsCode: z.string().nullable(),
   naicsCodeDescription: z.string().nullable(),
 });
 

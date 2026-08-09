@@ -26,7 +26,7 @@ async function runWithoutCache() {
 
   try {
     console.log("Navigating to Stripe checkout...");
-    await page.goto("https://checkout.stripe.dev/preview", {
+    await page.goto("https://checkout.stripe.dev/?mode=payment", {
       waitUntil: "domcontentloaded",
     });
 
@@ -72,7 +72,7 @@ async function runWithCache() {
 
   try {
     console.log("Navigating to Stripe checkout...");
-    await page.goto("https://checkout.stripe.dev/preview", {
+    await page.goto("https://checkout.stripe.dev/?mode=payment", {
       waitUntil: "domcontentloaded",
     });
 

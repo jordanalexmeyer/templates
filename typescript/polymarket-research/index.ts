@@ -40,13 +40,15 @@ async function main() {
     await stagehand.act("click the search box at the top of the page");
 
     // Type search query
-    const searchQuery = "Elon Musk unfollow Trump";
+    const searchQuery = "Elon Musk rejoin Trump Administration";
     console.log(`Typing '${searchQuery}' into the search box`);
     await stagehand.act(`type '${searchQuery}' into the search box`);
 
-    // Click the first market result from the search dropdown
-    console.log("Selecting first market result from search dropdown");
-    await stagehand.act("click the first market result from the search dropdown");
+    // Select the intended market explicitly so a change in result ordering cannot
+    // send the extraction to an unrelated Trump or Elon Musk market.
+    const marketTitle = "Will Elon Musk rejoin the Trump Administration in 2026?";
+    console.log(`Selecting market: ${marketTitle}`);
+    await stagehand.act(`click the market titled '${marketTitle}' in the search results`);
     console.log("Market page loaded");
 
     // Extract market data using AI to parse the structured information
