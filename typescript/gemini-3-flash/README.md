@@ -1,31 +1,30 @@
-# Stagehand V4 + Browserbase: Gemini 3 Flash Research
+# Stagehand Code Mode + Vercel AI SDK: Gemini 3 Flash Agent
 
 ## AT A GLANCE
 
-- Goal: use Gemini 3 Flash through Browserbase Model Gateway for a Stagehand V4 research flow.
-- Application code navigates to search results and `extract()` returns the answer.
-- Stagehand V4 intentionally has no `agent()` API; multi-step control flow stays in the application.
+- Goal: run a Gemini 3 Flash research agent with a Browserbase browser.
+- Vercel AI SDK owns the agent loop; Stagehand code mode supplies `code_execute` over MCP.
+- `STAGEHAND_MODEL_NAME` is passed to the code-mode process so Stagehand AI primitives also use Gemini.
 
 ## QUICKSTART
 
-1. `pnpm install`
-2. `cp .env.example .env`
-3. Add `BROWSERBASE_API_KEY` to `.env`
+1. `cd gemini-3-flash`
+2. `pnpm install`
+3. Add `BROWSERBASE_API_KEY` and `AI_GATEWAY_API_KEY` to `.env`
 4. `pnpm start`
+
+Set `AGENT_MODEL` to override the outer agent's default `google/gemini-3-flash-preview` model.
 
 ## EXPECTED OUTPUT
 
-- Launches a Browserbase browser
-- Creates Stagehand with `google/gemini-3-flash-preview`
-- Opens results for the configured research question
-- Prints the extracted answer
-- Closes Stagehand and the browser handle
+- The agent uses `code_execute` to browse, research the configured question, and return cited findings.
+- Closing the MCP client closes Stagehand and its Browserbase browser.
 
-## HELPFUL RESOURCES
+## SAFETY
 
-📚 Stagehand V4 Docs: https://docs.stagehand.dev/v4/first-steps/introduction
-📚 Stagehand Extract: https://docs.stagehand.dev/v4/basics/extract
-🎮 Browserbase: https://www.browserbase.com
-💡 Try it out: https://www.browserbase.com/playground
-🔧 Templates: https://www.browserbase.com/templates
-💬 Discord: http://stagehand.dev/discord
+Code mode executes model-authored JavaScript and is not itself a security sandbox. Isolate it when browsing untrusted content.
+
+## RESOURCES
+
+- Stagehand: https://docs.stagehand.dev
+- Vercel AI SDK agents: https://ai-sdk.dev/docs/agents/building-agents

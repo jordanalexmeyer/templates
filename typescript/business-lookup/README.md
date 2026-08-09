@@ -1,59 +1,34 @@
-# Stagehand V4 + Browserbase: Business Lookup
+# Stagehand Code Mode + Vercel AI SDK: Business Lookup
 
 ## AT A GLANCE
 
-- Goal: automate business registry searches with explicit Stagehand V4 actions.
-- Uses individual `act()` calls to apply filters and open details, then `extract()` for structured data.
-- Demonstrates extraction with Zod schema validation for consistent data retrieval.
-- Docs → https://docs.stagehand.dev/v4/basics/act
-
-## GLOSSARY
-
-- act: perform one model-backed action from a natural-language instruction
-  Docs → https://docs.stagehand.dev/v4/basics/act
-- extract: extract structured data from web pages using natural language instructions
-  Docs → https://docs.stagehand.dev/basics/extract
+- Goal: give an external agent a Browserbase browser and have it research one SF business record.
+- Agent framework: Vercel AI SDK `ToolLoopAgent` owns the reasoning loop.
+- Browser tool: Stagehand code mode exposes one stateful MCP tool, `code_execute`.
+- Stagehand is the SDK for browser agents.
 
 ## QUICKSTART
 
-1. pnpm install
-2. cp .env.example .env
-3. Add required API keys/IDs to .env
-4. pnpm start
+1. `cd business-lookup`
+2. `pnpm install`
+3. Add `BROWSERBASE_API_KEY` and `AI_GATEWAY_API_KEY` to `.env`
+4. `pnpm start`
+
+Set `AGENT_MODEL` to override the default `anthropic/claude-sonnet-4.6` outer-agent model.
 
 ## EXPECTED OUTPUT
 
-- Initializes Stagehand session with Browserbase
-- Navigates to SF Business Registry search page
-- Explicit actions search by DBA Name and open business details
-- Extracts structured business information (DBA Name, Account Number, NAICS Code, etc.)
-- Outputs extracted data as JSON
-- Closes session cleanly
+- The AI SDK starts the packaged Stagehand code-mode MCP over stdio.
+- The agent uses `code_execute` to search the SF business registry.
+- The final result is validated against a Zod schema and printed as JSON.
+- Closing the MCP client closes Stagehand and the Browserbase browser.
 
-## COMMON PITFALLS
+## SAFETY
 
-- Dependency install errors: ensure npm install completed
-- Missing credentials: verify `.env` contains `BROWSERBASE_API_KEY`
-- Action failures: check that the business exists and make the failing instruction more specific
-- Find more information on your Browserbase dashboard -> https://www.browserbase.com/sign-in
+Code mode executes model-authored JavaScript and is not itself a security sandbox. Run it inside an isolation boundary when prompts or pages are untrusted.
 
-## USE CASES
+## RESOURCES
 
-• Business verification: Automate registration status checks, license validation, and compliance verification for multiple businesses.
-• Data enrichment: Collect structured business metadata (NAICS codes, addresses, ownership) for research or CRM updates.
-• Due diligence: Streamline background checks by autonomously searching and extracting business registration details from public registries.
-
-## NEXT STEPS
-
-• Parameterize search: Accept business names as command-line arguments or from a CSV file for batch processing.
-• Expand extraction: Add support for additional fields like tax status, licenses, or historical registration changes.
-• Multi-registry support: Extend agent to search across multiple city or state business registries with routing logic.
-
-## HELPFUL RESOURCES
-
-📚 Stagehand Docs: https://docs.stagehand.dev/v4/first-steps/introduction
-🎮 Browserbase: https://www.browserbase.com
-💡 Try it out: https://www.browserbase.com/playground
-🔧 Templates: https://www.browserbase.com/templates
-📧 Need help? support@browserbase.com
-💬 Discord: http://stagehand.dev/discord
+- Stagehand: https://docs.stagehand.dev
+- Vercel AI SDK agents: https://ai-sdk.dev/docs/agents/building-agents
+- Vercel AI SDK MCP tools: https://ai-sdk.dev/docs/ai-sdk-core/mcp-tools

@@ -1,5 +1,7 @@
 # Stagehand + Browserbase Templates
 
+Stagehand is the SDK for browser agents.
+
 Ready-to-use automation templates for Stagehand and Browserbase. Each template has its own README with setup instructions.
 
 > All templates also live on [browserbase.com/templates](https://www.browserbase.com/templates)
@@ -15,7 +17,7 @@ Ready-to-use automation templates for Stagehand and Browserbase. Each template h
 | basic-recaptcha                  | [TS](typescript/basic-recaptcha)                  | [PY](python/basic-recaptcha)                  | -                   | Automatic reCAPTCHA solving using Browserbase's built-in captcha solving capabilities                          |
 | browser-agent-demo               | [TS](typescript/browser-agent-demo)               | -                                             | -                   | Browser agent that searches the web, fetches page content, and autonomously extracts information               |
 | browserbase-reducto              | [TS](typescript/browserbase-reducto)              | [PY](python/browserbase-reducto)              | -                   | Download financial PDFs from websites and extract structured data using AI-powered document parsing            |
-| business-lookup                  | [TS](typescript/business-lookup)                  | [PY](python/business-lookup)                  | -                   | Automate business registry searches using an autonomous AI agent with computer-use capabilities                |
+| business-lookup                  | [TS](typescript/business-lookup)                  | [PY](python/business-lookup)                  | -                   | Research business registry records with a Vercel AI SDK agent and Stagehand code mode                          |
 | cartesia-form-filling            | -                                                 | [PY](python/cartesia-form-filling)            | -                   | Voice agent that conducts phone questionnaires while automatically filling out web forms                       |
 | cerebras-docs-checker            | -                                                 | [PY](python/cerebras-docs-checker)            | -                   | Crawl documentation sites, discover source repos, and verify docs accuracy against actual codebase             |
 | company-address-finder           | [TS](typescript/company-address-finder)           | [PY](python/company-address-finder)           | -                   | Discover company legal information and physical addresses from Terms of Service and Privacy Policy pages       |
@@ -23,12 +25,12 @@ Ready-to-use automation templates for Stagehand and Browserbase. Each template h
 | context                          | [TS](typescript/context)                          | [PY](python/context)                          | -                   | Persistent authentication using Browserbase contexts that survive across sessions                              |
 | council-events                   | [TS](typescript/council-events)                   | [PY](python/council-events)                   | -                   | Automate event information extraction from Philadelphia Council                                                |
 | download-financial-statements    | [TS](typescript/download-financial-statements)    | [PY](python/download-financial-statements)    | -                   | Download Apple's quarterly financial statements (PDFs) from their investor relations site                      |
-| dynamic-form-filling             | [TS](typescript/dynamic-form-filling)             | -                                             | -                   | Intelligent form filling with explicit Stagehand V4 observe and act primitives                                 |
+| dynamic-form-filling             | [TS](typescript/dynamic-form-filling)             | -                                             | -                   | Fill dynamic forms with a Vercel AI SDK agent and Stagehand's code_execute browser tool                        |
 | exa-browserbase                  | [TS](typescript/exa-browserbase)                  | [PY](python/exa-browserbase)                  | -                   | Automate job applications with AI that writes smart, tailored responses for each role                          |
 | extend-browserbase               | [TS](typescript/extend-browserbase)               | [PY](python/extend-browserbase)               | -                   | Download receipts from an expense portal and extract structured receipt data using AI-powered document parsing |
 | form-filling                     | [TS](typescript/form-filling)                     | [PY](python/form-filling)                     | -                   | Automate form filling with Stagehand and Browserbase                                                           |
-| gemini-3-flash                   | [TS](typescript/gemini-3-flash)                   | -                                             | -                   | Google search research using Gemini 3 Flash with Stagehand V4 and Browserbase                                  |
-| gemini-cua                       | [TS](typescript/gemini-cua)                       | [PY](python/gemini-cua)                       | -                   | Google search research using Gemini with Stagehand V4 and Browserbase                                          |
+| gemini-3-flash                   | [TS](typescript/gemini-3-flash)                   | -                                             | -                   | Browser research with a Gemini 3 Flash agent and Stagehand code mode                                           |
+| gemini-cua                       | [TS](typescript/gemini-cua)                       | [PY](python/gemini-cua)                       | -                   | Browser research with a bring-your-own Gemini agent and Stagehand code mode                                    |
 | getting-started-with-browserbase | [TS](typescript/getting-started-with-browserbase) | [PY](python/getting-started-with-browserbase) | -                   | Demo all three core Browserbase capabilities: Search API, Fetch API, and Browser Sessions                      |
 | gift-finder                      | [TS](typescript/gift-finder)                      | [PY](python/gift-finder)                      | -                   | Find personalized gift recommendations using AI-generated search queries and intelligent product scoring       |
 | google-trends                    | [TS](typescript/google-trends)                    | [PY](python/google-trends)                    | -                   | Extract trending search keywords from Google Trends for any country with structured JSON output                |
@@ -38,7 +40,7 @@ Ready-to-use automation templates for Stagehand and Browserbase. Each template h
 | license-verification             | [TS](typescript/license-verification)             | [PY](python/license-verification)             | -                   | Extract structured, validated data from websites using Stagehand + Zod                                         |
 | manual-mfa-with-contexts         | [TS](typescript/manual-mfa-with-contexts)         | [PY](python/manual-mfa-with-contexts)         | -                   | Persist authentication across sessions using Browserbase Contexts, eliminating MFA friction                    |
 | mfa-handling                     | [TS](typescript/mfa-handling)                     | [PY](python/mfa-handling)                     | -                   | Automate MFA completion using TOTP (Time-based One-Time Password) code generation                              |
-| microsoft-cua                    | [TS](typescript/microsoft-cua)                    | -                                             | -                   | Search research with explicit Stagehand V4 primitives on Browserbase                                           |
+| microsoft-cua                    | [TS](typescript/microsoft-cua)                    | -                                             | -                   | Browser research with a bring-your-own OpenAI agent and Stagehand code mode                                    |
 | nurse-verification               | [TS](typescript/nurse-verification)               | [PY](python/nurse-verification)               | -                   | Automate verification of nurse licenses by filling forms and extracting structured results                     |
 | pickleball                       | [TS](typescript/pickleball)                       | [PY](python/pickleball)                       | -                   | Automate tennis and pickleball court bookings in San Francisco Recreation & Parks system                       |
 | playwright                       | [TS](typescript/playwright)                       | [PY](python/playwright)                       | -                   | Raw Playwright usage with Browserbase (no Stagehand)                                                           |
@@ -54,9 +56,9 @@ Ready-to-use automation templates for Stagehand and Browserbase. Each template h
 
 ## Model Gateway
 
-Templates use the Model Gateway to route LLM requests -- you only need your `BROWSERBASE_API_KEY`. No separate OpenAI, Anthropic, or Google API keys required. Supported models include OpenAI, Anthropic, and Google (Gemini).
+Stagehand primitives use the Browserbase Model Gateway, so they need only `BROWSERBASE_API_KEY`. Bring-your-own-agent templates also use Vercel AI Gateway for the outer agent loop and require `AI_GATEWAY_API_KEY`; no provider-specific OpenAI, Anthropic, or Google key is required.
 
-> **Stagehand V4 note**: the TypeScript templates use explicit `act`, `extract`, and `observe` primitives. V4 does not expose the V3 `agent()` orchestration API.
+> **Stagehand V4 note**: V4 does not expose the V3 `agent()` orchestration API. Agent templates use Vercel AI SDK for the loop and Stagehand code mode's `code_execute` MCP tool for browser work; other templates call V4 browser primitives directly.
 
 ## Getting Started
 

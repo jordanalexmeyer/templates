@@ -1,11 +1,11 @@
-# Browser Workflow Demo: Search, Fetch & Stagehand V4 on Browserbase
+# Browser Agent Demo: Search, Fetch & Stagehand Code Mode
 
 ## AT A GLANCE
 
 - **Goal**: search the web, fetch page content, and extract structured information — all through one Browserbase API key.
-- **Pattern**: Search → Fetch → Stagehand Extract. Lightweight primitives gather context before opening a browser for model-backed extraction.
-- **Single API key**: the Model Gateway routes LLM requests through Browserbase — no separate OpenAI/Anthropic/Google keys needed.
-- **Full platform demo**: uses Browsers, Search API, Fetch API, Stagehand, and Model Gateway together.
+- **Pattern**: Search → Fetch → Vercel AI SDK agent → Stagehand `code_execute`. Lightweight APIs gather context before the agent opens a browser.
+- **Bring your own agent**: Vercel AI SDK owns reasoning and tool selection; Stagehand code mode owns stateful browser execution.
+- **Full platform demo**: uses Browserbase Search and Fetch APIs, Vercel AI Gateway, and Stagehand code mode together.
   Docs → https://docs.browserbase.com
 
 ## GLOSSARY
@@ -14,12 +14,11 @@
   Docs → https://docs.browserbase.com/features/search
 - **Fetch API**: fetch page content (HTML, status, headers) for token-efficient context — no browser needed.
   Docs → https://docs.browserbase.com/features/fetch
-- **Stagehand**: the SDK for browser agents, with deterministic browser APIs and model-backed act, extract, and observe primitives.
+- **Stagehand**: the SDK for browser agents. Code mode exposes its V4 browser APIs through `code_execute`.
   Docs → https://docs.stagehand.dev
-- **extract()**: model-backed structured data extraction with a Zod V4 schema.
-  Docs → https://docs.stagehand.dev/v4/basics/extract
-- **Model Gateway**: routes LLM requests through Browserbase with unified billing across OpenAI, Anthropic, and Google.
-  Docs → https://docs.browserbase.com/features/model-gateway
+- **ToolLoopAgent**: Vercel AI SDK's multi-step agent loop.
+  Docs → https://ai-sdk.dev/docs/agents/building-agents
+- **code_execute**: the one stateful MCP tool the agent uses for all browser work.
 - **Agent Identity**: built-in credential management and strategic partnerships for accessing any website.
   Docs → https://docs.browserbase.com/features/agent-identity
 
@@ -28,40 +27,44 @@
 1. cd typescript/browser-agent-demo
 2. pnpm install
 3. cp .env.example .env
-4. Add BROWSERBASE_API_KEY to .env (get it from https://browserbase.com/settings)
+4. Add `BROWSERBASE_API_KEY` and `AI_GATEWAY_API_KEY` to `.env`
 5. pnpm start
 
 ## EXPECTED OUTPUT
 
 - Searches the web for "best coffee shops in San Francisco" and displays 5 structured results
 - Selects the top result and fetches its HTML content with status code, content type, and preview
-- Launches a Stagehand V4 browser on Browserbase
-- Navigates to the selected page and extracts the top 3 recommendations
-- Outputs structured findings and closes both lifecycle handles
+- Starts Stagehand code mode over MCP and gives `code_execute` to a Vercel AI SDK agent
+- The agent navigates to the selected page and returns the top 3 recommendations
+- Closes the MCP client, Stagehand, and the Browserbase browser
 
 ## COMMON PITFALLS
 
-- Missing API key: verify .env contains BROWSERBASE_API_KEY — this is the only required credential
-- No separate LLM keys needed: the Model Gateway handles model access through your Browserbase key
+- Missing API key: Browserbase needs `BROWSERBASE_API_KEY`; the outer agent needs `AI_GATEWAY_API_KEY`
+- No provider-specific key needed: Vercel AI Gateway handles the outer model selected by `AGENT_MODEL`
 - Search returns no results: try a different query string — some queries may return empty depending on availability
-- Session not closing: the demo uses `try/finally` to close both Stagehand and the browser handle
+- Session not closing: the demo uses `try/finally` to close the MCP client, which closes Stagehand and the browser
 - Find more information on your Browserbase dashboard -> https://www.browserbase.com/sign-in
 
 ## USE CASES
 
 • Building research agents that search, evaluate, and extract from web pages
 • Token-efficient web browsing pipelines (cheap Search/Fetch before expensive browser sessions)
-• Model-backed data extraction from pages without writing selectors
+• Agent-driven browsing with deterministic APIs and Stagehand AI primitives available inside `code_execute`
 • Prototyping browser agents with the full Browserbase platform
 
 ## NEXT STEPS
 
 • **Customize the query**: change the search query and extraction instruction
-• **Add multi-page navigation**: use browser pages and ordinary application control flow
+• **Add multi-page navigation**: ask the agent to work across pages in the stateful code-mode session
 • **Deploy as a Function**: run the agent on Browserbase infrastructure with <5ms browser latency
 Docs → https://docs.browserbase.com/features/functions
 • **Enable stealth mode**: add `browserSettings: { advancedStealth: true, solveCaptchas: true }` for protected sites
-• **Switch models**: change `model.modelName` in `Stagehand.create()` or omit it for automatic routing
+• **Switch outer models**: set `AGENT_MODEL` to another Vercel AI Gateway model ID
+
+## SAFETY
+
+Code mode executes model-authored JavaScript and is not itself a security sandbox. Isolate it when prompts or pages are untrusted.
 
 ## HELPFUL RESOURCES
 

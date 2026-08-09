@@ -1,76 +1,62 @@
-// Business Lookup with Agent - See README.md for full documentation
+// Business Lookup with a bring-your-own agent - See README.md for full documentation
 
 import "dotenv/config";
-import { browserbase, Stagehand } from "@browserbasehq/stagehand";
+import { createMCPClient } from "@ai-sdk/mcp";
+import { Experimental_StdioMCPTransport } from "@ai-sdk/mcp/mcp-stdio";
+import { Output, ToolLoopAgent, stepCountIs } from "ai";
 import { z } from "zod/v4";
 
-// Business search variables
 const businessName = "Jalebi Street";
 
+const businessSchema = z.object({
+  dbaName: z.string(),
+  ownershipName: z.string().nullable(),
+  businessAccountNumber: z.string(),
+  locationId: z.string().nullable(),
+  streetAddress: z.string().nullable(),
+  businessStartDate: z.string().nullable(),
+  businessEndDate: z.string().nullable(),
+  neighborhood: z.string().nullable(),
+  naicsCode: z.string(),
+  naicsCodeDescription: z.string().nullable(),
+});
+
 async function main() {
-  // Initialize Stagehand with Browserbase for cloud-based browser automation.
-  const browser = await browserbase.launch({
-    apiKey: process.env.BROWSERBASE_API_KEY!,
-  });
-  const stagehand = await Stagehand.create({
-    browser: browser,
-    model: { modelName: "openai/gpt-4.1" },
-    logging: { level: "info" },
+  const mcpClient = await createMCPClient({
+    transport: new Experimental_StdioMCPTransport({
+      command: "stagehand-codemode",
+      stderr: "inherit",
+    }),
   });
 
   try {
-    // Initialize browser session to start automation.
+    const tools = await mcpClient.tools();
+    if (!tools.code_execute) throw new Error("Stagehand code mode did not expose code_execute");
 
-    console.log("Stagehand initialized successfully!");
-    const page = (await browser.context.pages())[0];
-
-    // Navigate to SF Business Registry search page.
-    console.log(`Navigating to SF Business Registry...`);
-    await page.goto("https://data.sfgov.org/stories/s/Registered-Business-Lookup/k6sk-2y6w/");
+    const agent = new ToolLoopAgent({
+      model: process.env.AGENT_MODEL ?? "anthropic/claude-sonnet-4.6",
+      instructions:
+        "You are a browser agent. Use code_execute for all browser work. Prefer deterministic page and locator APIs, and use Stagehand act, observe, or extract inside code_execute only when semantic browser intelligence is useful.",
+      tools,
+      output: Output.object({ schema: businessSchema }),
+      stopWhen: stepCountIs(20),
+    });
 
     console.log(`Searching for business: ${businessName}`);
-    await stagehand.act("Open the business registry filter controls");
-    await stagehand.act("Choose DBA Name as the filter field");
-    await stagehand.act(`Type "${businessName}" into the filter value field`);
-    await stagehand.act("Apply the business registry filter");
-    await stagehand.act(`Open the result row for "${businessName}"`);
-    await stagehand.act("Scroll the business details horizontally to reveal the NAICS code");
-
-    // Extract comprehensive business information after agent completes the search.
-    console.log("Extracting business information...");
-    const { data: businessInfo } = await stagehand.extract(
-      "Extract all visible business information including DBA Name, Ownership Name, Business Account Number, Location Id, Street Address, Business Start Date, Business End Date, Neighborhood, NAICS Code, and NAICS Code Description",
-      z.object({
-        dbaName: z.string(),
-        ownershipName: z.string().optional(),
-        businessAccountNumber: z.string(),
-        locationId: z.string().optional(),
-        streetAddress: z.string().optional(),
-        businessStartDate: z.string().optional(),
-        businessEndDate: z.string().optional(),
-        neighborhood: z.string().optional(),
-        naicsCode: z.string(),
-        naicsCodeDescription: z.string().optional(),
-      }),
-      { page },
-    );
+    const result = await agent.generate({
+      prompt: `Open the San Francisco Registered Business Lookup at https://data.sfgov.org/stories/s/Registered-Business-Lookup/k6sk-2y6w/ and find the record for ${JSON.stringify(businessName)}. Return all requested fields. Use null when a field is not present.`,
+    });
 
     console.log("Business Information:");
-    console.log(JSON.stringify(businessInfo, null, 2));
-  } catch (error) {
-    console.error("Error during business lookup:", error);
+    console.log(JSON.stringify(result.output, null, 2));
   } finally {
-    // Always close session to release resources and clean up.
-    await stagehand.close();
-    await browser.close();
-    console.log("Session closed successfully");
+    await mcpClient.close();
+    console.log("Stagehand code-mode session closed successfully");
   }
 }
 
-main().catch((err) => {
-  console.error("Error in business lookup:", err);
-  console.error("Common issues:");
-  console.error("  - Check .env file has BROWSERBASE_API_KEY");
-  console.error("Docs: https://docs.stagehand.dev/v4/first-steps/introduction");
+main().catch((error) => {
+  console.error("Error in business lookup:", error);
+  console.error("Check BROWSERBASE_API_KEY and AI_GATEWAY_API_KEY in .env");
   process.exit(1);
 });

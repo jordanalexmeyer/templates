@@ -1,7 +1,8 @@
 import { Browserbase } from "@browserbasehq/sdk";
-import { browserbase, Stagehand } from "@browserbasehq/stagehand";
+import { createMCPClient } from "@ai-sdk/mcp";
+import { Experimental_StdioMCPTransport } from "@ai-sdk/mcp/mcp-stdio";
+import { ToolLoopAgent, stepCountIs } from "ai";
 import "dotenv/config";
-import { z } from "zod/v4";
 
 async function main() {
   const apiKey = process.env.BROWSERBASE_API_KEY!;
@@ -76,49 +77,42 @@ async function main() {
   console.log(`   Preview:        ${textPreview}...`);
   console.log();
 
-  // ─── STEP 3: STAGEHAND V4 ───────────────────────────────────────────────────
-  // V4 exposes explicit browser APIs plus act, extract, and observe primitives.
-  // Docs: https://docs.stagehand.dev/v4/first-steps/introduction
+  // ─── STEP 3: BRING-YOUR-OWN AGENT + STAGEHAND CODE MODE ─────────────────────
+  // V4 exposes browser-agent capabilities through the packaged code_execute MCP tool.
+  // The Vercel AI SDK owns the agent loop; Stagehand owns browser execution.
 
-  console.log(`STEP 3: STAGEHAND V4`);
-  console.log(`   Launching browser...\n`);
+  console.log(`STEP 3: VERCEL AI SDK + STAGEHAND CODE MODE`);
+  console.log(`   Starting code-mode MCP...\n`);
 
-  // env: "BROWSERBASE" runs on Browserbase's headless browser infrastructure with
-  // session replay, Agent Identity, and proxies built in.
-  // The Model Gateway routes LLM requests through Browserbase — one API key gives
-  // access to models from OpenAI, Anthropic, and Google with unified billing.
-  const browser = await browserbase.launch({
-    apiKey: process.env.BROWSERBASE_API_KEY!,
-  });
-  const stagehand = await Stagehand.create({
-    browser: browser,
-    model: { modelName: "anthropic/claude-sonnet-4-6" },
+  const mcpClient = await createMCPClient({
+    transport: new Experimental_StdioMCPTransport({
+      command: "stagehand-codemode",
+      stderr: "inherit",
+    }),
   });
 
   try {
-    console.log(`   Navigating to: ${targetUrl}`);
+    const tools = await mcpClient.tools();
+    if (!tools.code_execute) throw new Error("Stagehand code mode did not expose code_execute");
 
-    const page = (await browser.context.pages())[0]!;
-    await page.goto(targetUrl);
+    const agent = new ToolLoopAgent({
+      model: process.env.AGENT_MODEL ?? "anthropic/claude-sonnet-4.6",
+      instructions:
+        "You are a browser research agent. Use code_execute for all browser work. Prefer deterministic page and locator APIs; use Stagehand AI primitives inside code_execute when semantic extraction is useful. Return concise factual findings.",
+      tools,
+      stopWhen: stepCountIs(15),
+    });
 
-    const { data: research } = await stagehand.extract(
-      `Extract the top 3 recommendations or key points from this page about "${targetTitle}". ` +
-        "For each, include the name and a one-sentence summary of why it is notable.",
-      z.object({
-        recommendations: z.array(
-          z.object({
-            name: z.string(),
-            summary: z.string(),
-          }),
-        ),
-      }),
-    );
+    const result = await agent.generate({
+      prompt:
+        `Navigate to ${targetUrl}, which was selected for ${JSON.stringify(targetTitle)}. ` +
+        "Return the top 3 recommendations or key points, each with a name and a one-sentence explanation of why it is notable.",
+    });
 
-    console.log(`\n   ── Stagehand Result ──`);
-    console.log(research.recommendations);
+    console.log(`\n   ── Agent Result ──`);
+    console.log(result.text);
   } finally {
-    await stagehand.close();
-    await browser.close();
+    await mcpClient.close();
   }
 
   console.log(`\nDone!`);

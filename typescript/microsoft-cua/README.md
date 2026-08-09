@@ -1,37 +1,30 @@
-# Stagehand V4 + Browserbase: Research Workflow
+# Stagehand Code Mode + Vercel AI SDK: Browser Agent
 
 ## AT A GLANCE
 
-- Goal: demonstrate the Stagehand V4 replacement for the former computer-use-agent example.
-- Uses explicit browser navigation and `extract()` through Browserbase Model Gateway.
-- Stagehand V4 intentionally has no `agent()` or CUA orchestration API; application code owns the steps.
+- Goal: replace the former computer-use orchestration example with a bring-your-own agent.
+- Vercel AI SDK `ToolLoopAgent` owns the agent loop.
+- Stagehand code mode supplies the stateful `code_execute` MCP browser tool.
 
 ## QUICKSTART
 
-1. `pnpm install`
-2. `cp .env.example .env`
-3. Add `BROWSERBASE_API_KEY` to `.env`
+1. `cd microsoft-cua`
+2. `pnpm install`
+3. Add `BROWSERBASE_API_KEY` and `AI_GATEWAY_API_KEY` to `.env`
 4. `pnpm start`
+
+Set `AGENT_MODEL` to select another AI Gateway model; the default is `openai/gpt-5.4`.
 
 ## EXPECTED OUTPUT
 
-- Launches a Browserbase browser with `browserbase.launch()`
-- Creates Stagehand with `Stagehand.create({ browser })`
-- Opens search results for the configured question
-- Extracts and prints an answer from the visible results
-- Closes both Stagehand and the browser handle
+- The agent browses with `code_execute` and returns cited research findings.
+- Closing the MCP client closes Stagehand and its Browserbase browser.
 
-## COMMON PITFALLS
+## SAFETY
 
-- Missing credentials: verify `.env` contains `BROWSERBASE_API_KEY`
-- V4 primitives return `{ data, metadata }`; read the answer from `result.data`
-- For autonomous runtime orchestration, expose V4 browser methods to your agent framework as tools
+Code mode executes model-authored JavaScript and is not itself a security sandbox. Isolate it for untrusted content.
 
-## HELPFUL RESOURCES
+## RESOURCES
 
-📚 Stagehand V4 Migration: https://docs.stagehand.dev/v4/migrations/v3
-📚 Stagehand V4 Docs: https://docs.stagehand.dev/v4/first-steps/introduction
-🎮 Browserbase: https://www.browserbase.com
-💡 Try it out: https://www.browserbase.com/playground
-🔧 Templates: https://www.browserbase.com/templates
-💬 Discord: http://stagehand.dev/discord
+- Stagehand: https://docs.stagehand.dev
+- Vercel AI SDK agents: https://ai-sdk.dev/docs/agents/building-agents
