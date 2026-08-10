@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@browserbasehq/sdk": "^2.9.0",
-    "@browserbasehq/stagehand": "github:browserbase/stagehand#4186c7d98d2f325b6fc85b3f760111e6c390d703&path:/packages/sdk-ts",
+    "@browserbasehq/stagehand": "4.0.0",
     "adm-zip": "latest",
     "dotenv": "latest",
     "reductoai": "latest"
@@ -20,7 +20,6 @@
     "typescript": "latest"
   },
   "packageManager": "pnpm@10.24.0",
-  "//": "TODO: Replace this commit pin with @browserbasehq/stagehand@4.0.0 after it is published.",
   "engines": {
     "node": ">=22.18.0"
   }

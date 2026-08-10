@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@browserbasehq/sdk": "^2.9.0",
-    "@browserbasehq/stagehand": "github:browserbase/stagehand#4186c7d98d2f325b6fc85b3f760111e6c390d703&path:/packages/sdk-ts",
+    "@browserbasehq/stagehand": "4.0.0",
     "dotenv": "^16.4.5",
     "zod": "^4.4.3"
   },
@@ -19,7 +19,6 @@
     "tsx": "^4.16.0",
     "typescript": "^5.5.0"
   },
-  "//": "TODO: Replace this commit pin with @browserbasehq/stagehand@4.0.0 after it is published.",
   "engines": {
     "node": ">=22.18.0"
   },
