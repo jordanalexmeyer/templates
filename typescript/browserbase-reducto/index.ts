@@ -145,7 +145,12 @@ function extractPdfFromZip(zipPath: string, outputDir: string = "downloaded_file
     const outputName = entry.entryName.toLowerCase().endsWith(".pdf")
       ? entry.entryName
       : `${entry.entryName}.pdf`;
-    const outputPath = path.join(outputDir, outputName);
+    const resolvedOutputDir = path.resolve(outputDir);
+    const outputPath = path.resolve(resolvedOutputDir, outputName);
+    if (!outputPath.startsWith(`${resolvedOutputDir}${path.sep}`)) {
+      throw new Error(`Refusing to extract a zip entry outside ${outputDir}: ${entry.entryName}`);
+    }
+    fs.mkdirSync(path.dirname(outputPath), { recursive: true });
     fs.writeFileSync(outputPath, entry.getData());
     console.log(`Extracted: ${outputPath}`);
 

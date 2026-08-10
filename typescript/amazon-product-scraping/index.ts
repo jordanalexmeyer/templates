@@ -66,16 +66,17 @@ async function main(): Promise<void> {
     console.log("Extracting product data...");
     const rawProducts = (await page.evaluate(() =>
       Array.from(document.querySelectorAll('[data-component-type="s-search-result"]'))
-        .slice(0, 3)
         .map((card) => {
           const productLinks = Array.from(
             card.querySelectorAll<HTMLAnchorElement>('a[href*="/dp/"]'),
           );
-          const productLink =
-            productLinks.find((link) => (link.textContent?.trim().length ?? 0) > 10) ??
-            productLinks[0];
+          const productLink = productLinks.find(
+            (link) => link.href && (link.textContent?.trim().length ?? 0) > 10,
+          );
+          if (!productLink) return null;
+
           const brand = card.querySelector("h2 span")?.textContent?.trim() ?? "";
-          const title = productLink?.textContent?.trim() ?? "";
+          const title = productLink.textContent?.trim() ?? "";
           return {
             name: [brand, title].filter(Boolean).join(" "),
             price: card.querySelector(".a-price .a-offscreen")?.textContent?.trim() ?? "",
@@ -86,9 +87,11 @@ async function main(): Promise<void> {
                 ?.textContent?.trim() ??
               card.querySelector(".s-underline-text")?.textContent?.trim() ??
               "",
-            product_url: productLink?.href ?? "",
+            product_url: productLink.href,
           };
-        }),
+        })
+        .filter((product) => product !== null)
+        .slice(0, 3),
     )) as unknown;
     const products = ProductsSchema.parse({ products: rawProducts });
 
@@ -99,12 +102,16 @@ async function main(): Promise<void> {
     if (normalizedProducts.length < 3) {
       throw new Error(`Expected 3 products, found ${normalizedProducts.length}`);
     }
-    const queryMatches = normalizedProducts.filter((product) =>
-      product.name.toLowerCase().includes("seiko"),
-    );
+    const queryTokens = SEARCH_QUERY.toLowerCase().match(/[a-z0-9]+/g) ?? [];
+    const significantQueryTokens = queryTokens.filter((token) => token.length >= 3);
+    const matchTokens = significantQueryTokens.length > 0 ? significantQueryTokens : queryTokens;
+    const queryMatches = normalizedProducts.filter((product) => {
+      const normalizedName = product.name.toLowerCase();
+      return matchTokens.some((token) => normalizedName.includes(token));
+    });
     if (queryMatches.length < 2) {
       throw new Error(
-        `Search results did not match ${SEARCH_QUERY}: only ${queryMatches.length} Seiko products`,
+        `Search results did not match ${SEARCH_QUERY}: only ${queryMatches.length} products contained a query term`,
       );
     }
     if (
