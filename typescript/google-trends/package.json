@@ -2,6 +2,7 @@
   "name": "google-trends-template",
   "version": "1.0.0",
   "description": "Stagehand + Browserbase: Google Trends Keywords Extractor",
+  "type": "module",
   "main": "index.ts",
   "scripts": {
     "start": "tsx index.ts",

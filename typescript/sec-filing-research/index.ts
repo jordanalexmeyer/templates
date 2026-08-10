@@ -2,33 +2,22 @@
 
 import "dotenv/config";
 import { browserbase, Stagehand } from "@browserbasehq/stagehand";
-import { z } from "zod/v4";
+
+async function closeSession(
+  stagehand: Stagehand,
+  browser: Awaited<ReturnType<typeof browserbase.launch>>,
+) {
+  await stagehand.close().catch((error) => console.warn("Stagehand cleanup warning:", error));
+  await browser.close().catch((error) => console.warn("Browser cleanup warning:", error));
+}
 
 // Search query - can be company name, ticker symbol, or CIK number
 // Examples: "Apple Inc", "AAPL", "0000320193"
 const SEARCH_QUERY = "Apple Inc";
+const COMPANY_CIK = "0000320193";
 
 // Number of filings to retrieve
 const NUM_FILINGS = 5;
-
-// Schema for extracted filing data
-const FilingSchema = z.object({
-  filings: z.array(
-    z.object({
-      type: z.string().describe("Filing type (e.g., 10-K, 10-Q, 8-K)"),
-      date: z.string().describe("Filing date in YYYY-MM-DD format"),
-      description: z.string().describe("Full description of the filing"),
-      accessionNumber: z.string().describe("SEC accession number"),
-      fileNumber: z.string().optional().describe("File/Film number"),
-    }),
-  ),
-});
-
-// Schema for company info extraction
-const CompanyInfoSchema = z.object({
-  companyName: z.string().describe("Official company name"),
-  cik: z.string().describe("Central Index Key (CIK) number"),
-});
 
 // Result shape returned after extracting company and filing metadata from SEC EDGAR
 interface SECFilingResult {
@@ -71,57 +60,59 @@ async function main(): Promise<void> {
 
     const page = (await browser.context.pages())[0];
 
-    // Navigate to modern SEC EDGAR company search page
+    // The target company is known, so navigate directly to its entity page.
+    // This avoids depending on the changing autocomplete/search UI.
     console.log("\nNavigating to SEC EDGAR...");
-    await page.goto("https://www.sec.gov/edgar/searchedgar/companysearch.html", {
+    await page.goto(`https://www.sec.gov/edgar/browse/?CIK=${COMPANY_CIK}&owner=exclude`, {
       waitUntil: "domcontentloaded",
     });
+    await page.waitForTimeout(2000);
 
-    // Enter search query in the Company and Person Lookup search box
-    console.log(`Searching for: ${SEARCH_QUERY}`);
-    await stagehand.act(`Click on the Company and Person Lookup search textbox`);
-    await stagehand.act(`Type "${SEARCH_QUERY}" in the search field`);
-
-    // Submit search to load company results
-    await stagehand.act("Click the search submit button");
-
-    // Select the matching company from results to view their filings page
-    console.log("Selecting the correct company from results...");
-    await stagehand.act(`Click on "${SEARCH_QUERY}" in the search results to view their filings`);
-
-    // Extract company information from the filings page
-    console.log("Extracting company information...");
-    let companyInfo = { companyName: SEARCH_QUERY, cik: "Unknown" };
-
-    try {
-      const { data: extractedInfo } = await stagehand.extract(
-        "Extract the company name and CIK number from the page header or company information section. The CIK should be a numeric identifier.",
-        CompanyInfoSchema,
-      );
-      if (extractedInfo && extractedInfo.companyName) {
-        companyInfo = extractedInfo;
-      }
-    } catch (error) {
-      // Fallback to search query if extraction fails (e.g. page layout differs)
-      console.log("Could not extract company info, using search query as company name:", error);
-    }
-
-    // Extract filing metadata from the filings table using structured schema
+    // EDGAR's table has a stable machine-readable shape, so use a deterministic
+    // DOM read and derive accession numbers from the official document URLs.
     console.log(`Extracting the ${NUM_FILINGS} most recent filings...`);
-    const { data: filingsData } = await stagehand.extract(
-      `Extract the ${NUM_FILINGS} most recent SEC filings from the filings table. For each filing, get: the filing type (column: Filings, like 10-K, 10-Q, 8-K), the filing date (column: Filing Date), description, accession number (from the link or description), and file/film number if shown.`,
-      FilingSchema,
-    );
+    const extracted = (await page.evaluate((limit: number) => {
+      const company = document.querySelector("h3")?.textContent?.trim().split("\n")[0] ?? "";
+      const tables = Array.from(document.querySelectorAll("table"));
+      const table = tables.sort(
+        (left, right) =>
+          right.querySelectorAll("tbody tr").length - left.querySelectorAll("tbody tr").length,
+      )[0];
+      const filings = Array.from(table?.querySelectorAll("tbody tr") ?? [])
+        .slice(0, limit)
+        .map((row) => {
+          const cells = Array.from(row.querySelectorAll("td"));
+          const filingLink = row.querySelector<HTMLAnchorElement>(
+            'a[href*="/Archives/edgar/data/"]',
+          );
+          const folder = filingLink?.href.match(/\/data\/\d+\/(\d{18})\//)?.[1] ?? "";
+          const accessionNumber = folder
+            ? `${folder.slice(0, 10)}-${folder.slice(10, 12)}-${folder.slice(12)}`
+            : "";
+          return {
+            type: cells[0]?.textContent?.trim() ?? "",
+            description: cells[1]?.textContent?.replace(/\s+/g, " ").trim() ?? "",
+            date: cells[2]?.textContent?.trim() ?? "",
+            accessionNumber,
+            fileNumber: "",
+          };
+        });
+      return { company, filings };
+    }, NUM_FILINGS)) as { company: string; filings: SECFilingResult["filings"] };
+
+    if (
+      extracted.filings.length !== NUM_FILINGS ||
+      extracted.filings.some((filing) => !filing.type || !filing.date || !filing.accessionNumber)
+    ) {
+      throw new Error("SEC page did not return five complete filing records");
+    }
 
     // Build result object with company info and normalized filing list
     const result: SECFilingResult = {
-      company: companyInfo.companyName,
-      cik: companyInfo.cik,
+      company: extracted.company,
+      cik: COMPANY_CIK,
       searchQuery: SEARCH_QUERY,
-      filings: filingsData.filings.slice(0, NUM_FILINGS).map((f) => ({
-        ...f,
-        fileNumber: f.fileNumber || "",
-      })),
+      filings: extracted.filings,
     };
 
     // Log summary and per-filing details to console
@@ -156,8 +147,7 @@ async function main(): Promise<void> {
     throw error;
   } finally {
     // Always close session to release resources and clean up
-    await stagehand.close();
-    await browser.close();
+    await closeSession(stagehand, browser);
     console.log("\nSession closed successfully");
   }
 }

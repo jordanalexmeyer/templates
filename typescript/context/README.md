@@ -13,16 +13,16 @@
   Docs → https://docs.browserbase.com/features/contexts
 - persist: when true, any state changes during a session are written back to the context for future reuse.
 - act: perform UI actions from a prompt (click, type, navigate).
-  Docs → https://docs.stagehand.dev/basics/act
+  Docs → https://docs.stagehand.dev/v4/basics/act
 
 ## QUICKSTART
 
-1.  cd context-template
-2.  npm install
-3.  npm install axios
-4.  cp .env.example .env
-5.  Add your Browserbase API key, Project ID, and SF Rec Park credentials to .env
-6.  npm start
+1. cd context
+2. npm install
+3. npm install axios
+4. cp .env.example .env
+5. Add your Browserbase API key, Project ID, and SF Rec Park credentials to .env
+6. npm start
 
 ## EXPECTED OUTPUT
 

@@ -6,7 +6,6 @@
 
 import "dotenv/config";
 import { browserbase, Stagehand } from "@browserbasehq/stagehand";
-import { z } from "zod/v4";
 import fs from "fs";
 import path from "path";
 
@@ -80,30 +79,45 @@ async function main(): Promise<void> {
     console.log("Stagehand initialized successfully!");
     const page = (await browser.context.pages())[0];
 
-    // Navigate and wait for network activity to settle so JS-injected images are in the DOM.
+    // Many modern sites keep analytics and streaming requests open indefinitely, so
+    // wait for DOM readiness and then allow client-rendered images a short settle period.
     console.log(`\nNavigating to ${targetUrl}...`);
     await page.goto(targetUrl, {
-      waitUntil: "networkidle", // Wait for network to settle so JS-injected images are in the DOM.
+      waitUntil: "domcontentloaded",
       timeout: 60000, // Extended timeout for reliable page loading.
     });
+    await page.waitForTimeout(3000);
 
-    // Use extract() with a URL schema so Stagehand knows to look for image URLs.
+    // Image URLs are a known DOM shape, so use a deterministic page read. This
+    // avoids a model mistaking accessibility references for relative URLs.
     console.log("Extracting image URLs from page...");
-    const {
-      data: { urls: allUrls },
-    } = await stagehand.extract(
-      "extract all image URLs on this page, including src attributes from <img> tags and any background image URLs",
-      z.object({ urls: z.array(z.string().url()) }),
-    );
-
-    // Deduplicate and filter out any empty/malformed URLs before applying the limit.
-    const uniqueUrls = [...new Set(allUrls)].filter((u) => {
-      try {
-        const { protocol } = new URL(u);
-        return protocol === "https:" || protocol === "http:";
-      } catch {
-        return false;
+    const allUrls = (await page.evaluate(() => {
+      const urls = new Set<string>();
+      for (const image of Array.from(document.images)) {
+        if (image.currentSrc) urls.add(image.currentSrc);
+        if (image.src) urls.add(image.src);
       }
+      for (const element of Array.from(document.querySelectorAll<HTMLElement>("[style]"))) {
+        const background = getComputedStyle(element).backgroundImage;
+        for (const match of background.matchAll(/url\(["']?(.*?)["']?\)/g)) {
+          if (match[1]) urls.add(new URL(match[1], document.baseURI).href);
+        }
+      }
+      return [...urls];
+    })) as string[];
+
+    // Normalize root-relative paths against the target page, then deduplicate
+    // and filter unsupported URL schemes before applying the limit.
+    const normalizedUrls = allUrls.flatMap((url) => {
+      try {
+        return [new URL(url, targetUrl).href];
+      } catch {
+        return [];
+      }
+    });
+    const uniqueUrls = [...new Set(normalizedUrls)].filter((url) => {
+      const { protocol } = new URL(url);
+      return protocol === "https:" || protocol === "http:";
     });
     console.log(`Found ${uniqueUrls.length} unique image URL(s)`);
 
@@ -147,6 +161,7 @@ async function main(): Promise<void> {
             const res = await fetch(imgUrl);
             if (!res.ok) return null;
             const blob = await res.blob();
+            if (!blob.type.startsWith("image/")) return null;
             return await new Promise<{ base64: string; mimeType: string } | null>((resolve) => {
               const reader = new FileReader();
               reader.onload = () => {
@@ -174,6 +189,23 @@ async function main(): Promise<void> {
         continue;
       }
 
+      // Browser fetch obeys CORS. Public CDN images sometimes omit CORS headers,
+      // so fall back to a server-side fetch when no authenticated browser state is needed.
+      if (!result) {
+        try {
+          const response = await fetch(url);
+          const mimeType = response.headers.get("content-type")?.split(";")[0] ?? "";
+          if (response.ok && mimeType.startsWith("image/")) {
+            result = {
+              base64: Buffer.from(await response.arrayBuffer()).toString("base64"),
+              mimeType,
+            };
+          }
+        } catch {
+          // The common failure path below records this URL as skipped.
+        }
+      }
+
       if (!result) {
         console.log("FAILED (skipping)");
         failed++;
@@ -194,6 +226,9 @@ async function main(): Promise<void> {
       saved++;
     }
 
+    if (saved === 0) {
+      throw new Error(`No images were downloaded (${failed} failed)`);
+    }
     console.log(`\nDone! ${saved} saved, ${failed} failed → ${outputDir}/`);
   } catch (error) {
     console.error("Error during image download:", error);

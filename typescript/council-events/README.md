@@ -10,9 +10,9 @@
 ## GLOSSARY
 
 - act: perform UI actions from a natural language prompt (type, click, navigate).
-  Docs → https://docs.stagehand.dev/basics/act
+  Docs → https://docs.stagehand.dev/v4/basics/act
 - extract: pull structured data from web pages into validated objects.
-  Docs → https://docs.stagehand.dev/basics/extract
+  Docs → https://docs.stagehand.dev/v4/basics/extract
 - schema: a Zod definition that enforces data types, optional fields, and validation rules.
   Docs → https://zod.dev/
 - council events automation: navigate to council website, select calendar, and extract event information.

@@ -5,12 +5,6 @@ import { browserbase, Stagehand } from "@browserbasehq/stagehand";
 import "dotenv/config";
 import fs from "fs";
 
-async function uploadStagehandExtension(bb: Browserbase): Promise<{ id: string }> {
-  const stagehandEntry = import.meta.resolve("@browserbasehq/stagehand");
-  const archive = new URL("./assets/stagehand-extension.zip", stagehandEntry);
-  return bb.extensions.create({ file: fs.createReadStream(archive) });
-}
-
 /**
  * Polls Browserbase API for downloads with timeout handling.
  * Retries every 2 seconds until downloads are ready or timeout is reached.
@@ -74,15 +68,13 @@ async function main(): Promise<void> {
     apiKey: process.env.BROWSERBASE_API_KEY as string,
   });
 
-  const extension = await uploadStagehandExtension(bb);
-  const session = await bb.sessions.create({ extensionId: extension.id });
-
-  // Attach Stagehand to the Browserbase session so its ID remains available for downloads.
-  const browser = await browserbase.connect({
+  // V4's browser factory provisions and owns the Stagehand extension. The returned
+  // browser exposes its Browserbase session ID for downloads and Live View APIs.
+  const browser = await browserbase.launch({
     apiKey: process.env.BROWSERBASE_API_KEY!,
-    sessionId: session.id,
-    extensionId: extension.id,
   });
+  const sessionId = browser.sessionId;
+  if (!sessionId) throw new Error("Browserbase launch did not return a session ID");
   const stagehand: Stagehand = await Stagehand.create({
     browser: browser,
     logging: { level: "error", onLog: console.log },
@@ -95,32 +87,51 @@ async function main(): Promise<void> {
     const context = browser.context;
     const page = (await context.pages())[0];
 
-    // Display live view URL for debugging and monitoring
-    const liveViewLinks = await bb.sessions.debug(session.id);
-    console.log(`Live View Link: ${liveViewLinks.debuggerFullscreenUrl}`);
+    // The session can be monitored from the Browserbase Sessions dashboard.
+    // Avoid printing its signed Live View URL into application logs.
+    console.log("Live View is available in the Browserbase Sessions dashboard");
 
-    // Navigate to Apple homepage with extended timeout for slow-loading sites
-    console.log("Navigating to Apple.com...");
-    await page.goto("https://www.apple.com/", { timeout: 60000 });
+    // Collect all four URLs before opening any PDF. Browserbase captures PDF
+    // navigations as downloads, which can close the page that initiated them.
+    console.log("Navigating to Apple Investor Relations...");
+    await page.goto("https://investor.apple.com/investor-relations/default.aspx", {
+      waitUntil: "domcontentloaded",
+      timeout: 60000,
+    });
+    const statementUrls = await page.evaluate(() =>
+      Array.from(document.querySelectorAll<HTMLAnchorElement>("a"))
+        .filter(
+          (link) =>
+            link.textContent?.trim() === "Financial Statements" && /fy2025/i.test(link.href),
+        )
+        .map((link) => link.href)
+        .slice(0, 4),
+    );
+    if (statementUrls.length !== 4 || new Set(statementUrls).size !== 4) {
+      throw new Error(`Expected four FY2025 statements, found ${statementUrls.length}`);
+    }
 
-    // Navigate to investor relations section
-    console.log("Navigating to Investors section...");
-    await stagehand.act("Click the 'Investors' button at the bottom of the page'");
-    await stagehand.act("Scroll down to the Financial Data section of the page");
-    await stagehand.act("Under Quarterly Earnings Reports, click on '2025'");
-
-    // Download all quarterly financial statements
-    // When a URL of a PDF is opened, Browserbase automatically downloads and stores the PDF
-    // See https://docs.browserbase.com/features/screenshots#pdfs for more info
-    console.log("Downloading quarterly financial statements...");
-    await stagehand.act("Click the 'Financial Statements' link under Q4");
-    await stagehand.act("Click the 'Financial Statements' link under Q3");
-    await stagehand.act("Click the 'Financial Statements' link under Q2");
-    await stagehand.act("Click the 'Financial Statements' link under Q1");
+    console.log("Downloading four quarterly financial statements...");
+    for (const [index, statementUrl] of statementUrls.entries()) {
+      const response = await fetch(statementUrl, { method: "HEAD" });
+      if (!response.ok || !response.headers.get("content-type")?.includes("application/pdf")) {
+        throw new Error(`Q${4 - index} statement URL did not return a PDF`);
+      }
+      await page.evaluate((url: string) => {
+        const link = document.createElement("a");
+        link.href = url;
+        link.target = "_blank";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      }, statementUrl);
+      await page.waitForTimeout(500);
+      console.log(`Triggered FY2025 Q${4 - index} download`);
+    }
 
     // Retrieve all downloads triggered during this session from Browserbase API
     console.log("Retrieving downloads from Browserbase...");
-    await saveDownloadsWithRetry(bb, session.id, 45);
+    await saveDownloadsWithRetry(bb, sessionId, 45);
     console.log("All downloads completed successfully!");
 
     console.log("\nStagehand Metrics:");
@@ -130,9 +141,8 @@ async function main(): Promise<void> {
     throw error;
   } finally {
     // Always close session to release resources and clean up
-    await stagehand.close();
-    await browser.close();
-    await bb.extensions.delete(extension.id, { headers: { "Content-Type": null } });
+    await stagehand.close().catch((error) => console.warn("Stagehand cleanup warning:", error));
+    await browser.close().catch((error) => console.warn("Browser cleanup warning:", error));
     console.log("Session closed successfully");
   }
 }

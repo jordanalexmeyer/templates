@@ -5,7 +5,8 @@ import { createMCPClient } from "@ai-sdk/mcp";
 import { Experimental_StdioMCPTransport } from "@ai-sdk/mcp/mcp-stdio";
 import { ToolLoopAgent, stepCountIs } from "ai";
 
-const instruction = `Search for the next visible solar eclipse in North America and its expected date, and what about the one after that.`;
+const today = new Date().toISOString().slice(0, 10);
+const instruction = `As of ${today}, search live sources for the next visible solar eclipse in North America and its expected date, then the one after that. Cite the source URLs you actually opened.`;
 
 const childEnv = Object.fromEntries(
   Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined),
@@ -27,13 +28,31 @@ async function main() {
     const agent = new ToolLoopAgent({
       model: process.env.AGENT_MODEL ?? "google/gemini-3-flash-preview",
       instructions:
-        "You are a Gemini browser agent. Use code_execute for all browser work. Prefer deterministic Stagehand V4 page and locator methods, and use Stagehand AI primitives inside code_execute only when they add value.",
+        "You are a Gemini browser agent. Use code_execute for all browser work. Prefer deterministic Stagehand V4 page and locator methods, and use Stagehand AI primitives inside code_execute only when they add value. Never cite a URL unless you navigated directly to it in the browser.",
       tools,
-      stopWhen: stepCountIs(20),
+      prepareStep: ({ stepNumber }) =>
+        stepNumber >= 10
+          ? {
+              activeTools: [],
+              toolChoice: "none",
+              instructions:
+                "Return the evidence-backed answer now. Include only source URLs you opened directly. Do not call another tool.",
+            }
+          : undefined,
+      stopWhen: stepCountIs(12),
     });
 
     console.log("Executing instruction:", instruction);
     const result = await agent.generate({ prompt: instruction });
+    const sourceUrls = new Set(result.text.match(/https?:\/\/\S+/g) ?? []);
+    const futureYears = new Set(
+      [...result.text.matchAll(/\b20\d{2}\b/g)]
+        .map((match) => Number(match[0]))
+        .filter((year) => year >= Number(today.slice(0, 4))),
+    );
+    if (!result.text.trim() || sourceUrls.size < 2 || futureYears.size < 2) {
+      throw new Error("Agent did not return two future eclipse dates with opened source URLs");
+    }
     console.log(result.text);
   } finally {
     await mcpClient.close();

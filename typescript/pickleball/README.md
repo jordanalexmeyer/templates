@@ -11,11 +11,11 @@
 ## GLOSSARY
 
 - act: perform UI actions from a prompt (click, type, select)
-  Docs → https://docs.stagehand.dev/basics/act
+  Docs → https://docs.stagehand.dev/v4/basics/act
 - extract: pull structured data from pages using schemas
-  Docs → https://docs.stagehand.dev/basics/extract
+  Docs → https://docs.stagehand.dev/v4/basics/extract
 - observe: plan actions and get selectors before executing
-  Docs → https://docs.stagehand.dev/basics/observe
+  Docs → https://docs.stagehand.dev/v4/basics/observe
 - browser automation: automated interaction with web applications for booking systems
   Docs → https://docs.browserbase.com/fundamentals/create-browser-session
 - form validation: ensure user input meets booking system requirements

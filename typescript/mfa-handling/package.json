@@ -2,6 +2,7 @@
   "name": "mfa-handling-template",
   "version": "1.0.0",
   "description": "Stagehand + Browserbase: MFA Handling - TOTP Automation",
+  "type": "module",
   "main": "index.ts",
   "scripts": {
     "start": "tsx index.ts",

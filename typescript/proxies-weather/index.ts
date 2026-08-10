@@ -2,7 +2,6 @@
 
 import "dotenv/config";
 import { browserbase, Stagehand } from "@browserbasehq/stagehand";
-import { z } from "zod/v4";
 
 interface GeolocationConfig {
   city: string;
@@ -15,7 +14,36 @@ interface WeatherResult {
   country: string;
   temperature: number;
   unit: string;
+  conditions: string;
+  reportedLocation: string;
+  reportedCountry: string;
   error?: string;
+}
+
+interface WttrResponse {
+  current_condition?: Array<{
+    temp_C?: string;
+    weatherDesc?: Array<{ value?: string }>;
+  }>;
+  nearest_area?: Array<{
+    areaName?: Array<{ value?: string }>;
+    country?: Array<{ value?: string }>;
+  }>;
+}
+
+const EXPECTED_COUNTRIES: Record<string, string> = {
+  US: "United States",
+  GB: "United Kingdom",
+  JP: "Japan",
+  BR: "Brazil",
+};
+
+async function closeSession(
+  stagehand: Stagehand,
+  browser: Awaited<ReturnType<typeof browserbase.launch>>,
+) {
+  await stagehand.close().catch((error) => console.warn("Stagehand cleanup warning:", error));
+  await browser.close().catch((error) => console.warn("Browser cleanup warning:", error));
 }
 
 // Fetches weather data for a specific location using geolocation proxies
@@ -52,47 +80,63 @@ async function getWeatherForLocation(geolocation: GeolocationConfig): Promise<We
 
     // Navigate to weather service - geolocation proxy ensures location-specific weather data
     console.log(`Navigating to weather service for ${cityName}...`);
-    await page.goto("https://www.windy.com/", {
-      waitUntil: "networkidle", // Wait for network to be idle to ensure weather data is loaded
+    await page.goto("https://wttr.in/?format=j1", {
+      waitUntil: "domcontentloaded",
+      timeout: 60000,
     });
     console.log(`Page loaded for ${cityName}`);
 
-    // Wait a bit for weather data to render
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    // wttr.in derives the location from the proxied IP and returns current conditions as JSON.
+    console.log(`Reading current weather data for ${cityName}...`);
+    const body = await page.evaluate(() => document.body.textContent ?? "");
+    const weather = JSON.parse(body) as WttrResponse;
+    const current = weather.current_condition?.[0];
+    const nearestArea = weather.nearest_area?.[0];
+    const temperature = Number.parseFloat(current?.temp_C ?? "");
+    const conditions = current?.weatherDesc?.[0]?.value?.trim() ?? "";
+    const reportedLocation = nearestArea?.areaName?.[0]?.value?.trim() ?? "";
+    const reportedCountry = nearestArea?.country?.[0]?.value?.trim() ?? "";
+    if (!Number.isFinite(temperature)) {
+      throw new Error("Weather service did not return a numeric current temperature");
+    }
+    if (!conditions || !reportedLocation || !reportedCountry) {
+      throw new Error("Weather service returned incomplete current conditions");
+    }
 
-    // Extract structured temperature data using Stagehand and Zod schema for type safety
-    console.log(`Extracting temperature data for ${cityName}...`);
-    const { data: extractResult } = await stagehand.extract(
-      "Extract the current temperature and its unit",
-      z.object({
-        temperature: z.number().describe("The current temperature value"),
-        unit: z.string().describe("The temperature unit)"),
-      }),
-    );
+    const expectedCountry = EXPECTED_COUNTRIES[geolocation.country];
+    if (!reportedCountry.toLowerCase().includes(expectedCountry.toLowerCase())) {
+      throw new Error(
+        `Proxy location mismatch: expected ${expectedCountry}, received ${reportedCountry}`,
+      );
+    }
 
     console.log(
-      `Successfully extracted weather data for ${cityName}: ${extractResult.temperature} ${extractResult.unit}`,
+      `Successfully read weather near ${reportedLocation}, ${reportedCountry}: ${temperature} °C, ${conditions}`,
     );
 
     // Close Stagehand session to release resources
-    await stagehand.close();
-    await browser.close();
+    await closeSession(stagehand, browser);
 
     return {
       city: cityName,
       country: geolocation.country,
-      temperature: extractResult.temperature,
-      unit: extractResult.unit,
+      temperature,
+      unit: "°C",
+      conditions,
+      reportedLocation,
+      reportedCountry,
     };
   } catch (error) {
-    await stagehand.close();
-    await browser.close();
+    await closeSession(stagehand, browser);
     console.error(`Error getting weather for ${cityName}:`, error);
     return {
       city: cityName,
       country: geolocation.country,
       temperature: 0,
       unit: "",
+      conditions: "",
+      reportedLocation: "",
+      reportedCountry: "",
       error: error instanceof Error ? error.message : String(error),
     };
   }
@@ -107,7 +151,9 @@ function displayResults(results: WeatherResult[]) {
     if (result.error) {
       console.log(`${result.city}, ${result.country}: Error - ${result.error}`);
     } else {
-      console.log(`${result.city}, ${result.country}: ${result.temperature} ${result.unit}`);
+      console.log(
+        `${result.city}, ${result.country}: ${result.temperature} ${result.unit}, ${result.conditions} (reported near ${result.reportedLocation}, ${result.reportedCountry})`,
+      );
     }
   }
 }
@@ -158,6 +204,13 @@ async function main() {
 
   // Display all results in formatted summary
   displayResults(results);
+
+  const failures = results.filter((result) => result.error);
+  if (failures.length > 0) {
+    throw new Error(
+      `Weather extraction failed for ${failures.length} of ${results.length} locations`,
+    );
+  }
 
   console.log("\n=== All locations completed ===");
 }

@@ -7,20 +7,6 @@ import fs from "fs";
 import path from "path";
 import AdmZip from "adm-zip";
 import { ExtendClient } from "extend-ai";
-import open from "open";
-
-async function uploadStagehandExtension(bb: Browserbase): Promise<{ id: string }> {
-  const stagehandEntry = import.meta.resolve("@browserbasehq/stagehand");
-  const archive = new URL("./assets/stagehand-extension.zip", stagehandEntry);
-  return bb.extensions.create({ file: fs.createReadStream(archive) });
-}
-
-// Opens a URL in the default browser (cross-platform)
-function openInBrowser(url: string): void {
-  open(url).catch(() => {
-    console.log(`Could not auto-open: ${url}`);
-  });
-}
 
 // Polls Browserbase API for completed downloads with retry logic.
 // Retries every 2 seconds until downloads are ready or timeout is reached.
@@ -352,36 +338,24 @@ async function main(): Promise<void> {
     apiKey: process.env.BROWSERBASE_API_KEY as string,
   });
 
-  const extension = await uploadStagehandExtension(bb);
-  const session = await bb.sessions.create({ extensionId: extension.id });
-
-  // Initialize Stagehand with Browserbase for cloud-based browser automation
-  const browser = await browserbase.connect({
+  // V4's browser factory provisions and owns the Stagehand extension.
+  const browser = await browserbase.launch({
     apiKey: process.env.BROWSERBASE_API_KEY!,
-    sessionId: session.id,
-    extensionId: extension.id,
   });
+  const sessionId = browser.sessionId;
+  if (!sessionId) throw new Error("Browserbase launch did not return a session ID");
   const stagehand = await Stagehand.create({
     browser: browser,
     model: { modelName: "google/gemini-2.5-flash" },
     logging: { level: "info" },
   });
 
-  let sessionId: string | undefined;
-
   try {
     // Initialize browser session to start automation
 
     console.log("Stagehand initialized successfully!");
     const page = (await browser.context.pages())[0];
-    sessionId = session.id;
-
-    // Get live view URL for monitoring browser session in real-time
-    if (sessionId) {
-      const liveViewLinks = await bb.sessions.debug(sessionId);
-      console.log(`Live View Link: ${liveViewLinks.debuggerFullscreenUrl}`);
-      openInBrowser(liveViewLinks.debuggerFullscreenUrl);
-    }
+    console.log("Live View is available in the Browserbase Sessions dashboard");
 
     // Navigate to the expense portal where receipts are hosted
     console.log("\nNavigating to expense portal...");
@@ -394,6 +368,7 @@ async function main(): Promise<void> {
     const { data: downloadButtons } = await stagehand.observe(
       "Find all the small Download links on individual receipt cards.",
     );
+    if (downloadButtons.length === 0) throw new Error("No receipt download links were found");
 
     // Click each download button using observe → act pattern
     // Pass the observed action directly to act for precise element targeting
@@ -426,15 +401,17 @@ async function main(): Promise<void> {
     console.log(
       `\nDownload clicks completed! (${successCount}/${downloadButtons.length} successful)`,
     );
+    if (successCount !== downloadButtons.length) {
+      throw new Error(`${downloadButtons.length - successCount} receipt downloads failed`);
+    }
 
     // Retrieve all downloads triggered during this session from Browserbase API
     if (sessionId) {
       console.log("\nRetrieving downloads from Browserbase...");
 
       // Close the browser session before fetching downloads
-      await stagehand.close();
-      await browser.close();
-      await bb.extensions.delete(extension.id, { headers: { "Content-Type": null } });
+      await stagehand.close().catch((error) => console.warn("Stagehand cleanup warning:", error));
+      await browser.close().catch((error) => console.warn("Browser cleanup warning:", error));
 
       // Wait for session to finalize downloads before polling
       await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -457,6 +434,7 @@ async function main(): Promise<void> {
         }
       } catch (downloadError) {
         console.error("Download retrieval failed:", downloadError);
+        throw downloadError;
       }
     }
 
@@ -464,9 +442,8 @@ async function main(): Promise<void> {
   } catch (error) {
     console.error("Error during automation:", error);
     try {
-      await stagehand.close();
-      await browser.close();
-      await bb.extensions.delete(extension.id, { headers: { "Content-Type": null } });
+      await stagehand.close().catch(() => undefined);
+      await browser.close().catch(() => undefined);
     } catch {
       // Ignore close errors during cleanup
     }

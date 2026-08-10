@@ -14,6 +14,14 @@ const JobInfoSchema = z.object({
 
 type JobInfo = z.infer<typeof JobInfoSchema>;
 
+async function closeSession(
+  stagehand: Stagehand,
+  browser: Awaited<ReturnType<typeof browserbase.launch>>,
+) {
+  await stagehand.close().catch((error) => console.warn("Stagehand cleanup warning:", error));
+  await browser.close().catch((error) => console.warn("Browser cleanup warning:", error));
+}
+
 export async function getProjectConcurrency(): Promise<number> {
   // Fetch project concurrency limit from Browserbase SDK
   // Capped at 5 to prevent overwhelming the system with too many parallel requests
@@ -142,14 +150,18 @@ async function applyToJob(jobInfo: JobInfo, semaphore: () => Promise<void>, rele
     // Submit the application form
     await stagehand.act(`click deploy agent button`);
 
+    await page.waitForTimeout(500);
+    const confirmationText = await page.locator("body").innerText();
+    if (!/success|submitted|deployed|received/i.test(confirmationText)) {
+      throw new Error("Application submission did not produce a confirmation message");
+    }
+
     console.log(`[${jobInfo.title}] Application submitted successfully!`);
 
-    await stagehand.close();
-    await browser.close();
+    await closeSession(stagehand, browser);
   } catch (error) {
     console.error(`[${jobInfo.title}] Error:`, error);
-    await stagehand.close();
-    await browser.close();
+    await closeSession(stagehand, browser);
     throw error;
   } finally {
     // Always release semaphore slot to allow next job application to proceed
@@ -195,8 +207,7 @@ async function main() {
 
   console.log(`Found ${jobsData.length} jobs`);
 
-  await stagehand.close();
-  await browser.close();
+  await closeSession(stagehand, browser);
 
   // Create semaphore with concurrency limit to control parallel job applications
   // Semaphore ensures we don't exceed Browserbase project limits
@@ -210,8 +221,13 @@ async function main() {
 
   const applicationPromises = jobsData.map((job) => applyToJob(job, semaphore, release));
 
-  // Wait for all applications to complete
-  await Promise.all(applicationPromises);
+  // Attempt every application even if an earlier one fails, then report the
+  // complete business outcome instead of stopping on the first rejection.
+  const applicationResults = await Promise.allSettled(applicationPromises);
+  const failures = applicationResults.filter((result) => result.status === "rejected");
+  if (failures.length > 0) {
+    throw new Error(`${failures.length} of ${jobsData.length} applications failed`);
+  }
 
   console.log("All applications completed!");
 }

@@ -33,14 +33,28 @@ interface SearchResult {
   products: Product[];
 }
 
-const client = new OpenAI();
+async function closeSession(
+  stagehand: Stagehand,
+  browser: Awaited<ReturnType<typeof browserbase.launch>>,
+) {
+  await stagehand.close().catch((error) => console.warn("Stagehand cleanup warning:", error));
+  await browser.close().catch((error) => console.warn("Browser cleanup warning:", error));
+}
+
+function openAIClient(): OpenAI {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY is not set");
+  }
+  return new OpenAI({ apiKey });
+}
 
 async function generateSearchQueries(recipient: string, description: string): Promise<string[]> {
   console.log(`Generating search queries for ${recipient}...`);
 
   // Use AI to generate search terms based on recipient profile
   // This avoids generic searches and focuses on thoughtful, complementary gifts
-  const response = await client.chat.completions.create({
+  const response = await openAIClient().chat.completions.create({
     model: "gpt-4.1",
     messages: [
       {
@@ -99,7 +113,7 @@ async function scoreProducts(
 
   console.log(`Scoring ${allProducts.length} products...`);
 
-  const response = await client.chat.completions.create({
+  const response = await openAIClient().chat.completions.create({
     model: "gpt-4.1",
     messages: [
       {
@@ -143,42 +157,36 @@ IMPORTANT:
     max_completion_tokens: 1000,
   });
 
-  try {
-    // Clean up AI response by removing markdown code blocks
-    let responseContent = response.choices[0]?.message?.content?.trim() || "[]";
+  // Clean up AI response by removing markdown code blocks
+  let responseContent = response.choices[0]?.message?.content?.trim() || "[]";
 
-    responseContent = responseContent.replace(/```json\n?/g, "").replace(/```\n?/g, "");
+  responseContent = responseContent.replace(/```json\n?/g, "").replace(/```\n?/g, "");
 
-    // Parse JSON response from AI scoring
-    const scoresData = JSON.parse(responseContent);
-
-    // Map AI scores back to products using index matching
-    const scoredProducts = allProducts.map((product, index) => {
-      const scoreInfo = scoresData.find(
-        (s: { productIndex: number; score: number; reason: string }) =>
-          s.productIndex === index + 1,
-      );
-      return {
-        ...product,
-        aiScore: scoreInfo?.score || 0,
-        aiReason: scoreInfo?.reason || "No scoring available",
-      };
-    });
-
-    // Sort by AI score descending to show best matches first
-    return scoredProducts.sort((a, b) => (b.aiScore || 0) - (a.aiScore || 0));
-  } catch (error) {
-    console.error("Error parsing AI scores:", error);
-    console.log("Using fallback scoring (all products scored as 5)");
-
-    // Fallback scoring ensures app continues working even if AI fails
-    // Neutral score of 5 allows products to still be ranked and displayed
-    return allProducts.map((product) => ({
-      ...product,
-      aiScore: 5,
-      aiReason: "Scoring failed - using neutral score",
-    }));
+  const ScoreSchema = z.object({
+    productIndex: z.number().int().min(1).max(allProducts.length),
+    score: z.number().min(1).max(10),
+    reason: z.string().min(1).max(100),
+  });
+  const scoresData = z
+    .array(ScoreSchema)
+    .length(allProducts.length)
+    .parse(JSON.parse(responseContent));
+  if (new Set(scoresData.map((score) => score.productIndex)).size !== allProducts.length) {
+    throw new Error("OpenAI scoring did not return one unique score per product");
   }
+
+  // Map AI scores back to products using index matching
+  const scoredProducts = allProducts.map((product, index) => {
+    const scoreInfo = scoresData.find((score) => score.productIndex === index + 1)!;
+    return {
+      ...product,
+      aiScore: scoreInfo.score,
+      aiReason: scoreInfo.reason,
+    };
+  });
+
+  // Sort by AI score descending to show best matches first
+  return scoredProducts.sort((a, b) => (b.aiScore || 0) - (a.aiScore || 0));
 }
 
 async function getUserInput(): Promise<GiftFinderAnswers> {
@@ -200,26 +208,23 @@ async function getUserInput(): Promise<GiftFinderAnswers> {
 async function main(): Promise<void> {
   console.log("Starting Gift Finder Application...");
 
+  if (!process.env.BROWSERBASE_API_KEY || !process.env.OPENAI_API_KEY) {
+    throw new Error("BROWSERBASE_API_KEY and OPENAI_API_KEY are required");
+  }
+
   const { recipient, description } = await getUserInput();
   console.log(`User input received: ${recipient} - ${description}`);
 
   console.log("\nGenerating intelligent search queries...");
 
-  // Generate search queries with fallback for reliability
-  let searchQueries: string[];
-  try {
-    searchQueries = await generateSearchQueries(recipient, description);
-
-    console.log("\nGenerated Search Queries:");
-    searchQueries.forEach((query, index) => {
-      console.log(`   ${index + 1}. ${query.replace(/['"]/g, "")}`);
-    });
-  } catch (error) {
-    console.error("Error generating search queries:", error);
-    // Fallback queries
-    searchQueries = ["gifts", "accessories", "items"];
-    console.log("Using fallback search queries");
+  const searchQueries = await generateSearchQueries(recipient, description);
+  if (searchQueries.length !== 3) {
+    throw new Error(`Expected 3 generated search queries, received ${searchQueries.length}`);
   }
+  console.log("\nGenerated Search Queries:");
+  searchQueries.forEach((query, index) => {
+    console.log(`   ${index + 1}. ${query.replace(/['"]/g, "")}`);
+  });
 
   console.log("\nStarting concurrent browser searches...");
 
@@ -285,8 +290,7 @@ async function main(): Promise<void> {
         `Session ${sessionIndex + 1}: Found ${productsData.products.length} products for "${query}"`,
       );
 
-      await sessionStagehand.close();
-      await sessionBrowser.close();
+      await closeSession(sessionStagehand, sessionBrowser);
 
       return {
         query,
@@ -296,12 +300,7 @@ async function main(): Promise<void> {
     } catch (error) {
       console.error(`Session ${sessionIndex + 1} failed:`, error);
 
-      try {
-        await sessionStagehand.close();
-        await sessionBrowser.close();
-      } catch (closeError) {
-        console.error(`Error closing session ${sessionIndex + 1}:`, closeError);
-      }
+      await closeSession(sessionStagehand, sessionBrowser);
 
       return {
         query,
@@ -318,6 +317,10 @@ async function main(): Promise<void> {
 
   // Wait for all concurrent searches to complete
   const allResults = await Promise.all(searchPromises);
+  const failedSearches = allResults.filter((result) => result.products.length === 0);
+  if (failedSearches.length > 0) {
+    throw new Error(`${failedSearches.length} of ${allResults.length} gift searches failed`);
+  }
 
   // Calculate total products found across all search sessions
   const totalProducts = allResults.reduce((sum, result) => sum + result.products.length, 0);
@@ -326,38 +329,30 @@ async function main(): Promise<void> {
   // Flatten all products into single array for AI scoring
   const allProductsFlat = allResults.flatMap((result) => result.products);
 
-  if (allProductsFlat.length > 0) {
-    try {
-      // AI scores all products and ranks them by relevance to recipient
-      const scoredProducts = await scoreProducts(allProductsFlat, recipient, description);
-      const top3Products = scoredProducts.slice(0, 3);
-
-      console.log("\nTOP 3 RECOMMENDED GIFTS:");
-
-      // Display top 3 products with AI reasoning for transparency
-      top3Products.forEach((product, index) => {
-        const rank = `#${index + 1}`;
-        console.log(`\n${rank} - ${product.title}`);
-        console.log(`Price: ${product.price}`);
-        console.log(`Rating: ${product.rating}`);
-        console.log(`Score: ${product.aiScore}/10`);
-        console.log(`Why: ${product.aiReason}`);
-        console.log(`Link: ${product.url}`);
-      });
-
-      console.log(
-        `\nGift finding complete! Found ${totalProducts} products, analyzed ${scoredProducts.length} with AI.`,
-      );
-    } catch (error) {
-      console.error("Error scoring products:", error);
-      console.log(`Target: ${recipient}`);
-      console.log(`Profile: ${description}`);
-    }
-  } else {
-    // Handle case where no products were found across all searches
-    console.log("No products found to score");
-    console.log("Try adjusting your recipient description or check if the website is accessible");
+  if (allProductsFlat.length < 3) {
+    throw new Error(`Expected at least 3 products to rank, received ${allProductsFlat.length}`);
   }
+
+  // AI scores all products and ranks them by relevance to recipient
+  const scoredProducts = await scoreProducts(allProductsFlat, recipient, description);
+  const top3Products = scoredProducts.slice(0, 3);
+
+  console.log("\nTOP 3 RECOMMENDED GIFTS:");
+
+  // Display top 3 products with AI reasoning for transparency
+  top3Products.forEach((product, index) => {
+    const rank = `#${index + 1}`;
+    console.log(`\n${rank} - ${product.title}`);
+    console.log(`Price: ${product.price}`);
+    console.log(`Rating: ${product.rating}`);
+    console.log(`Score: ${product.aiScore}/10`);
+    console.log(`Why: ${product.aiReason}`);
+    console.log(`Link: ${product.url}`);
+  });
+
+  console.log(
+    `\nGift finding complete! Found ${totalProducts} products, analyzed ${scoredProducts.length} with AI.`,
+  );
 
   console.log("\nThank you for using Gift Finder!");
 }

@@ -6,6 +6,10 @@ import { Experimental_StdioMCPTransport } from "@ai-sdk/mcp/mcp-stdio";
 import { ToolLoopAgent, stepCountIs } from "ai";
 import { Exa } from "exa-js";
 
+const childEnv = Object.fromEntries(
+  Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined),
+);
+
 const applicationDetails = {
   name: "John Doe",
   email: "john.doe@example.com",
@@ -44,6 +48,7 @@ async function applyToJob(careersPage: CareersPage, index: number): Promise<Appl
   const mcpClient = await createMCPClient({
     transport: new Experimental_StdioMCPTransport({
       command: "stagehand-codemode",
+      env: childEnv,
       stderr: "inherit",
     }),
   });
@@ -64,6 +69,9 @@ async function applyToJob(careersPage: CareersPage, index: number): Promise<Appl
     const result = await agent.generate({
       prompt: `Open ${careersPage.careersUrl}. Choose the first relevant open role, read its requirements, open its application, and fill every field you can from this applicant record:\n${JSON.stringify(applicationDetails, null, 2)}\nUpload the resume from ${JSON.stringify(applicationDetails.resumePath)} when a file input is present. Stop before final submission and summarize what remains for human review.`,
     });
+    if (!result.text.trim()) {
+      throw new Error("Agent returned no application review summary");
+    }
 
     return {
       company: careersPage.company,
@@ -84,6 +92,14 @@ async function applyToJob(careersPage: CareersPage, index: number): Promise<Appl
 }
 
 async function main() {
+  if (
+    !process.env.BROWSERBASE_API_KEY ||
+    !process.env.AI_GATEWAY_API_KEY ||
+    !process.env.EXA_API_KEY
+  ) {
+    throw new Error("BROWSERBASE_API_KEY, AI_GATEWAY_API_KEY, and EXA_API_KEY are required");
+  }
+
   const exa = new Exa(process.env.EXA_API_KEY);
   console.log(`Searching for companies: ${searchConfig.companyQuery}`);
   const companies = await exa.searchAndContents(searchConfig.companyQuery, {
@@ -108,6 +124,9 @@ async function main() {
     const careersUrl = careers.results[0]?.url;
     if (careersUrl) careersPages.push({ company: company.title || domain, careersUrl });
   }
+  if (careersPages.length === 0) {
+    throw new Error("Exa returned no company careers pages");
+  }
 
   const results: ApplicationResult[] = [];
   const batchSize = searchConfig.concurrent ? searchConfig.maxConcurrentBrowsers : 1;
@@ -116,6 +135,11 @@ async function main() {
     results.push(
       ...(await Promise.all(batch.map((page, offset) => applyToJob(page, index + offset)))),
     );
+  }
+
+  const failures = results.filter((result) => !result.success);
+  if (failures.length > 0) {
+    throw new Error(`${failures.length} of ${results.length} application reviews failed`);
   }
 
   console.log(JSON.stringify(results, null, 2));

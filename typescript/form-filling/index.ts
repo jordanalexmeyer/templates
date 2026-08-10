@@ -39,45 +39,69 @@ async function main() {
       timeout: 60000, // Extended timeout for reliable page loading.
     });
 
-    // Single observe call to plan all form filling
-    const { data: formFields } = await stagehand.observe(
-      "Find form fields for: first name, last name, company, job title, email, message",
-    );
+    // The form has stable names, so deterministic locators are the most reliable
+    // V4 choice. Reserve act/observe for pages whose structure is not known.
+    const fields = [
+      ["firstName", firstName],
+      ["lastName", lastName],
+      ["companyName", company],
+      ["jobTitle", jobTitle],
+      ["email", email],
+      ["project", message],
+    ] as const;
+    const formData = Object.fromEntries(fields);
+    await page.evaluate((values: Record<string, string>) => {
+      for (const [name, value] of Object.entries(values)) {
+        const field = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(
+          `[name="${name}"]`,
+        );
+        if (!field) throw new Error(`Missing form field: ${name}`);
+        const prototype =
+          field instanceof HTMLTextAreaElement
+            ? HTMLTextAreaElement.prototype
+            : HTMLInputElement.prototype;
+        const setter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
+        setter?.call(field, value);
+        field.dispatchEvent(new Event("input", { bubbles: true }));
+        field.dispatchEvent(new Event("change", { bubbles: true }));
+      }
 
-    // Execute all actions without LLM calls
-    for (const field of formFields) {
-      // Match field to data based on description
-      let value = "";
-      const desc = field.description.toLowerCase();
+      const select = document.querySelector<HTMLSelectElement>('[name="helpOption"]');
+      if (!select) throw new Error("Missing form field: helpOption");
+      const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set;
+      setter?.call(select, "demo");
+      select.dispatchEvent(new Event("input", { bubbles: true }));
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    }, formData);
 
-      if (desc.includes("first name")) value = firstName;
-      else if (desc.includes("last name")) value = lastName;
-      else if (desc.includes("company")) value = company;
-      else if (desc.includes("job title")) value = jobTitle;
-      else if (desc.includes("email")) value = email;
-      else if (desc.includes("message")) value = message;
-
-      if (value) {
-        await stagehand.act({
-          ...field,
-          arguments: [value],
-        });
+    // Verify the browser's actual form state instead of treating action
+    // completion as proof that every value was entered.
+    for (const [name, expected] of fields) {
+      const actual = await page.evaluate(
+        (fieldName: string) =>
+          document.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[name="${fieldName}"]`)
+            ?.value ?? "",
+        name,
+      );
+      if (actual !== expected) {
+        throw new Error(`Form verification failed for ${name}`);
       }
     }
-
-    // Language choice in Stagehand act() is crucial for reliable automation.
-    // Use "click" for dropdown interactions rather than "select"
-    await stagehand.act("Click on the How Can we help? dropdown");
-    await stagehand.act("Click on the first option from the dropdown");
-    // await stagehand.act("Select the first option from the dropdown"); // Less reliable than "click"
+    const helpOption = await page.evaluate(
+      () => document.querySelector<HTMLSelectElement>('[name="helpOption"]')?.value ?? "",
+    );
+    if (helpOption !== "demo") {
+      throw new Error("Form verification failed for helpOption");
+    }
 
     // Uncomment the line below if you want to submit the form
     // await stagehand.act("Click the submit button");
 
     console.log("Form filled successfully! Waiting 3 seconds...");
-    await page.waitForTimeout(30000);
+    await page.waitForTimeout(3000);
   } catch (error) {
     console.error(`Error during form filling: ${error}`);
+    throw error;
   } finally {
     // Always close session to release resources and clean up.
     await stagehand.close();

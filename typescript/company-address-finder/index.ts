@@ -6,6 +6,10 @@ import { Experimental_StdioMCPTransport } from "@ai-sdk/mcp/mcp-stdio";
 import { Output, ToolLoopAgent, stepCountIs } from "ai";
 import { z } from "zod/v4";
 
+const childEnv = Object.fromEntries(
+  Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined),
+);
+
 const COMPANY_NAMES = ["Browserbase", "Mintlify", "Wordware", "Reducto"];
 
 // Values above 1 require enough Browserbase concurrency for one code-mode process per company.
@@ -25,6 +29,7 @@ async function processCompany(companyName: string): Promise<CompanyData> {
   const mcpClient = await createMCPClient({
     transport: new Experimental_StdioMCPTransport({
       command: "stagehand-codemode",
+      env: childEnv,
       stderr: "inherit",
     }),
   });
@@ -36,10 +41,19 @@ async function processCompany(companyName: string): Promise<CompanyData> {
     const agent = new ToolLoopAgent({
       model: process.env.AGENT_MODEL ?? "anthropic/claude-sonnet-4.6",
       instructions:
-        "You are a browser research agent. Use code_execute for every browser operation. Prefer deterministic page and locator APIs; use Stagehand extraction inside code_execute for semantic page reading. Verify that URLs belong to the requested company's official site.",
+        "You are a browser research agent. Use code_execute for every browser operation. Prefer deterministic page, locator, and page.evaluate APIs. Use no more than 8 code_execute calls. Verify that URLs belong to the requested company's official site, then stop calling tools and return the structured response immediately.",
       tools,
       output: Output.object({ schema: companySchema }),
-      stopWhen: stepCountIs(25),
+      prepareStep: ({ stepNumber }) =>
+        stepNumber >= 8
+          ? {
+              activeTools: [],
+              toolChoice: "none",
+              instructions:
+                "Return the structured company record now using the official-site evidence already collected. Do not call another tool.",
+            }
+          : undefined,
+      stopWhen: stepCountIs(10),
     });
 
     console.log(`Processing ${companyName}...`);
@@ -67,6 +81,13 @@ async function main() {
   for (let index = 0; index < COMPANY_NAMES.length; index += maxConcurrent) {
     const batch = COMPANY_NAMES.slice(index, index + maxConcurrent);
     results.push(...(await Promise.all(batch.map(processCompany))));
+  }
+
+  const failures = results.filter(
+    (result) => !result.homepageUrl || result.address?.startsWith("Error:"),
+  );
+  if (failures.length > 0) {
+    throw new Error(`Failed to produce verified company data for ${failures.length} companies`);
   }
 
   console.log(JSON.stringify(results, null, 2));

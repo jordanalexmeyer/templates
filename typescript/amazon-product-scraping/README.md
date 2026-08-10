@@ -3,17 +3,15 @@
 ## AT A GLANCE
 
 - Goal: scrape the first 3 Amazon search results for a given query and return structured product data.
-- AI-Powered Search: uses Stagehand `act` to type in the search bar and click search (or optionally navigate directly to the search URL).
-- Structured Extraction: uses `extract` with a Zod schema to get product name, price, rating, review count, and product URL.
+- Deterministic Search: navigates directly to the Amazon search URL so a failed form action cannot leave the workflow on the homepage.
+- Structured Results: reads known Amazon result cards with V4 page APIs and validates product name, price, rating, review count, and URL with Zod.
 - Model: uses `google/gemini-2.5-flash` for fast, cost-effective automation.
   Docs → https://docs.stagehand.dev
 
 ## GLOSSARY
 
-- act: perform UI actions from a prompt (type in search bar, click search)
-  Docs → https://docs.stagehand.dev/basics/act
-- extract: pull structured data from pages using schemas
-  Docs → https://docs.stagehand.dev/basics/extract
+- page APIs: use the V4 browser context and page directly when the target has a known structure
+  Docs → https://docs.stagehand.dev/v4/reference/page
 
 ## QUICKSTART
 
@@ -27,8 +25,8 @@
 ## EXPECTED OUTPUT
 
 - Initializes Stagehand session with Browserbase
-- Returns structured product details through a Stagehand V4 extraction result
-- Navigates to Amazon and performs search (or direct URL navigation if uncommented)
+- Navigates directly to the configured Amazon search
+- Validates three complete product-detail records with Zod
 - Extracts the first 3 products with name, price, rating, reviews count, and product URL
 - Outputs JSON to console
 - Closes session cleanly
@@ -37,7 +35,7 @@
 
 - "Cannot find module": ensure npm install completed
 - Missing credentials: verify .env contains BROWSERBASE_API_KEY
-- Amazon layout changes: extraction may need prompt/schema updates if Amazon changes their search results UI
+- Amazon layout changes: DOM selectors may need updates if Amazon changes its result-card structure
 - Find more information on your Browserbase dashboard → https://www.browserbase.com/sign-in
 
 ## USE CASES
@@ -48,7 +46,7 @@
 
 ## NEXT STEPS
 
-• Switch to direct URL: Uncomment the URL-based search block in index.ts for faster runs without LLM search actions.
+• Parameterize storefront: Accept an Amazon domain or country from CLI/env.
 • Parameterize query: Accept SEARCH_QUERY from CLI or env for different products without editing code.
 • Paginate: Extend extraction to multiple pages or increase the number of products per run.
 

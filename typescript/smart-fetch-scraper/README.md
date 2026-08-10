@@ -14,7 +14,7 @@
 - Fetch API: Browserbase's lightweight HTTP fetching endpoint — fetches page content through Browserbase infrastructure without spinning up a browser.
   Docs → https://docs.browserbase.com/features/fetch
 - extract: pull structured data from pages using schemas and AI.
-  Docs → https://docs.stagehand.dev/basics/extract
+  Docs → https://docs.stagehand.dev/v4/basics/extract
 - Stagehand: AI browser automation framework.
   Docs → https://docs.stagehand.dev
 

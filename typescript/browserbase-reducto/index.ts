@@ -6,12 +6,6 @@ import { browserbase, Stagehand } from "@browserbasehq/stagehand";
 import fs from "fs";
 import path from "path";
 import reductoai from "reductoai";
-
-async function uploadStagehandExtension(bb: Browserbase): Promise<{ id: string }> {
-  const stagehandEntry = import.meta.resolve("@browserbasehq/stagehand");
-  const archive = new URL("./assets/stagehand-extension.zip", stagehandEntry);
-  return bb.extensions.create({ file: fs.createReadStream(archive) });
-}
 import AdmZip from "adm-zip";
 
 // Net sales data structure extracted from financial statements
@@ -133,9 +127,13 @@ function extractPdfFromZip(zipPath: string, outputDir: string = "downloaded_file
 
   // Open zip file and filter for PDF entries only
   const zip = new AdmZip(zipPath);
-  const pdfEntries = zip
-    .getEntries()
-    .filter((entry: AdmZip.IZipEntry) => entry.entryName.toLowerCase().endsWith(".pdf"));
+  const pdfEntries = zip.getEntries().filter((entry: AdmZip.IZipEntry) => {
+    if (entry.isDirectory) return false;
+    return (
+      entry.entryName.toLowerCase().endsWith(".pdf") ||
+      entry.getData().subarray(0, 5).toString() === "%PDF-"
+    );
+  });
 
   if (pdfEntries.length === 0) {
     throw new Error("No PDF files found in the downloaded zip");
@@ -144,8 +142,11 @@ function extractPdfFromZip(zipPath: string, outputDir: string = "downloaded_file
   // Extract all PDF files and return path to first one
   let pdfPath: string | null = null;
   for (const entry of pdfEntries) {
-    const outputPath = path.join(outputDir, entry.entryName);
-    zip.extractEntryTo(entry, outputDir, false, true);
+    const outputName = entry.entryName.toLowerCase().endsWith(".pdf")
+      ? entry.entryName
+      : `${entry.entryName}.pdf`;
+    const outputPath = path.join(outputDir, outputName);
+    fs.writeFileSync(outputPath, entry.getData());
     console.log(`Extracted: ${outputPath}`);
 
     if (!pdfPath) {
@@ -235,6 +236,18 @@ async function extractPDFWithReducto(pdfPath: string, reductoaiClient: reductoai
   // Display extracted financial data in formatted JSON
   console.log("\n=== Extracted Financial Data ===\n");
   const extractedData = result?.result || result?.data;
+  const netSales = extractedData?.iphone_net_sales;
+  if (
+    !netSales ||
+    ![
+      netSales.current_quarter,
+      netSales.previous_quarter,
+      netSales.current_year,
+      netSales.previous_year,
+    ].every(Number.isFinite)
+  ) {
+    throw new Error("Reducto did not return all four iPhone net-sales values");
+  }
   console.log(JSON.stringify(extractedData, null, 2));
 }
 
@@ -246,8 +259,7 @@ async function main(): Promise<void> {
     apiKey: process.env.BROWSERBASE_API_KEY as string,
   });
 
-  const extension = await uploadStagehandExtension(bb);
-  const session = await bb.sessions.create({ extensionId: extension.id });
+  if (!process.env.REDUCTOAI_API_KEY) throw new Error("REDUCTOAI_API_KEY is required");
 
   // Initialize Reducto AI client for PDF data extraction
   const reductoaiClient = new reductoai({
@@ -255,11 +267,11 @@ async function main(): Promise<void> {
   });
 
   // Initialize Stagehand with Browserbase for cloud-based browser automation
-  const browser = await browserbase.connect({
+  const browser = await browserbase.launch({
     apiKey: process.env.BROWSERBASE_API_KEY!,
-    sessionId: session.id,
-    extensionId: extension.id,
   });
+  const sessionId = browser.sessionId;
+  if (!sessionId) throw new Error("Browserbase launch did not return a session ID");
   const stagehand = await Stagehand.create({
     browser: browser,
     model: { modelName: "google/gemini-2.5-pro" },
@@ -272,32 +284,45 @@ async function main(): Promise<void> {
     console.log("Stagehand initialized successfully!");
     const page = (await browser.context.pages())[0];
 
-    // Get live view URL for monitoring browser session in real-time
-    const liveViewLinks = await bb.sessions.debug(session.id);
-    console.log(`Live View Link: ${liveViewLinks.debuggerFullscreenUrl}`);
+    console.log("Live View is available in the Browserbase Sessions dashboard");
 
-    // Navigate to Apple homepage.
-    console.log("Navigating to Apple.com...");
-    await page.goto("https://www.apple.com/");
-
-    // Navigate to investor relations section using Stagehand
-    console.log("Navigating to Investors section...");
-    await stagehand.act("Click the 'Investors' button at the bottom of the page'");
-    await stagehand.act("Scroll down to the Financial Data section of the page");
-    await stagehand.act("Under Quarterly Earnings Reports, click on '2025'");
-
-    // Download Q4 quarterly financial statement
-    // When a URL of a PDF is opened, Browserbase automatically downloads and stores the PDF
-    // See https://docs.browserbase.com/features/downloads for more info
-    console.log("Downloading Q4 financial statement...");
-    await stagehand.act("Click the 'Financial Statements' link under Q4");
+    console.log("Navigating to Apple Investor Relations...");
+    await page.goto("https://investor.apple.com/investor-relations/default.aspx", {
+      waitUntil: "domcontentloaded",
+      timeout: 60000,
+    });
+    const statementUrl = await page.evaluate(
+      () =>
+        Array.from(document.querySelectorAll<HTMLAnchorElement>("a")).find(
+          (link) =>
+            link.textContent?.trim() === "Financial Statements" && /fy2025-q4/i.test(link.href),
+        )?.href ?? "",
+    );
+    if (!statementUrl) throw new Error("Could not find Apple's FY2025 Q4 statement");
+    const statementResponse = await fetch(statementUrl, { method: "HEAD" });
+    if (
+      !statementResponse.ok ||
+      !statementResponse.headers.get("content-type")?.includes("application/pdf")
+    ) {
+      throw new Error("Apple's FY2025 Q4 statement URL did not return a PDF");
+    }
+    await page.evaluate((url: string) => {
+      const link = document.createElement("a");
+      link.href = url;
+      link.target = "_blank";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }, statementUrl);
+    console.log("Triggered FY2025 Q4 financial statement download");
 
     // Retrieve all downloads triggered during this session from Browserbase API
     console.log("Retrieving downloads from Browserbase...");
-    const { promise: downloadPromise, stopPolling } = saveDownloadsWithRetry(bb, session.id, 45);
+    const { promise: downloadPromise, stopPolling } = saveDownloadsWithRetry(bb, sessionId, 45);
 
     try {
-      await downloadPromise;
+      const downloadSize = await downloadPromise;
+      if (downloadSize <= 0) throw new Error("Browserbase returned no downloaded statement");
       console.log("Download completed successfully!");
       stopPolling();
 
@@ -315,10 +340,8 @@ async function main(): Promise<void> {
     console.error("Error during automation:", error);
     throw error;
   } finally {
-    // Always close the session and remove the temporary Stagehand extension.
-    await stagehand.close();
-    await browser.close();
-    await bb.extensions.delete(extension.id, { headers: { "Content-Type": null } });
+    await stagehand.close().catch((error) => console.warn("Stagehand cleanup warning:", error));
+    await browser.close().catch((error) => console.warn("Browser cleanup warning:", error));
     console.log("Session closed successfully");
   }
 }

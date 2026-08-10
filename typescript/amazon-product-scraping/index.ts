@@ -15,7 +15,9 @@ const ProductSchema = z.object({
   price: z.string().describe("The product price including currency symbol (e.g., '$29.99')"),
   rating: z.string().describe("The star rating (e.g., '4.5 out of 5 stars')"),
   reviews_count: z.string().describe("The number of customer reviews (e.g., '1,234')"),
-  product_url: z.string().url().describe("The URL link to the product detail page on Amazon"),
+  product_url: z
+    .string()
+    .describe("The absolute or root-relative URL link to the product detail page on Amazon"),
 });
 
 // Schema for extracting multiple products from search results
@@ -53,26 +55,71 @@ async function main(): Promise<void> {
     //   waitUntil: "domcontentloaded",
     // });
 
-    // Navigate to Amazon homepage to begin search.
-    console.log("Navigating to Amazon...");
-    await page.goto("https://www.amazon.com");
+    // Navigate directly to a deterministic search URL so a failed form action
+    // cannot leave extraction on the Amazon homepage.
+    const searchUrl = `https://www.amazon.com/s?k=${encodeURIComponent(SEARCH_QUERY)}`;
+    console.log(`Navigating to Amazon search: ${searchUrl}`);
+    await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
 
-    // Perform search using natural language actions.
-    console.log(`Searching for: ${SEARCH_QUERY}`);
-    await stagehand.act(`Type ${SEARCH_QUERY} into the search bar`);
-    await stagehand.act("Click the search button");
-
-    // Extract structured product data using Zod schema for type safety.
+    // Read Amazon's result cards deterministically. Known layouts are more
+    // reliable and cheaper with locators/DOM reads than semantic extraction.
     console.log("Extracting product data...");
-    const { data: products } = await stagehand.extract(
-      "Extract the details of the FIRST 3 products in the search results. Get the product name, price, star rating, number of reviews, and the URL link to the product page.",
-      ProductsSchema,
+    const rawProducts = (await page.evaluate(() =>
+      Array.from(document.querySelectorAll('[data-component-type="s-search-result"]'))
+        .slice(0, 3)
+        .map((card) => {
+          const productLinks = Array.from(
+            card.querySelectorAll<HTMLAnchorElement>('a[href*="/dp/"]'),
+          );
+          const productLink =
+            productLinks.find((link) => (link.textContent?.trim().length ?? 0) > 10) ??
+            productLinks[0];
+          const brand = card.querySelector("h2 span")?.textContent?.trim() ?? "";
+          const title = productLink?.textContent?.trim() ?? "";
+          return {
+            name: [brand, title].filter(Boolean).join(" "),
+            price: card.querySelector(".a-price .a-offscreen")?.textContent?.trim() ?? "",
+            rating: card.querySelector(".a-icon-alt")?.textContent?.trim() ?? "",
+            reviews_count:
+              card
+                .querySelector('[data-csa-c-content-id="alf-customer-ratings-count-component"]')
+                ?.textContent?.trim() ??
+              card.querySelector(".s-underline-text")?.textContent?.trim() ??
+              "",
+            product_url: productLink?.href ?? "",
+          };
+        }),
+    )) as unknown;
+    const products = ProductsSchema.parse({ products: rawProducts });
+
+    const normalizedProducts = products.products.map((product) => ({
+      ...product,
+      product_url: new URL(product.product_url, "https://www.amazon.com").href,
+    }));
+    if (normalizedProducts.length < 3) {
+      throw new Error(`Expected 3 products, found ${normalizedProducts.length}`);
+    }
+    const queryMatches = normalizedProducts.filter((product) =>
+      product.name.toLowerCase().includes("seiko"),
     );
+    if (queryMatches.length < 2) {
+      throw new Error(
+        `Search results did not match ${SEARCH_QUERY}: only ${queryMatches.length} Seiko products`,
+      );
+    }
+    if (
+      normalizedProducts.some(
+        (product) => !product.product_url.includes("/dp/") || product.name.length < 10,
+      )
+    ) {
+      throw new Error("One or more product records lacked a full title or product-detail URL");
+    }
 
     console.log("Products found:");
-    console.log(JSON.stringify(products, null, 2));
+    console.log(JSON.stringify({ products: normalizedProducts }, null, 2));
   } catch (error) {
     console.error("Error during product scraping:", error);
+    throw error;
   } finally {
     // Always close session to release resources and clean up.
     await stagehand.close();

@@ -30,40 +30,35 @@ async function main() {
 
     const page = (await browser.context.pages())[0];
 
-    // Navigate to Polymarket
-    console.log("Navigating to: https://polymarket.com/");
-    await page.goto("https://polymarket.com/");
+    const marketUrl =
+      "https://polymarket.com/event/will-elon-musk-rejoin-the-trump-administration-in-2026";
+
+    // Navigate directly to the intended market so homepage search UI changes
+    // cannot silently send extraction to an unrelated page.
+    console.log(`Navigating to: ${marketUrl}`);
+    await page.goto(marketUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
     console.log("Page loaded successfully");
-
-    // Click the search box to trigger search dropdown
-    console.log("Clicking the search box at the top of the page");
-    await stagehand.act("click the search box at the top of the page");
-
-    // Type search query
-    const searchQuery = "Elon Musk rejoin Trump Administration";
-    console.log(`Typing '${searchQuery}' into the search box`);
-    await stagehand.act(`type '${searchQuery}' into the search box`);
-
-    // Select the intended market explicitly so a change in result ordering cannot
-    // send the extraction to an unrelated Trump or Elon Musk market.
-    const marketTitle = "Will Elon Musk rejoin the Trump Administration in 2026?";
-    console.log(`Selecting market: ${marketTitle}`);
-    await stagehand.act(`click the market titled '${marketTitle}' in the search results`);
-    console.log("Market page loaded");
 
     // Extract market data using AI to parse the structured information
     console.log("Extracting market information...");
     const { data: marketData } = await stagehand.extract(
       "Extract the current odds and market information for the prediction market",
       z.object({
-        marketTitle: z.string().optional().describe("the title of the market"),
-        currentOdds: z.string().optional().describe("the current odds or probability"),
-        yesPrice: z.string().optional().describe("the yes price"),
-        noPrice: z.string().optional().describe("the no price"),
-        totalVolume: z.string().optional().describe("the total trading volume"),
-        priceChange: z.string().optional().describe("the recent price change"),
+        marketTitle: z.string().describe("the title of the market"),
+        currentOdds: z.string().nullable().describe("the current odds or probability"),
+        yesPrice: z.string().nullable().describe("the yes price"),
+        noPrice: z.string().nullable().describe("the no price"),
+        totalVolume: z.string().nullable().describe("the total trading volume"),
+        priceChange: z.string().nullable().describe("the recent price change"),
       }),
     );
+
+    if (!marketData.marketTitle.toLowerCase().includes("elon musk")) {
+      throw new Error(`Unexpected market title: ${marketData.marketTitle || "empty"}`);
+    }
+    if (!marketData.currentOdds && !marketData.yesPrice && !marketData.noPrice) {
+      throw new Error("Market extraction returned no live odds or prices");
+    }
 
     console.log("Market data extracted successfully:");
     console.log(JSON.stringify(marketData, null, 2));

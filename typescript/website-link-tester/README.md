@@ -3,16 +3,16 @@
 ### AT A GLANCE
 
 - **Goal**: Crawl a website’s homepage, collect all links, and verify that each link loads successfully and matches its link text.
-- **Link extraction**: Uses `Stagehand.extract()` with a Zod schema to pull all links and their visible text from the homepage.
+- **Link extraction**: Reads every rendered HTTP(S) anchor deterministically so hidden/nav links are not omitted.
 - **Content verification**: Opens each link and uses AI to assess whether the page content matches what the link text suggests.
 - **Social link handling**: Detects social media domains and only checks that they load (skipping full content verification).
 - **Batch processing**: Processes links in batches controlled by `MAX_CONCURRENT_LINKS` (sequential by default, can be made concurrent).
 
 ### GLOSSARY
 
-- **extract**: extract structured data from web pages using natural language instructions  
-  Docs → `https://docs.stagehand.dev/basics/extract`
-- **concurrent sessions**: run multiple browser sessions at the same time for faster batch processing  
+- **extract**: semantically assess whether a successfully loaded destination fits its source link
+  Docs → `https://docs.stagehand.dev/v4/basics/extract`
+- **concurrent sessions**: run multiple browser sessions at the same time for faster batch processing
   Docs → `https://docs.browserbase.com/guides/concurrency-rate-limits`
 
 ### QUICKSTART
@@ -35,13 +35,13 @@
   - Closes both the Stagehand instance and browser handle after every link check
 - **Link collection**
   - Navigates to the configured `URL` (default: `https://www.browserbase.com`)
-  - Extracts all links and their link text from the homepage
+  - Reads all rendered links and their link text from the homepage
   - Logs total link count and unique link count after de-duplication
 - **Verification**
   - Verifies links in batches using `MAX_CONCURRENT_LINKS`
   - For each link:
     - Confirms the page loads successfully
-    - For non-social links, extracts:
+    - Rejects HTTP error responses, then for non-social links assesses:
       - `pageTitle`
       - `contentMatches` (boolean)
       - short `assessment` (max ~8 words)

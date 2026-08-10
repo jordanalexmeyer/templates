@@ -4,6 +4,10 @@ import { Experimental_StdioMCPTransport } from "@ai-sdk/mcp/mcp-stdio";
 import { ToolLoopAgent, stepCountIs } from "ai";
 import "dotenv/config";
 
+const childEnv = Object.fromEntries(
+  Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined),
+);
+
 async function main() {
   const apiKey = process.env.BROWSERBASE_API_KEY!;
 
@@ -87,6 +91,7 @@ async function main() {
   const mcpClient = await createMCPClient({
     transport: new Experimental_StdioMCPTransport({
       command: "stagehand-codemode",
+      env: childEnv,
       stderr: "inherit",
     }),
   });

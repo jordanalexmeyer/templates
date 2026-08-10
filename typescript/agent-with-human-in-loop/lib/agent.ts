@@ -16,6 +16,10 @@ import {
   setSessionBrowser,
 } from "./session-store";
 
+const childEnv = Object.fromEntries(
+  Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined),
+);
+
 function sendEvent(
   writer: WritableStreamDefaultWriter<Uint8Array>,
   event: string,
@@ -72,6 +76,7 @@ export async function runAgent(params: {
     mcpClient = await createMCPClient({
       transport: new Experimental_StdioMCPTransport({
         command: "stagehand-codemode",
+        env: childEnv,
         stderr: "inherit",
       }),
     });

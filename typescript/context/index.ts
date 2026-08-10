@@ -5,27 +5,27 @@ import { browserbase, Stagehand } from "@browserbasehq/stagehand";
 import { Browserbase } from "@browserbasehq/sdk";
 import { z } from "zod/v4";
 import axios from "axios";
-import fs from "fs";
-
-async function uploadStagehandExtension(bb: Browserbase): Promise<{ id: string }> {
-  const stagehandEntry = import.meta.resolve("@browserbasehq/stagehand");
-  const archive = new URL("./assets/stagehand-extension.zip", stagehandEntry);
-  return bb.extensions.create({ file: fs.createReadStream(archive) });
-}
 
 async function createSessionContextID() {
+  const email = process.env.SF_REC_PARK_EMAIL;
+  const password = process.env.SF_REC_PARK_PASSWORD;
+  if (!process.env.BROWSERBASE_API_KEY || !email || !password) {
+    throw new Error(
+      "BROWSERBASE_API_KEY, SF_REC_PARK_EMAIL, and SF_REC_PARK_PASSWORD are required",
+    );
+  }
+
   console.log("Creating new Browserbase context...");
   // First create a context using Browserbase SDK to get a context ID.
   const bb = new Browserbase({ apiKey: process.env.BROWSERBASE_API_KEY! });
   const context = await bb.contexts.create();
 
-  console.log("Created context ID:", context.id);
+  console.log("Created Browserbase context");
 
   // Create a single session using the context ID to perform initial login.
   console.log("Creating session for initial login...");
-  const extension = await uploadStagehandExtension(bb);
-  const session = await bb.sessions.create({
-    extensionId: extension.id,
+  const browser = await browserbase.launch({
+    apiKey: process.env.BROWSERBASE_API_KEY!,
     browserSettings: {
       context: {
         id: context.id,
@@ -33,15 +33,7 @@ async function createSessionContextID() {
       },
     },
   });
-  console.log("Live view: https://browserbase.com/sessions/" + session.id);
-
-  // Connect Stagehand to the existing session (no new session created).
-  console.log("Connecting Stagehand to session...");
-  const browser = await browserbase.connect({
-    apiKey: process.env.BROWSERBASE_API_KEY!,
-    sessionId: session.id,
-    extensionId: extension.id,
-  });
+  console.log("Live View is available in the Browserbase Sessions dashboard");
   const stagehand = await Stagehand.create({
     browser: browser,
     model: { modelName: "openai/gpt-4.1" },
@@ -51,9 +43,6 @@ async function createSessionContextID() {
   // Connect to existing session for login process.
 
   const page = (await browser.context.pages())[0];
-  const email = process.env.SF_REC_PARK_EMAIL;
-  const password = process.env.SF_REC_PARK_PASSWORD;
-
   // Navigate to login page with extended timeout for slow-loading sites.
   console.log("Navigating to SF Rec & Park login page...");
   await page.goto("https://www.rec.us/organizations/san-francisco-rec-park", {
@@ -70,9 +59,8 @@ async function createSessionContextID() {
   await stagehand.act("Click the login, sign in, or submit button");
   console.log("Login sequence completed!");
 
-  await stagehand.close();
-  await browser.close();
-  await bb.extensions.delete(extension.id, { headers: { "Content-Type": null } });
+  await stagehand.close().catch((error) => console.warn("Stagehand cleanup warning:", error));
+  await browser.close().catch((error) => console.warn("Browser cleanup warning:", error));
   console.log("Authentication state saved to context");
 
   // Return the context ID for reuse in future sessions.
@@ -81,7 +69,7 @@ async function createSessionContextID() {
 
 async function deleteContext(contextId: string) {
   try {
-    console.log("Cleaning up context:", contextId);
+    console.log("Cleaning up Browserbase context");
     // Delete context via Browserbase API to clean up stored authentication data.
     // This prevents accumulation of unused contexts and ensures security cleanup.
     const response = await axios.delete(`https://api.browserbase.com/v1/contexts/${contextId}`, {
@@ -139,16 +127,20 @@ async function main() {
   const { data: userData } = await stagehand.extract(
     "Extract the user's full name and address",
     z.object({
-      fullName: z.string().describe("the user's full name"),
-      address: z.string().describe("the user's address"),
+      fullName: z.string().min(1).describe("the user's full name"),
+      address: z.string().min(1).describe("the user's address"),
     }),
   );
+
+  if (/sign in|log in/i.test(`${userData.fullName} ${userData.address}`)) {
+    throw new Error("The reused context did not reach authenticated profile data");
+  }
 
   console.log("Extracted user data:", userData);
 
   // Always close session to release resources and save any context changes.
-  await stagehand.close();
-  await browser.close();
+  await stagehand.close().catch((error) => console.warn("Stagehand cleanup warning:", error));
+  await browser.close().catch((error) => console.warn("Browser cleanup warning:", error));
   console.log("Session closed successfully");
 
   // Clean up context to prevent accumulation and ensure security.

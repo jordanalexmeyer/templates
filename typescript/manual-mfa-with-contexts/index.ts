@@ -4,17 +4,10 @@ import "dotenv/config";
 import { browserbase, Stagehand } from "@browserbasehq/stagehand";
 import { Browserbase } from "@browserbasehq/sdk";
 import { z } from "zod/v4";
-import fs from "fs";
 
 const bb = new Browserbase({
   apiKey: process.env.BROWSERBASE_API_KEY,
 });
-
-async function uploadStagehandExtension(): Promise<{ id: string }> {
-  const stagehandEntry = import.meta.resolve("@browserbasehq/stagehand");
-  const archive = new URL("./assets/stagehand-extension.zip", stagehandEntry);
-  return bb.extensions.create({ file: fs.createReadStream(archive) });
-}
 
 /**
  * First session: Create context and login (with MFA)
@@ -24,12 +17,11 @@ async function createSessionWithContext() {
 
   const context = await bb.contexts.create();
 
-  console.log(`Context created: ${context.id}`);
+  console.log("Browserbase context created");
   console.log("First session: Performing login with MFA...");
 
-  const extension = await uploadStagehandExtension();
-  const session = await bb.sessions.create({
-    extensionId: extension.id,
+  const browser = await browserbase.launch({
+    apiKey: process.env.BROWSERBASE_API_KEY!,
     browserSettings: {
       context: {
         id: context.id,
@@ -37,18 +29,13 @@ async function createSessionWithContext() {
       },
     },
   });
-  const browser = await browserbase.connect({
-    apiKey: process.env.BROWSERBASE_API_KEY!,
-    sessionId: session.id,
-    extensionId: extension.id,
-  });
   const stagehand = await Stagehand.create({
     browser: browser,
     model: { modelName: "openai/gpt-4.1-mini" },
     logging: { level: "error" },
   });
 
-  console.log(`Watch live: https://browserbase.com/sessions/${session.id}`);
+  console.log("Live View is available in the Browserbase Sessions dashboard");
 
   const page = (await browser.context.pages())[0];
 
@@ -80,9 +67,7 @@ async function createSessionWithContext() {
     console.log("═══════════════════════════════════════════════════════════");
     console.log("PAUSED: Please complete MFA in the browser");
     console.log("═══════════════════════════════════════════════════════════");
-    console.log(
-      `1. Open the Browserbase session in your browser: https://browserbase.com/sessions/${session.id}`,
-    );
+    console.log("1. Open the newest running session in the Browserbase Sessions dashboard");
     console.log("2. Enter your 2FA code from authenticator app");
     console.log("3. Click 'Verify' or submit");
     console.log("4. Wait for login to complete");
@@ -111,14 +96,13 @@ async function createSessionWithContext() {
     console.log("Login successful (no MFA required)\n");
   }
 
-  console.log(`Context ${context.id} now contains:`);
+  console.log("The Browserbase context now contains:");
   console.log("   - Session cookies");
   console.log("   - MFA trust/remember device state");
   console.log("   - All authentication data\n");
 
-  await stagehand.close();
-  await browser.close();
-  await bb.extensions.delete(extension.id, { headers: { "Content-Type": null } });
+  await stagehand.close().catch((error) => console.warn("Stagehand cleanup warning:", error));
+  await browser.close().catch((error) => console.warn("Browser cleanup warning:", error));
 
   return context.id;
 }
@@ -127,12 +111,11 @@ async function createSessionWithContext() {
  * Second session: Reuse context - NO MFA needed!
  */
 async function reuseContext(contextId: string) {
-  console.log(`Second session: Reusing context ${contextId}`);
+  console.log("Second session: Reusing the saved context");
   console.log("   (No login, no MFA required - auth state persisted)\n");
 
-  const extension = await uploadStagehandExtension();
-  const session = await bb.sessions.create({
-    extensionId: extension.id,
+  const browser = await browserbase.launch({
+    apiKey: process.env.BROWSERBASE_API_KEY!,
     browserSettings: {
       context: {
         id: contextId,
@@ -140,18 +123,13 @@ async function reuseContext(contextId: string) {
       },
     },
   });
-  const browser = await browserbase.connect({
-    apiKey: process.env.BROWSERBASE_API_KEY!,
-    sessionId: session.id,
-    extensionId: extension.id,
-  });
   const stagehand = await Stagehand.create({
     browser: browser,
     model: { modelName: "openai/gpt-4.1-mini" },
     logging: { level: "error" },
   });
 
-  console.log(`Watch live: https://browserbase.com/sessions/${session.id}`);
+  console.log("Live View is available in the Browserbase Sessions dashboard");
 
   const page = (await browser.context.pages())[0];
 
@@ -160,11 +138,14 @@ async function reuseContext(contextId: string) {
   await page.goto("https://github.com");
   await page.waitForLoadState("networkidle");
 
-  // Check if we're logged in
-  const { data: username } = await stagehand.extract(
-    "Extract the logged-in username or check if we're authenticated",
-    z.string(),
+  // GitHub exposes the authenticated login in page metadata. Verify that the
+  // second session inherited real authentication instead of trusting navigation.
+  const username = await page.evaluate(
+    () => document.querySelector<HTMLMetaElement>('meta[name="user-login"]')?.content ?? "",
   );
+  if (!username) {
+    throw new Error("The reused context was not authenticated to GitHub");
+  }
 
   console.log("\nSUCCESS! Already logged in without MFA!");
   console.log(`   Username: ${username}`);
@@ -173,16 +154,15 @@ async function reuseContext(contextId: string) {
   console.log("   - Context saves trusted device state");
   console.log("   - All future sessions: No MFA required\n");
 
-  await stagehand.close();
-  await browser.close();
-  await bb.extensions.delete(extension.id, { headers: { "Content-Type": null } });
+  await stagehand.close().catch((error) => console.warn("Stagehand cleanup warning:", error));
+  await browser.close().catch((error) => console.warn("Browser cleanup warning:", error));
 }
 
 /**
  * Clean up context
  */
 async function deleteContext(contextId: string) {
-  console.log(`Deleting context: ${contextId}`);
+  console.log("Deleting Browserbase context");
   try {
     // Delete via API (SDK doesn't have delete method)
     const response = await fetch(`https://api.browserbase.com/v1/contexts/${contextId}`, {

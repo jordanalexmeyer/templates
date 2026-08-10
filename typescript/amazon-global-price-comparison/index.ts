@@ -31,6 +31,7 @@ type Product = z.infer<typeof ProductSchema>;
 interface CountryConfig {
   name: string;
   code: string;
+  domain: string;
   city?: string;
   currency: string;
 }
@@ -38,12 +39,18 @@ interface CountryConfig {
 // Supported countries for price comparison
 // Add or remove countries as needed - see https://docs.browserbase.com/features/proxies for available geolocations
 const COUNTRIES: CountryConfig[] = [
-  { name: "United States", code: "US", city: undefined, currency: "USD" },
-  { name: "United Kingdom", code: "GB", city: "LONDON", currency: "GBP" },
-  { name: "Germany", code: "DE", city: "BERLIN", currency: "EUR" },
-  { name: "France", code: "FR", city: "PARIS", currency: "EUR" },
-  { name: "Italy", code: "IT", city: "ROME", currency: "EUR" },
-  { name: "Spain", code: "ES", city: "MADRID", currency: "EUR" },
+  { name: "United States", code: "US", domain: "www.amazon.com", currency: "USD" },
+  {
+    name: "United Kingdom",
+    code: "GB",
+    domain: "www.amazon.co.uk",
+    city: "LONDON",
+    currency: "GBP",
+  },
+  { name: "Germany", code: "DE", domain: "www.amazon.de", city: "BERLIN", currency: "EUR" },
+  { name: "France", code: "FR", domain: "www.amazon.fr", city: "PARIS", currency: "EUR" },
+  { name: "Italy", code: "IT", domain: "www.amazon.it", city: "ROME", currency: "EUR" },
+  { name: "Spain", code: "ES", domain: "www.amazon.es", city: "MADRID", currency: "EUR" },
 ];
 
 // Results structure for each country
@@ -53,6 +60,14 @@ interface CountryResult {
   currency: string;
   products: Product[];
   error?: string;
+}
+
+async function closeSession(
+  stagehand: Stagehand,
+  browser: Awaited<ReturnType<typeof browserbase.launch>>,
+) {
+  await stagehand.close().catch((error) => console.warn("Stagehand cleanup warning:", error));
+  await browser.close().catch((error) => console.warn("Browser cleanup warning:", error));
 }
 
 /**
@@ -99,32 +114,67 @@ async function getProductsForCountry(
     // console.log(`Navigating to: ${searchUrl}`);
     // await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
 
-    // Navigate to Amazon homepage to begin search
-    console.log(`[${country.name}] Navigating to Amazon...`);
-    await page.goto("https://www.amazon.com", {
+    // Use the matching regional Amazon storefront and a deterministic search URL.
+    const origin = `https://${country.domain}`;
+    const searchUrl = `${origin}/s?k=${encodeURIComponent(searchQuery)}`;
+    console.log(`[${country.name}] Navigating to ${searchUrl}...`);
+    await page.goto(searchUrl, {
       waitUntil: "domcontentloaded",
       timeout: 60000,
     });
 
-    // Perform search using natural language actions
-    console.log(`[${country.name}] Searching for: ${searchQuery}`);
-    await stagehand.act(`Type "${searchQuery}" into the search bar`);
-    await stagehand.act("Click the search button");
+    // Regional storefronts hydrate result cards at different speeds. Wait for complete
+    // product links instead of assuming DOMContentLoaded means every card is ready.
+    const resultsDeadline = Date.now() + 15000;
+    let visibleProductCount = 0;
+    while (Date.now() < resultsDeadline) {
+      visibleProductCount = await page.evaluate(
+        () =>
+          Array.from(document.querySelectorAll('[data-component-type="s-search-result"]')).filter(
+            (card) =>
+              (card.querySelector("h2")?.textContent?.trim().length ?? 0) > 0 &&
+              card.querySelector('a[href*="/dp/"]'),
+          ).length,
+      );
+      if (visibleProductCount >= resultsCount) break;
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    if (visibleProductCount < resultsCount) {
+      throw new Error(
+        `Only ${visibleProductCount} complete product cards rendered at ${await page.url()}`,
+      );
+    }
 
-    // Extract products from search results using Stagehand's structured extraction
+    // Amazon result cards have a known structure, so read them deterministically.
     console.log(`[${country.name}] Extracting top ${resultsCount} products...`);
-
-    const { data: extractionResult } = await stagehand.extract(
-      `Extract the first ${resultsCount} product search results from this Amazon page. For each product, extract:
-      1. name: the full product title
-      2. price: the displayed price WITH currency symbol (like $599.99 or 599,99 EUR). If no price shown, use "N/A"
-      3. rating: the star rating text (like "4.5 out of 5 stars")
-      4. reviews_count: the number of reviews (like "2,508")
-      5. product_url: the href link to the product page (starts with /dp/ or https://)
-      
-      Only extract actual product listings, skip sponsored ads or recommendations.`,
-      ProductsSchema,
-    );
+    const rawProducts = (await page.evaluate(
+      (limit: number) =>
+        Array.from(document.querySelectorAll('[data-component-type="s-search-result"]'))
+          .map((card) => {
+            const productLinks = Array.from(
+              card.querySelectorAll<HTMLAnchorElement>('a[href*="/dp/"]'),
+            );
+            const productLink =
+              card.querySelector<HTMLAnchorElement>('h2 a[href*="/dp/"]') ??
+              productLinks.find((link) => (link.textContent?.trim().length ?? 0) > 10) ??
+              productLinks[0];
+            const title =
+              card.querySelector("h2")?.textContent?.trim() ??
+              productLink?.textContent?.trim() ??
+              "";
+            return {
+              name: title,
+              price: card.querySelector(".a-price .a-offscreen")?.textContent?.trim() ?? "N/A",
+              rating: card.querySelector(".a-icon-alt")?.textContent?.trim() ?? "N/A",
+              reviews_count: card.querySelector(".s-underline-text")?.textContent?.trim() ?? "N/A",
+              product_url: productLink?.href ?? "",
+            };
+          })
+          .filter((product) => product.name.length > 0 && product.product_url.includes("/dp/"))
+          .slice(0, limit),
+      resultsCount,
+    )) as unknown;
+    const extractionResult = ProductsSchema.parse({ products: rawProducts });
 
     // Clean up products - ensure price is never null and URLs are absolute
     const cleanedProducts = extractionResult.products.map((p) => ({
@@ -133,14 +183,20 @@ async function getProductsForCountry(
       product_url: p.product_url?.startsWith("http")
         ? p.product_url
         : p.product_url?.startsWith("/")
-          ? `https://www.amazon.com${p.product_url}`
+          ? `${origin}${p.product_url}`
           : p.product_url || "N/A",
     }));
 
+    if (
+      cleanedProducts.length < resultsCount ||
+      cleanedProducts.some((product) => !product.product_url.includes("/dp/"))
+    ) {
+      throw new Error(`Expected ${resultsCount} complete regional product records`);
+    }
+
     console.log(`Found ${cleanedProducts.length} products in ${country.name}`);
 
-    await stagehand.close();
-    await browser.close();
+    await closeSession(stagehand, browser);
 
     return {
       country: country.name,
@@ -150,8 +206,7 @@ async function getProductsForCountry(
     };
   } catch (error) {
     console.error(`Error fetching products from ${country.name}:`, error);
-    await stagehand.close();
-    await browser.close();
+    await closeSession(stagehand, browser);
 
     return {
       country: country.name,
@@ -237,6 +292,21 @@ async function main() {
   const results = await Promise.all(
     COUNTRIES.map((country) => getProductsForCountry(searchQuery, country, resultsCount)),
   );
+
+  // A regional storefront can occasionally reload its execution context while Amazon
+  // hydrates the page. Retry only failed countries once, then preserve a hard failure.
+  for (const [index, result] of results.entries()) {
+    if (result.products.length > 0) continue;
+    console.log(`\nRetrying ${COUNTRIES[index].name} after its first extraction failed...`);
+    results[index] = await getProductsForCountry(searchQuery, COUNTRIES[index], resultsCount);
+  }
+
+  const failures = results.filter((result) => result.products.length === 0);
+  if (failures.length > 0) {
+    throw new Error(
+      `Price extraction failed for ${failures.length} of ${results.length} countries`,
+    );
+  }
 
   // Display formatted comparison table
   displayComparisonTable(results);

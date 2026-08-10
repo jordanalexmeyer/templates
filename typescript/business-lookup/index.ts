@@ -6,6 +6,10 @@ import { Experimental_StdioMCPTransport } from "@ai-sdk/mcp/mcp-stdio";
 import { Output, ToolLoopAgent, stepCountIs } from "ai";
 import { z } from "zod/v4";
 
+const childEnv = Object.fromEntries(
+  Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined),
+);
+
 const businessName = "Jalebi Street";
 
 const businessSchema = z.object({
@@ -25,6 +29,7 @@ async function main() {
   const mcpClient = await createMCPClient({
     transport: new Experimental_StdioMCPTransport({
       command: "stagehand-codemode",
+      env: childEnv,
       stderr: "inherit",
     }),
   });
@@ -36,15 +41,24 @@ async function main() {
     const agent = new ToolLoopAgent({
       model: process.env.AGENT_MODEL ?? "anthropic/claude-sonnet-4.6",
       instructions:
-        "You are a browser agent. Use code_execute for all browser work. Prefer deterministic page and locator APIs, and use Stagehand act, observe, or extract inside code_execute only when semantic browser intelligence is useful.",
+        "You are a browser agent. Use code_execute for all browser work. Prefer deterministic page, locator, and page.evaluate APIs. Use no more than 8 code_execute calls. Once you have the requested record, stop calling tools and return the structured response immediately.",
       tools,
       output: Output.object({ schema: businessSchema }),
-      stopWhen: stepCountIs(20),
+      prepareStep: ({ stepNumber }) =>
+        stepNumber >= 8
+          ? {
+              activeTools: [],
+              toolChoice: "none",
+              instructions:
+                "Return the structured business record now using the evidence already collected. Do not call another tool.",
+            }
+          : undefined,
+      stopWhen: stepCountIs(10),
     });
 
     console.log(`Searching for business: ${businessName}`);
     const result = await agent.generate({
-      prompt: `Open the San Francisco Registered Business Lookup at https://data.sfgov.org/stories/s/Registered-Business-Lookup/k6sk-2y6w/ and find the record for ${JSON.stringify(businessName)}. Return all requested fields. Use null when a field is not present.`,
+      prompt: `Open the official San Francisco Open Data API query https://data.sfgov.org/resource/g8m3-pdis.json?$q=${encodeURIComponent(businessName)}&$limit=5 and find the exact DBA record for ${JSON.stringify(businessName)}. Read the JSON rendered in the browser, map ttxid to businessAccountNumber and uniqueid to locationId, and return all requested fields. Use null when a field is not present.`,
     });
 
     console.log("Business Information:");
