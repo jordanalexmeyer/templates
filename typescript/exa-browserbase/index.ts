@@ -25,10 +25,10 @@ const applicationDetails = {
 };
 
 const searchConfig = {
-  companyQuery: "AI startups in SF",
-  numCompanies: 5,
-  concurrent: true,
-  maxConcurrentBrowsers: 5,
+  companyQuery: process.env.COMPANY_QUERY ?? "AI startups in SF",
+  numCompanies: Number(process.env.NUM_COMPANIES ?? "5"),
+  concurrent: process.env.CONCURRENT !== "false",
+  maxConcurrentBrowsers: Number(process.env.MAX_CONCURRENT_BROWSERS ?? "5"),
 };
 
 interface CareersPage {
@@ -112,8 +112,32 @@ async function main() {
 
   const careersPages: CareersPage[] = [];
   for (const company of companies.results) {
-    const domain = new URL(company.url).hostname.replace("www.", "");
-    const careers = await exa.searchAndContents(`${domain} careers page`, {
+    const companyName = company.title || new URL(company.url).hostname;
+    const homepageResults = await exa.searchAndContents(`${companyName} official homepage`, {
+      context: true,
+      excludeDomains: [
+        "linkedin.com",
+        "crunchbase.com",
+        "pitchbook.com",
+        "cbinsights.com",
+        "builtin.com",
+      ],
+      numResults: 5,
+      text: true,
+      type: "deep",
+      livecrawl: "fallback",
+    });
+    const homepage = homepageResults.results.find((result) => {
+      try {
+        return new URL(result.url).protocol === "https:";
+      } catch {
+        return false;
+      }
+    });
+    if (!homepage) continue;
+
+    const domain = new URL(homepage.url).hostname.replace(/^www\./, "");
+    const careers = await exa.searchAndContents(`${companyName} ${domain} careers page`, {
       context: true,
       excludeDomains: ["linkedin.com"],
       numResults: 5,
@@ -121,8 +145,36 @@ async function main() {
       type: "deep",
       livecrawl: "fallback",
     });
-    const careersUrl = careers.results[0]?.url;
-    if (careersUrl) careersPages.push({ company: company.title || domain, careersUrl });
+    const companyTerms = companyName
+      .replaceAll("-", " ")
+      .split(/\s+/)
+      .map((term) => term.toLowerCase())
+      .filter((term) => term.length >= 4);
+    const sameDomain = careers.results.filter((result) => {
+      const host = new URL(result.url).hostname.replace(/^www\./, "");
+      return host === domain || host.endsWith(`.${domain}`);
+    });
+    const brandedAts = careers.results.filter((result) => {
+      const searchable = `${result.title || ""} ${result.url}`.toLowerCase();
+      const host = new URL(result.url).hostname;
+      return (
+        companyTerms.some((term) => searchable.includes(term)) &&
+        ["ashbyhq.com", "greenhouse.io", "lever.co", "smartrecruiters.com"].some((provider) =>
+          host.includes(provider),
+        )
+      );
+    });
+    const directSameDomain = sameDomain.filter((result) =>
+      ["ashby_jid=", "gh_jid=", "lever-origin="].some((marker) => result.url.includes(marker)),
+    );
+    const candidates = directSameDomain.length
+      ? directSameDomain
+      : brandedAts.length
+        ? brandedAts
+        : sameDomain;
+    if (candidates[0]) {
+      careersPages.push({ company: companyName, careersUrl: candidates[0].url });
+    }
   }
   if (careersPages.length === 0) {
     throw new Error("Exa returned no company careers pages");

@@ -38,6 +38,8 @@
 6. Update `resumePath` to point to your PDF resume
 7. pnpm start
 
+For a small verification run, set `COMPANY_QUERY=Browserbase NUM_COMPANIES=1`.
+
 ## EXPECTED OUTPUT
 
 - Uses your exact info for name, email, phone

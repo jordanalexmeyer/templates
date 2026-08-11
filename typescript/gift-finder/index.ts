@@ -41,12 +41,23 @@ async function closeSession(
   await browser.close().catch((error) => console.warn("Browser cleanup warning:", error));
 }
 
-function openAIClient(): OpenAI {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is not set");
+function openAIClient(): { client: OpenAI; model: string } {
+  if (process.env.AI_GATEWAY_API_KEY) {
+    return {
+      client: new OpenAI({
+        apiKey: process.env.AI_GATEWAY_API_KEY,
+        baseURL: "https://ai-gateway.vercel.sh/v1",
+      }),
+      model: "openai/gpt-4.1",
+    };
   }
-  return new OpenAI({ apiKey });
+  if (process.env.OPENAI_API_KEY) {
+    return {
+      client: new OpenAI({ apiKey: process.env.OPENAI_API_KEY }),
+      model: "gpt-4.1",
+    };
+  }
+  throw new Error("AI_GATEWAY_API_KEY or OPENAI_API_KEY is required");
 }
 
 async function generateSearchQueries(recipient: string, description: string): Promise<string[]> {
@@ -54,8 +65,9 @@ async function generateSearchQueries(recipient: string, description: string): Pr
 
   // Use AI to generate search terms based on recipient profile
   // This avoids generic searches and focuses on thoughtful, complementary gifts
-  const response = await openAIClient().chat.completions.create({
-    model: "gpt-4.1",
+  const { client, model } = openAIClient();
+  const response = await client.chat.completions.create({
+    model,
     messages: [
       {
         role: "user",
@@ -113,8 +125,9 @@ async function scoreProducts(
 
   console.log(`Scoring ${allProducts.length} products...`);
 
-  const response = await openAIClient().chat.completions.create({
-    model: "gpt-4.1",
+  const { client, model } = openAIClient();
+  const response = await client.chat.completions.create({
+    model,
     messages: [
       {
         role: "user",
@@ -208,8 +221,13 @@ async function getUserInput(): Promise<GiftFinderAnswers> {
 async function main(): Promise<void> {
   console.log("Starting Gift Finder Application...");
 
-  if (!process.env.BROWSERBASE_API_KEY || !process.env.OPENAI_API_KEY) {
-    throw new Error("BROWSERBASE_API_KEY and OPENAI_API_KEY are required");
+  if (
+    !process.env.BROWSERBASE_API_KEY ||
+    (!process.env.AI_GATEWAY_API_KEY && !process.env.OPENAI_API_KEY)
+  ) {
+    throw new Error(
+      "BROWSERBASE_API_KEY and either AI_GATEWAY_API_KEY or OPENAI_API_KEY are required",
+    );
   }
 
   const { recipient, description } = await getUserInput();

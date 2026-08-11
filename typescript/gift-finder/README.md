@@ -3,7 +3,7 @@
 ## AT A GLANCE
 
 - Goal: find personalized gift recommendations using AI-generated search queries and intelligent product scoring.
-- AI Integration: OpenAI generates and scores personalized search terms; Stagehand searches and extracts the live products.
+- AI Integration: OpenAI through Vercel AI Gateway generates and scores personalized search terms; Stagehand searches and extracts the live products. A direct OpenAI key remains a fallback.
 - Concurrent Sessions: runs multiple browser sessions simultaneously to search different queries in parallel.
 
 ## GLOSSARY
@@ -22,7 +22,7 @@
 1. cd gift-finder
 2. npm install
 3. cp .env.example .env
-4. Add `BROWSERBASE_API_KEY` and `OPENAI_API_KEY` to .env
+4. Add `BROWSERBASE_API_KEY` and `AI_GATEWAY_API_KEY` to .env
 5. npm start
 
 ## EXPECTED OUTPUT
@@ -37,7 +37,7 @@
 ## COMMON PITFALLS
 
 - "Cannot find module": ensure all dependencies are installed
-- Missing credentials: verify .env contains BROWSERBASE_API_KEY and OPENAI_API_KEY
+- Missing credentials: verify .env contains BROWSERBASE_API_KEY and AI_GATEWAY_API_KEY (or OPENAI_API_KEY for the direct fallback)
 - Search failures: check internet connection and website accessibility
 
 ## USE CASES
