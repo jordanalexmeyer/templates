@@ -42,9 +42,10 @@ func run(parent context.Context) (err error) {
 	ctx, cancel := context.WithTimeout(parent, 2*time.Minute)
 	defer cancel()
 
+	sessionTimeout := 120.0
 	browser, err := stagehand.LaunchBrowserbase(ctx, stagehand.BrowserbaseLaunchOptions{
 		APIKey:  apiKey,
-		Timeout: floatPointer(120),
+		Timeout: &sessionTimeout,
 	})
 	if err != nil {
 		return fmt.Errorf("launch Browserbase: %w", err)
@@ -74,7 +75,7 @@ func run(parent context.Context) (err error) {
 		return fmt.Errorf("list pages: %w", err)
 	}
 	if len(pages) == 0 {
-		return errors.New("Stagehand initialized without an active page")
+		return errors.New("no active page after Stagehand initialization")
 	}
 	page := pages[0]
 
@@ -83,7 +84,7 @@ func run(parent context.Context) (err error) {
 		return fmt.Errorf("navigate to Hacker News: %w", err)
 	}
 	if response == nil || response.Status() != 200 {
-		return fmt.Errorf("Hacker News returned an unexpected navigation response")
+		return errors.New("unexpected navigation response from Hacker News")
 	}
 	fmt.Println("Navigated to Hacker News")
 
@@ -140,7 +141,7 @@ func run(parent context.Context) (err error) {
 		normalize(details.Data.TopComment) != normalize(actualComment) ||
 		normalize(details.Data.Author) != normalize(actualAuthor) {
 		return fmt.Errorf(
-			"Stagehand extraction did not match the live page: extracted=%+v live={Title:%q TopComment:%q Author:%q}",
+			"extracted Stagehand data did not match the live page: extracted=%+v live={Title:%q TopComment:%q Author:%q}",
 			details.Data,
 			actualTitle,
 			actualComment,
@@ -155,7 +156,7 @@ func run(parent context.Context) (err error) {
 		return fmt.Errorf("navigate to newest stories: %w", err)
 	}
 	if response == nil || response.Status() != 200 {
-		return fmt.Errorf("Hacker News newest page returned an unexpected response")
+		return errors.New("unexpected response from the Hacker News newest page")
 	}
 	newest, err := stagehand.Extract[newestStory](
 		ctx,
@@ -190,7 +191,7 @@ func run(parent context.Context) (err error) {
 	}
 	if !titlesMatch(newest.Data.Title, actualNewest.Title) {
 		return fmt.Errorf(
-			"Stagehand newest-story extraction did not match the live page: extracted=%q live=%q",
+			"newest-story Stagehand extraction did not match the live page: extracted=%q live=%q",
 			newest.Data.Title,
 			actualNewest.Title,
 		)
@@ -198,10 +199,6 @@ func run(parent context.Context) (err error) {
 	fmt.Printf("Newest story: %s (%s)\n", newest.Data.Title, actualNewest.URL)
 	fmt.Println("Verified the Hacker News observe, act, and extract workflow")
 	return nil
-}
-
-func floatPointer(value float64) *float64 {
-	return &value
 }
 
 func normalize(value string) string {

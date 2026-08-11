@@ -7,7 +7,7 @@ Stagehand is the SDK for browser agents.
 - Goal: demonstrate Stagehand V4's core browser automation primitives through a complete Hacker News workflow.
 - Complete workflow: launch a Browserbase browser, attach Stagehand, navigate, observe, act, and extract typed data.
 - Real-world outcome: open the top story's comments, verify its first comment, then extract the newest visible story.
-- Docs → https://docs.stagehand.dev/v4/first-steps/introduction
+- Docs → https://docs.stagehand.dev/v4/first-steps/quickstart
 
 ## GLOSSARY
 
@@ -57,7 +57,7 @@ The V4 Go SDK is temporarily pinned to an exact Stagehand source commit. Replace
 
 ## HELPFUL RESOURCES
 
-- Stagehand Docs: https://docs.stagehand.dev/v4/first-steps/introduction
+- Stagehand Docs: https://docs.stagehand.dev/v4/first-steps/quickstart
 - Browserbase: https://www.browserbase.com
 - Templates: https://www.browserbase.com/templates
 - Discord: http://stagehand.dev/discord
