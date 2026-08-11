@@ -163,6 +163,23 @@ class StagehandFormFiller:
         option_by_value = {value: option for option, value in normalized_options.items()}
         if set(option_by_value) == {"yes", "no"}:
             padded_answer = f" {normalized_answer} "
+            if any(
+                phrase in padded_answer
+                for phrase in (
+                    " not sure ",
+                    " not certain ",
+                    " unsure ",
+                    " uncertain ",
+                    " don t know ",
+                    " do not know ",
+                    " can t say ",
+                    " cannot say ",
+                    " no idea ",
+                    " maybe ",
+                    " perhaps ",
+                )
+            ):
+                return None
             idiomatic_no = any(
                 phrase in padded_answer
                 for phrase in (
