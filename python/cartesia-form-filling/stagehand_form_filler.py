@@ -160,6 +160,49 @@ class StagehandFormFiller:
         if len(exact) == 1:
             return exact[0]
 
+        option_by_value = {value: option for option, value in normalized_options.items()}
+        if set(option_by_value) == {"yes", "no"}:
+            padded_answer = f" {normalized_answer} "
+            idiomatic_no = any(
+                phrase in padded_answer
+                for phrase in (
+                    " no problem ",
+                    " no problems ",
+                    " no issue ",
+                    " no issues ",
+                    " no worries ",
+                )
+            )
+            affirmative_words = {
+                "yes",
+                "yeah",
+                "yep",
+                "yup",
+                "affirmative",
+                "absolutely",
+                "definitely",
+            }
+            has_affirmative = bool(set(normalized_answer.split()) & affirmative_words)
+            has_negative = (" no " in padded_answer and not idiomatic_no) or any(
+                phrase in padded_answer
+                for phrase in (
+                    " nope ",
+                    " nah ",
+                    " not ",
+                    " never ",
+                    " cannot ",
+                    " can not ",
+                    " can t ",
+                    " don t ",
+                    " do not ",
+                    " haven t ",
+                    " have not ",
+                )
+            )
+            if has_affirmative != has_negative:
+                return option_by_value["yes" if has_affirmative else "no"]
+            return None
+
         padded_answer = f" {normalized_answer} "
         contained = [
             option
