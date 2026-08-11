@@ -1,27 +1,27 @@
 # Stagehand + Browserbase + Exa: Intelligent Job Application Automation
 
+Stagehand is the SDK for browser agents.
+
 ## AT A GLANCE
 
 - **Goal**: Automate job applications with AI that writes smart, tailored responses for each role.
-- **Pattern Template**: Shows how to combine Exa (find companies & jobs) + Browserbase (control browser) + Stagehand Agent (fill forms smartly).
-- **Workflow**: Exa finds companies you want, then finds their careers pages. Browserbase opens the page, Stagehand reads the job posting, and an AI agent fills out the application form with answers tailored to that specific job.
+- **Pattern Template**: Combines Exa search, a Deep Agents planning loop, and Stagehand V4 code-mode browser tools.
+- **Workflow**: Exa finds companies and careers pages. A Deep Agents agent then controls one Browserbase session through Stagehand's `snapshot`, `run`, and `screenshot` tools, fills the application with tailored answers, and stops before submission for human review.
 - **Plans**: Sequential mode works on all plans; concurrent applications and proxies require Startup or Developer plan or higher ([concurrency](https://docs.browserbase.com/guides/concurrency-rate-limits), [proxies](https://docs.browserbase.com/features/proxies)).
-- Docs → [Stagehand Agent](https://docs.stagehand.dev/basics/agent) | [Exa Search](https://docs.exa.ai/reference/search) | [Stagehand Extract](https://docs.stagehand.dev/basics/extract)
+- Docs → [Stagehand V4](https://docs.stagehand.dev/v4/first-steps/introduction) | [Exa Search](https://docs.exa.ai/reference/search)
 
 ## THE 5-STEP FLOW
 
 1. **Search for companies** — Exa finds companies matching your criteria (e.g., "AI startups in SF")
 2. **Find careers pages** — For each company, Exa searches for their careers/jobs page
-3. **Extract job details** — Stagehand reads the job posting and extracts structured data (title, requirements, responsibilities)
-4. **Smart form filling** — AI agent fills out application fields with tailored responses based on the job description
-5. **Resume upload** — Playwright handles file uploads for resume/CV attachments
+3. **Inspect the application** — Stagehand's code-mode snapshot exposes the live page to the agent
+4. **Smart form filling** — Deep Agents plans the work and calls Stagehand code mode for deterministic browser operations
+5. **Human review** — The workflow verifies the filled state and intentionally stops before submission
 
 ## GLOSSARY
 
-- **agent**: An AI that can plan and do multi-step tasks on its own. It looks at the page and decides what to do next without needing step-by-step instructions.
-  Docs → https://docs.stagehand.dev/basics/agent
-- **extract**: Pull structured data from web pages. You define what you want (job title, requirements, etc.) and it returns clean JSON.
-  Docs → https://docs.stagehand.dev/basics/extract
+- **Deep Agents**: The bring-your-own agent framework responsible for planning and tool selection. Stagehand V4 does not expose `stagehand.agent()`.
+- **Stagehand code mode**: Three browser tools—`snapshot`, `run`, and `screenshot`—served to the agent over MCP.
 - **Exa Search**: AI search engine that finds relevant web content. Can search for companies, find similar pages, and filter by date.
   Docs → https://docs.exa.ai/reference/search
 - **Tailored responses**: The AI reads the job requirements and writes custom answers for cover letters and open-ended questions that highlight relevant skills.
@@ -29,15 +29,14 @@
 ## QUICKSTART
 
 1. cd exa-browserbase
-2. uv pip install -e .
-3. playwright install chromium
-4. cp .env.example .env
-5. Add required API keys to .env:
+2. uv sync
+3. cp .env.example .env
+4. Add required API keys to .env:
    - `BROWSERBASE_API_KEY` — from Browserbase
    - `EXA_API_KEY` — from https://dashboard.exa.ai/api-keys
-6. Update `APPLICATION_DETAILS` dict in main.py with candidate information
-7. Update `resume_path` to point to your PDF resume
-8. uv run python main.py
+   - `AI_GATEWAY_API_KEY` — for the Deep Agents model
+5. Update `APPLICATION_DETAILS` dict in main.py with candidate information
+6. `uv run python main.py`
 
 ## EXPECTED OUTPUT
 
@@ -50,9 +49,8 @@
 
 ## HELPFUL RESOURCES
 
-📚 Stagehand Docs: https://docs.stagehand.dev/v3/first-steps/introduction
-📚 Stagehand Python SDK: https://docs.stagehand.dev/v3/sdk/python
-📚 Stagehand Agent: https://docs.stagehand.dev/basics/agent
+📚 Stagehand Docs: https://docs.stagehand.dev/v4/first-steps/introduction
+📚 Stagehand Python SDK: https://docs.stagehand.dev/v4/sdk/python
 📚 Exa API Key: https://dashboard.exa.ai/api-keys
 🎮 Browserbase: https://www.browserbase.com
 💡 Try it out: https://www.browserbase.com/playground

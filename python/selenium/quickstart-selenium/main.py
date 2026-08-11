@@ -14,7 +14,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 load_dotenv()
 
 # ============= CONFIGURATION =============
-BROWSERBASE_API_KEY = os.getenv("BROWSERBASE_API_KEY")
+BROWSERBASE_API_KEY = os.environ["BROWSERBASE_API_KEY"]
 # =========================================
 
 bb = Browserbase(api_key=BROWSERBASE_API_KEY)
@@ -31,6 +31,7 @@ def run() -> None:
         },
     )
     driver = webdriver.Remote(
+        command_executor=session.selenium_remote_url,
         options=webdriver.ChromeOptions(),
         client_config=client_config,
     )

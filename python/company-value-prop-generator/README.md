@@ -1,17 +1,19 @@
 # Stagehand + Browserbase: Value Prop One-Liner Generator
 
+Stagehand is the SDK for browser agents.
+
 ## AT A GLANCE
 
 - Goal: Automatically extract and format website value propositions into concise one-liners for email personalization
 - Demonstrates Stagehand's `extract` method with Pydantic schemas to pull structured data from landing pages
 - Shows direct OpenAI API usage to transform extracted content with custom prompts
 - Includes placeholder page detection and validation logic to filter out non-functional sites
-- Docs → https://docs.stagehand.dev/v3/basics/extract
+- Docs → https://docs.stagehand.dev/v4/basics/extract
 
 ## GLOSSARY
 
 - Extract: Stagehand method that uses AI to pull structured data from pages using natural language instructions
-  Docs → https://docs.stagehand.dev/v3/basics/extract
+  Docs → https://docs.stagehand.dev/v4/basics/extract
 - Value Proposition: The core benefit or unique selling point a company communicates to customers
 
 ## QUICKSTART
@@ -55,7 +57,7 @@
 
 ## HELPFUL RESOURCES
 
-📚 Stagehand Docs: https://docs.stagehand.dev/v3/first-steps/introduction
+📚 Stagehand Docs: https://docs.stagehand.dev/v4/first-steps/introduction
 🎮 Browserbase: https://www.browserbase.com
 💡 Templates: https://www.browserbase.com/templates
 📧 Need help? support@browserbase.com

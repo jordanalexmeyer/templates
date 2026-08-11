@@ -3,12 +3,14 @@ name = "exa-browserbase"
 version = "0.1.0"
 description = "AI-Powered Job Search and Application using Exa, Stagehand, and Browserbase"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11,<3.14"
 dependencies = [
     "exa-py",
     "playwright",
     "python-dotenv",
-    "stagehand>=3.19.0",
+    "deepagents==0.7.5",
+    "langchain-mcp-adapters==0.3.2",
+    "langchain-openai==1.4.3",
 ]
 
 [project.optional-dependencies]
@@ -18,9 +20,8 @@ dev = [
     "ruff>=0.1.0",
 ]
 
-[build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+[tool.uv]
+package = false
 
 [tool.black]
 line-length = 100
@@ -28,7 +29,7 @@ target-version = ['py39', 'py310', 'py311']
 
 [tool.ruff]
 line-length = 100
-target-version = "py39"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W"]

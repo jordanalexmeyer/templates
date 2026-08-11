@@ -17,7 +17,7 @@ Ready-to-use automation templates for Stagehand and Browserbase. Each template h
 | basic-recaptcha                  | [TS](typescript/basic-recaptcha)                  | [PY](python/basic-recaptcha)                  | -                   | Automatic reCAPTCHA solving using Browserbase's built-in captcha solving capabilities                          |
 | browser-agent-demo               | [TS](typescript/browser-agent-demo)               | -                                             | -                   | Browser agent that searches the web, fetches page content, and autonomously extracts information               |
 | browserbase-reducto              | [TS](typescript/browserbase-reducto)              | [PY](python/browserbase-reducto)              | -                   | Download financial PDFs from websites and extract structured data using AI-powered document parsing            |
-| business-lookup                  | [TS](typescript/business-lookup)                  | [PY](python/business-lookup)                  | -                   | Research business registry records with a Vercel AI SDK agent and Stagehand code mode                          |
+| business-lookup                  | [TS](typescript/business-lookup)                  | [PY](python/business-lookup)                  | -                   | Research business registry records with a bring-your-own agent and Stagehand code mode                         |
 | cartesia-form-filling            | -                                                 | [PY](python/cartesia-form-filling)            | -                   | Voice agent that conducts phone questionnaires while automatically filling out web forms                       |
 | cerebras-docs-checker            | -                                                 | [PY](python/cerebras-docs-checker)            | -                   | Crawl documentation sites, discover source repos, and verify docs accuracy against actual codebase             |
 | company-address-finder           | [TS](typescript/company-address-finder)           | [PY](python/company-address-finder)           | -                   | Discover company legal information and physical addresses from Terms of Service and Privacy Policy pages       |
@@ -58,7 +58,7 @@ Ready-to-use automation templates for Stagehand and Browserbase. Each template h
 
 Stagehand primitives use the Browserbase Model Gateway, so they need only `BROWSERBASE_API_KEY`. Bring-your-own-agent templates also use Vercel AI Gateway for the outer agent loop and require `AI_GATEWAY_API_KEY`; no provider-specific OpenAI, Anthropic, or Google key is required.
 
-> **Stagehand V4 note**: V4 does not expose the V3 `agent()` orchestration API. Agent templates use Vercel AI SDK for the loop and Stagehand code mode's `code_execute` MCP tool for browser work; other templates call V4 browser primitives directly.
+> **Stagehand V4 note**: V4 does not expose the V3 `agent()` orchestration API. TypeScript agent templates use Vercel AI SDK with Stagehand's `code_execute` tool. Python agent templates use LangChain Deep Agents with Stagehand's `run`, `snapshot`, and `screenshot` tools. Other templates call V4 browser primitives directly.
 
 ## Getting Started
 

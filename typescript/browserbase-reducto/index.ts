@@ -25,8 +25,7 @@ interface ExtractedFinancialData {
 
 // Reducto API response structure
 interface ReductoExtractResult {
-  result?: ExtractedFinancialData;
-  data?: ExtractedFinancialData;
+  result?: ExtractedFinancialData | ExtractedFinancialData[];
 }
 
 // Polls Browserbase API for completed downloads with retry logic
@@ -240,7 +239,9 @@ async function extractPDFWithReducto(pdfPath: string, reductoaiClient: reductoai
 
   // Display extracted financial data in formatted JSON
   console.log("\n=== Extracted Financial Data ===\n");
-  const extractedData = result?.result || result?.data;
+  // Reducto's synchronous V3 extraction response returns a list even when
+  // chunking is disabled, so unwrap the single structured result.
+  const extractedData = Array.isArray(result.result) ? result.result[0] : result.result;
   const netSales = extractedData?.iphone_net_sales;
   if (
     !netSales ||

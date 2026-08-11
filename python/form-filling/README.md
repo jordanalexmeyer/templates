@@ -1,5 +1,7 @@
 # Stagehand + Browserbase: Form Filling Automation
 
+Stagehand is the SDK for browser agents.
+
 ## AT A GLANCE
 
 - Goal: showcase how to automate form filling with Stagehand and Browserbase.
@@ -11,9 +13,9 @@
 ## GLOSSARY
 
 - act: perform UI actions from a prompt (type, click, fill forms)
-  Docs → https://docs.stagehand.dev/basics/act
+  Docs → https://docs.stagehand.dev/v4/basics/act
 - observe: analyze a page and return selectors or action plans before executing
-  Docs → https://docs.stagehand.dev/basics/observe
+  Docs → https://docs.stagehand.dev/v4/basics/observe
 - variable substitution: inject dynamic values into actions using `%variable%` syntax
 
 ## QUICKSTART
@@ -56,7 +58,7 @@
 
 ## HELPFUL RESOURCES
 
-📚 Stagehand Docs: https://docs.stagehand.dev/v3/first-steps/introduction
+📚 Stagehand Docs: https://docs.stagehand.dev/v4/first-steps/introduction
 🎮 Browserbase: https://www.browserbase.com
 💡 Try it out: https://www.browserbase.com/playground
 🔧 Templates: https://www.browserbase.com/templates

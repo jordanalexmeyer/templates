@@ -6,13 +6,14 @@ mapping, field filling, and form submission.
 """
 
 import asyncio
+import json
 import os
 from dataclasses import dataclass
 from enum import Enum
 
 from loguru import logger
 
-from stagehand import AsyncStagehand
+from stagehand import Page, Stagehand, StagehandBrowser, browserbase
 
 
 class FieldType(Enum):
@@ -81,7 +82,7 @@ class FormFieldMapping:
             ),
             "role_selection": FormField(
                 field_id="role_selection",
-                field_type=FieldType.CHECKBOX,
+                field_type=FieldType.RADIO,
                 label="Which of these roles are you applying for?",
                 options=[
                     "Sales manager",
@@ -127,11 +128,42 @@ class StagehandFormFiller:
 
     def __init__(self, form_url: str):
         self.form_url = form_url
-        self.client: AsyncStagehand | None = None
-        self.session = None
+        self.browser: StagehandBrowser | None = None
+        self.stagehand: Stagehand | None = None
+        self.page: Page | None = None
         self.is_initialized = False
         self.field_mapper = FormFieldMapping()
         self.collected_data: dict[str, str] = {}
+
+    async def _select_radio(self, question_id: str, answer: str) -> bool:
+        if self.page is None:
+            raise RuntimeError("Stagehand form filler is not initialized")
+        group_indexes = {
+            "work_eligibility": 0,
+            "availability_type": 1,
+            "role_selection": 2,
+            "previous_experience": 3,
+        }
+        group_index = group_indexes.get(question_id)
+        if group_index is None:
+            raise RuntimeError(f"No radio group mapping for {question_id}")
+        encoded_answer = json.dumps(answer)
+        selected = await self.page.evaluate(
+            f"""(() => {{
+              const group = document.querySelectorAll('[role="radiogroup"]')[{group_index}];
+              const answer = {encoded_answer}.toLowerCase();
+              const option = Array.from(group?.querySelectorAll('[role="radio"]') || [])
+                .find((item) =>
+                  (item.getAttribute('value') || item.textContent || '')
+                    .trim().toLowerCase() === answer
+                );
+              if (!option) return false;
+              option.click();
+              return true;
+            }})()"""
+        )
+        await self.page.wait_for_timeout(250)
+        return selected is True
 
     async def initialize(self) -> None:
         """Initialize Stagehand and open the form.
@@ -145,19 +177,24 @@ class StagehandFormFiller:
         try:
             logger.info("Initializing Stagehand browser automation")
 
-            self.client = AsyncStagehand(
-                browserbase_api_key=os.environ.get("BROWSERBASE_API_KEY"),
+            api_key = os.environ.get("BROWSERBASE_API_KEY")
+            if not api_key:
+                raise RuntimeError("BROWSERBASE_API_KEY is required")
+            self.browser = await browserbase.launch(api_key=api_key)
+            self.stagehand = await Stagehand.create(
+                browser=self.browser,
+                api_url="https://api.stagehand.browserbase.com",
             )
-
-            self.session = await self.client.sessions.create(
-                model_name="google/gemini-3-flash-preview"
-            )
-
-            logger.info(f"Session started: {self.session.id}")
+            pages = await self.browser.context.pages()
+            self.page = pages[0] if pages else await self.browser.context.new_page()
 
             # Navigate to form
             logger.info(f"Opening form: {self.form_url}")
-            await self.session.navigate(url=self.form_url)
+            await self.page.goto(
+                self.form_url,
+                wait_until="domcontentloaded",
+                timeout=60_000,
+            )
 
             # Wait for form to load
             await asyncio.sleep(2)
@@ -185,6 +222,9 @@ class StagehandFormFiller:
             await init_task
 
         try:
+            if self.stagehand is None or self.page is None:
+                raise RuntimeError("Stagehand form filler is not initialized")
+
             # Get field mapping
             field = self.field_mapper.get_form_field(question_id)
             if not field:
@@ -198,25 +238,48 @@ class StagehandFormFiller:
             logger.info(f"Async filling field '{field.label}' with: {answer}")
 
             # Use Stagehand's natural language API to fill the field
+            if field.field_type == FieldType.RADIO:
+                if not await self._select_radio(question_id, answer):
+                    raise RuntimeError(f"Could not select {answer} for {field.label}")
+                return True
             if field.field_type in [FieldType.TEXT, FieldType.EMAIL, FieldType.PHONE]:
-                await self.session.act(input=f"Fill in the '{field.label}' field with: {answer}")
+                instruction = f"Fill the '{field.label}' field with %answer%"
 
             elif field.field_type == FieldType.TEXTAREA:
-                await self.session.act(input=f"Type in the '{field.label}' text area: {answer}")
+                instruction = f"Fill the '{field.label}' text area with %answer%"
 
-            elif field.field_type in [FieldType.SELECT, FieldType.RADIO]:
-                await self.session.act(input=f"Select '{answer}' for the '{field.label}' field")
+            elif field.field_type == FieldType.SELECT:
+                instruction = (
+                    f"Within the question '{field.label}', click the option labeled %answer%"
+                )
 
             elif field.field_type == FieldType.CHECKBOX:
                 # For role selection, check the specific role checkbox
                 if question_id == "role_selection":
-                    await self.session.act(input=f"Check the '{answer}' checkbox")
+                    instruction = "Check the %answer% checkbox"
                 else:
                     # For other checkboxes, check/uncheck based on answer
                     if answer.lower() in ["yes", "true"]:
-                        await self.session.act(input=f"Check the '{field.label}' checkbox")
+                        instruction = f"Check the '{field.label}' checkbox"
                     else:
-                        await self.session.act(input=f"Uncheck the '{field.label}' checkbox")
+                        instruction = f"Uncheck the '{field.label}' checkbox"
+
+            result = None
+            for attempt in range(2):
+                result = await self.stagehand.act(
+                    instruction,
+                    page=self.page,
+                    variables={"answer": answer},
+                )
+                if result.data.success:
+                    break
+                if attempt == 0:
+                    await self.page.wait_for_timeout(750)
+
+            if result is None:
+                raise RuntimeError(f"Could not fill {field.label}")
+            if not result.data.success:
+                raise RuntimeError(result.data.message or f"Could not fill {field.label}")
 
             return True
 
@@ -231,10 +294,23 @@ class StagehandFormFiller:
             True if form was submitted successfully, False otherwise.
         """
         try:
+            if self.stagehand is None or self.page is None:
+                raise RuntimeError("Stagehand form filler is not initialized")
             logger.info("Submitting the form")
             logger.info(f"Form has {len(self.collected_data)} fields filled")
 
-            await self.session.act(input="Find and click the Submit button to submit the form")
+            clicked = await self.page.evaluate(
+                """(() => {
+                  const button = Array.from(document.querySelectorAll('button')).find((item) =>
+                    /apply for a role at ab technologies/i.test(item.textContent || '')
+                  );
+                  if (!button) return false;
+                  button.click();
+                  return true;
+                })()"""
+            )
+            if clicked is not True:
+                raise RuntimeError("Form submission button was not found")
 
             # Wait for submission to process
             await asyncio.sleep(1)
@@ -252,9 +328,14 @@ class StagehandFormFiller:
         Returns:
             None.
         """
-        if self.session:
+        if self.stagehand:
             try:
-                await self.session.end()
-                logger.info("Session ended")
-            except Exception as e:
-                logger.error(f"Error ending session: {e}")
+                await self.stagehand.close()
+            except Exception as error:
+                logger.error(f"Error closing Stagehand: {error}")
+        if self.browser:
+            try:
+                await self.browser.close()
+            except Exception as error:
+                logger.error(f"Error closing browser: {error}")
+        logger.info("Session ended")

@@ -46,7 +46,7 @@ session = bb.sessions.create(
     browser_settings={
         "solveCaptchas": True,
         "captchaImageSelector": "#custom-captcha-image-id",
-        "captchaInputSelector": "#custom-captcha-input-id"
+        "captchaInputSelector": "#custom-captcha-input-id",
     },
 )
 ```

@@ -1,5 +1,7 @@
 # Stagehand + Browserbase: Manual MFA with Contexts
 
+Stagehand is the SDK for browser agents.
+
 ## AT A GLANCE
 
 - Goal: demonstrate how to persist authentication across sessions using Browserbase Contexts, eliminating MFA friction after the first login.
@@ -58,7 +60,7 @@
 
 ## HELPFUL RESOURCES
 
-📚 Stagehand Docs: https://docs.stagehand.dev/v3/first-steps/introduction
+📚 Stagehand Docs: https://docs.stagehand.dev/v4/first-steps/introduction
 🎮 Browserbase: https://www.browserbase.com
 📚 Contexts Docs: https://docs.browserbase.com/features/contexts
 💡 Try it out: https://www.browserbase.com/playground

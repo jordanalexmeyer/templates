@@ -1,5 +1,7 @@
 # Stagehand + Browserbase: Image URL Download
 
+Stagehand is the SDK for browser agents.
+
 ## AT A GLANCE
 
 - Goal: extract all image URLs from a page with Stagehand and download each image through the browser's direct connection.
@@ -8,12 +10,12 @@
 - Format-agnostic: uses the `Content-Type` response header to detect the real MIME type — files are saved with the correct extension (`.jpg`, `.png`, `.svg`, `.webp`, etc.).
 - Organized output: images are saved to `./images/<hostname>/` so runs against different sites never mix.
 - Why Playwright is used alongside Stagehand: this template connects both Stagehand and Playwright to the **same** Browserbase session via CDP. The TypeScript SDK exposes `stagehand.context.pages()[0]` for direct Playwright access, but the Python SDK does not. Playwright is added here for reliable navigation waits (`page.goto(wait_until="networkidle")` blocks until the page is fully rendered, unlike the Python SDK's non-blocking `sessions.navigate()`) and proxy-aware downloads (`context.request.get()` inherits the browser context's proxy and cookies, avoiding 403s that a plain `httpx` call would get on auth-gated URLs).
-  Docs → https://docs.stagehand.dev/basics/extract
+  Docs → https://docs.stagehand.dev/v4/basics/extract
 
 ## GLOSSARY
 
 - extract: pull structured data from a page using a natural language instruction and a JSON schema.
-  Docs → https://docs.stagehand.dev/basics/extract
+  Docs → https://docs.stagehand.dev/v4/basics/extract
 - context.request.get: make an HTTP request through the Playwright browser context — inherits the Browserbase proxy, cookies, and session headers. Used here instead of in-browser `fetch()` because the Python Stagehand SDK does not expose `page.evaluate()` directly.
   Docs → https://playwright.dev/python/docs/api/class-apirequestcontext
 - IMAGE_URL_SCHEMA: plain dict JSON schema passed to `extract()`. Uses `"format": "uri"` on array items — the Python equivalent of `z.string().url()` in the TypeScript template — which signals to the model to return actual URL strings.
@@ -42,7 +44,7 @@
 
 - `ModuleNotFoundError`: ensure all dependencies are installed — `uv run` handles this automatically via `pyproject.toml`
 - Missing credentials: verify .env contains BROWSERBASE_API_KEY
-- Zero images found: the page may load images lazily or use CSS background images — try scrolling before extraction with `sessions.act()`, or refine the extract instruction
+- Zero images found: the page may load images lazily or use CSS background images — try scrolling before extraction with `stagehand.act()`, or refine the extract instruction
 - Download failures (403): some images require the full browser session context — ensure the Playwright CDP connection is established before downloading
 - MAX_IMAGES cap: if you need more than 10 images, set `MAX_IMAGES=50` in your .env or edit the constant at the top of `main.py`
 - Large pages: pages with hundreds of images may slow down `extract()` — use MAX_IMAGES to limit the download set
@@ -56,14 +58,14 @@
 
 ## NEXT STEPS
 
-• Scroll before extracting: use `sessions.act()` to scroll the page before `extract()` to trigger lazy-loaded images.
+• Scroll before extracting: use `stagehand.act()` to scroll the page before `extract()` to trigger lazy-loaded images.
 • Concurrent downloads: fan out the `context.request.get()` calls with `asyncio.gather()` for faster bulk downloads.
 • Metadata CSV: write a `manifest.csv` alongside the images recording original URL, filename, MIME type, byte size, and download timestamp.
 • Extend MIME support: add entries to the `MIME_TO_EXT` dict at the top of `main.py` for any formats not already covered.
 
 ## HELPFUL RESOURCES
 
-📚 Stagehand Docs: https://docs.stagehand.dev/v3/first-steps/introduction
+📚 Stagehand Docs: https://docs.stagehand.dev/v4/first-steps/introduction
 🎮 Browserbase: https://www.browserbase.com
 💡 Try it out: https://www.browserbase.com/playground
 🔧 Templates: https://www.browserbase.com/templates
