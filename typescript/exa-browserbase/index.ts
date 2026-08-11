@@ -24,11 +24,31 @@ const applicationDetails = {
   coverLetter: "I am excited to apply for this position...",
 };
 
+function readPositiveInteger(name: string, fallback: number): number {
+  const rawValue = process.env[name];
+  if (rawValue === undefined) return fallback;
+
+  const value = Number(rawValue);
+  if (!Number.isSafeInteger(value) || value < 1) {
+    throw new Error(`${name} must be a positive integer; received ${JSON.stringify(rawValue)}`);
+  }
+  return value;
+}
+
+function parseHttpUrl(value: string): URL | null {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 const searchConfig = {
   companyQuery: process.env.COMPANY_QUERY ?? "AI startups in SF",
-  numCompanies: Number(process.env.NUM_COMPANIES ?? "5"),
+  numCompanies: readPositiveInteger("NUM_COMPANIES", 5),
   concurrent: process.env.CONCURRENT !== "false",
-  maxConcurrentBrowsers: Number(process.env.MAX_CONCURRENT_BROWSERS ?? "5"),
+  maxConcurrentBrowsers: readPositiveInteger("MAX_CONCURRENT_BROWSERS", 5),
 };
 
 interface CareersPage {
@@ -112,7 +132,8 @@ async function main() {
 
   const careersPages: CareersPage[] = [];
   for (const company of companies.results) {
-    const companyName = company.title || new URL(company.url).hostname;
+    const companyName = company.title || parseHttpUrl(company.url)?.hostname;
+    if (!companyName) continue;
     const homepageResults = await exa.searchAndContents(`${companyName} official homepage`, {
       context: true,
       excludeDomains: [
@@ -128,15 +149,13 @@ async function main() {
       livecrawl: "fallback",
     });
     const homepage = homepageResults.results.find((result) => {
-      try {
-        return new URL(result.url).protocol === "https:";
-      } catch {
-        return false;
-      }
+      return parseHttpUrl(result.url)?.protocol === "https:";
     });
     if (!homepage) continue;
 
-    const domain = new URL(homepage.url).hostname.replace(/^www\./, "");
+    const homepageUrl = parseHttpUrl(homepage.url);
+    if (!homepageUrl) continue;
+    const domain = homepageUrl.hostname.replace(/^www\./, "");
     const careers = await exa.searchAndContents(`${companyName} ${domain} careers page`, {
       context: true,
       excludeDomains: ["linkedin.com"],
@@ -151,12 +170,15 @@ async function main() {
       .map((term) => term.toLowerCase())
       .filter((term) => term.length >= 4);
     const sameDomain = careers.results.filter((result) => {
-      const host = new URL(result.url).hostname.replace(/^www\./, "");
+      const host = parseHttpUrl(result.url)?.hostname.replace(/^www\./, "");
+      if (!host) return false;
       return host === domain || host.endsWith(`.${domain}`);
     });
     const brandedAts = careers.results.filter((result) => {
+      const parsedResultUrl = parseHttpUrl(result.url);
+      if (!parsedResultUrl) return false;
       const searchable = `${result.title || ""} ${result.url}`.toLowerCase();
-      const host = new URL(result.url).hostname;
+      const host = parsedResultUrl.hostname;
       return (
         companyTerms.some((term) => searchable.includes(term)) &&
         ["ashbyhq.com", "greenhouse.io", "lever.co", "smartrecruiters.com"].some((provider) =>

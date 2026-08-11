@@ -6,8 +6,10 @@ mapping, field filling, and form submission.
 """
 
 import asyncio
+import difflib
 import json
 import os
+import re
 from dataclasses import dataclass
 from enum import Enum
 
@@ -135,7 +137,53 @@ class StagehandFormFiller:
         self.field_mapper = FormFieldMapping()
         self.collected_data: dict[str, str] = {}
 
-    async def _select_radio(self, question_id: str, answer: str) -> bool:
+    @staticmethod
+    def _match_radio_option(answer: str, options: list[str]) -> str | None:
+        """Resolve conversational speech to one unambiguous form option."""
+
+        if not options:
+            return None
+
+        def normalize(value: str) -> str:
+            return " ".join(re.sub(r"[^a-z0-9]+", " ", value.lower()).split())
+
+        normalized_answer = normalize(answer)
+        normalized_options = {option: normalize(option) for option in options}
+        if not normalized_answer:
+            return None
+
+        exact = [
+            option
+            for option, normalized_option in normalized_options.items()
+            if normalized_option == normalized_answer
+        ]
+        if len(exact) == 1:
+            return exact[0]
+
+        padded_answer = f" {normalized_answer} "
+        contained = [
+            option
+            for option, normalized_option in normalized_options.items()
+            if f" {normalized_option} " in padded_answer
+            or padded_answer in f" {normalized_option} "
+        ]
+        if len(contained) == 1:
+            return contained[0]
+
+        ranked = sorted(
+            (
+                difflib.SequenceMatcher(None, normalized_answer, normalized_option).ratio(),
+                option,
+            )
+            for option, normalized_option in normalized_options.items()
+        )
+        best_score, best_option = ranked[-1]
+        next_score = ranked[-2][0] if len(ranked) > 1 else 0.0
+        if best_score >= 0.65 and best_score - next_score >= 0.1:
+            return best_option
+        return None
+
+    async def _select_radio(self, question_id: str, answer: str, options: list[str]) -> bool:
         if self.page is None:
             raise RuntimeError("Stagehand form filler is not initialized")
         group_indexes = {
@@ -147,7 +195,10 @@ class StagehandFormFiller:
         group_index = group_indexes.get(question_id)
         if group_index is None:
             raise RuntimeError(f"No radio group mapping for {question_id}")
-        encoded_answer = json.dumps(answer)
+        matched_option = self._match_radio_option(answer, options)
+        if matched_option is None:
+            return False
+        encoded_answer = json.dumps(matched_option)
         selected = await self.page.evaluate(
             f"""(() => {{
               const group = document.querySelectorAll('[role="radiogroup"]')[{group_index}];
@@ -239,7 +290,7 @@ class StagehandFormFiller:
 
             # Use Stagehand's natural language API to fill the field
             if field.field_type == FieldType.RADIO:
-                if not await self._select_radio(question_id, answer):
+                if not await self._select_radio(question_id, answer, field.options or []):
                     raise RuntimeError(f"Could not select {answer} for {field.label}")
                 return True
             if field.field_type in [FieldType.TEXT, FieldType.EMAIL, FieldType.PHONE]:
