@@ -22,6 +22,11 @@ type newestStory struct {
 	Title string `json:"title" jsonschema:"description=title of the newest visible story"`
 }
 
+type liveStoryLink struct {
+	Title string `json:"title"`
+	URL   string `json:"url"`
+}
+
 func main() {
 	if err := run(context.Background()); err != nil {
 		log.Fatal(err)
@@ -152,22 +157,6 @@ func run(parent context.Context) (err error) {
 	if response == nil || response.Status() != 200 {
 		return fmt.Errorf("Hacker News newest page returned an unexpected response")
 	}
-	actualNewestTitle, err := page.Locator(".titleline > a").First().InnerText(ctx)
-	if err != nil {
-		return fmt.Errorf("read live newest-story title: %w", err)
-	}
-	actualNewestURL, err := stagehand.EvaluateAs[string](
-		ctx,
-		page,
-		`document.querySelector(".titleline > a")?.href ?? ""`,
-	)
-	if err != nil {
-		return fmt.Errorf("read live newest-story URL: %w", err)
-	}
-	if actualNewestTitle == "" ||
-		(!strings.HasPrefix(actualNewestURL, "https://") && !strings.HasPrefix(actualNewestURL, "http://")) {
-		return fmt.Errorf("newest-story DOM lookup returned incomplete data: title=%q url=%q", actualNewestTitle, actualNewestURL)
-	}
 	newest, err := stagehand.Extract[newestStory](
 		ctx,
 		client,
@@ -180,14 +169,33 @@ func run(parent context.Context) (err error) {
 	if newest.Data.Title == "" {
 		return fmt.Errorf("newest-story extraction returned incomplete data: %+v", newest.Data)
 	}
-	if normalize(newest.Data.Title) != normalize(actualNewestTitle) {
+	actualNewest, err := stagehand.EvaluateAs[liveStoryLink](
+		ctx,
+		page,
+		`(() => {
+          const link = document.querySelector(".titleline > a");
+          return { title: link?.textContent?.trim() ?? "", url: link?.href ?? "" };
+        })()`,
+	)
+	if err != nil {
+		return fmt.Errorf("read live newest-story link: %w", err)
+	}
+	if actualNewest.Title == "" ||
+		(!strings.HasPrefix(actualNewest.URL, "https://") && !strings.HasPrefix(actualNewest.URL, "http://")) {
+		return fmt.Errorf(
+			"newest-story DOM lookup returned incomplete data: title=%q url=%q",
+			actualNewest.Title,
+			actualNewest.URL,
+		)
+	}
+	if !titlesMatch(newest.Data.Title, actualNewest.Title) {
 		return fmt.Errorf(
 			"Stagehand newest-story extraction did not match the live page: extracted=%q live=%q",
 			newest.Data.Title,
-			actualNewestTitle,
+			actualNewest.Title,
 		)
 	}
-	fmt.Printf("Newest story: %s (%s)\n", newest.Data.Title, actualNewestURL)
+	fmt.Printf("Newest story: %s (%s)\n", newest.Data.Title, actualNewest.URL)
 	fmt.Println("Verified the Hacker News observe, act, and extract workflow")
 	return nil
 }
@@ -198,4 +206,14 @@ func floatPointer(value float64) *float64 {
 
 func normalize(value string) string {
 	return strings.Join(strings.Fields(value), " ")
+}
+
+func titlesMatch(extracted string, live string) bool {
+	if normalize(extracted) == normalize(live) {
+		return true
+	}
+	if suffixStart := strings.LastIndex(extracted, " ("); suffixStart > 0 && strings.HasSuffix(extracted, ")") {
+		return normalize(extracted[:suffixStart]) == normalize(live)
+	}
+	return false
 }
