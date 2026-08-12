@@ -53,6 +53,10 @@ class ApplicationReview(BaseModel):
     job_url: str
     fields_filled: list[str] = Field(description="Application fields filled with test data")
     outstanding_fields: list[str]
+    github_field_present: bool = Field(description="Whether the application has a GitHub field")
+    github_left_blank: bool = Field(
+        description="Whether an existing GitHub field was verified blank"
+    )
     resume_uploaded: bool
     review_summary: str
 
@@ -193,9 +197,10 @@ async def review_application(careers_page: CareersPage, index: int) -> Applicati
                                 "role. Read its requirements, open its application, and "
                                 "fill every field possible from this test applicant record:\n"
                                 f"{json.dumps(APPLICATION_DETAILS, indent=2)}\n"
-                                "The github_url is intentionally null: leave any GitHub field "
-                                "blank and report it as outstanding; do not substitute the "
-                                "portfolio or LinkedIn URL. "
+                                "The github_url is intentionally null. If a GitHub field exists, "
+                                "leave it blank, report it as outstanding, and verify that it is "
+                                "still blank; do not substitute the portfolio or LinkedIn URL. "
+                                "Report whether a GitHub field was present and left blank. "
                                 "Upload the resume when a file input is present. Stop before "
                                 "final submission, verify the filled values in the browser, and "
                                 "return the structured review."
@@ -203,12 +208,22 @@ async def review_application(careers_page: CareersPage, index: int) -> Applicati
                         }
                     ]
                 },
-                config={"recursion_limit": 80},
+                config={"recursion_limit": 120},
             )
             review: ApplicationReview = result["structured_response"]
 
         if not review.job_url.startswith("http") or not review.review_summary.strip():
             raise RuntimeError("Agent returned an unverified application review")
+        github_filled = any("github" in field.casefold() for field in review.fields_filled)
+        github_outstanding = any(
+            "github" in field.casefold() for field in review.outstanding_fields
+        )
+        if github_filled or (
+            review.github_field_present and (not review.github_left_blank or not github_outstanding)
+        ):
+            raise RuntimeError("Agent did not verify that the GitHub field remained blank")
+        if not review.github_field_present and review.github_left_blank:
+            raise RuntimeError("Agent returned an inconsistent GitHub-field review")
         return ApplicationResult(
             company=careers_page.company,
             careers_url=careers_page.careers_url,
