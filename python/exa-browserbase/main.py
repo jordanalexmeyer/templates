@@ -26,6 +26,7 @@ load_dotenv()
 APPLICATION_DETAILS = {
     "name": "John Doe",
     "email": "john.doe@example.com",
+    "github_url": None,
     "linkedin_url": "https://linkedin.com/in/johndoe",
     "resume_path": "./Dummy_CV.pdf",
     "current_location": "San Francisco, CA",
@@ -172,8 +173,10 @@ async def review_application(careers_page: CareersPage, index: int) -> Applicati
                 system_prompt=(
                     BROWSER_INSTRUCTIONS
                     + "\nYou are a careful job-application browser agent. Inspect before "
-                    "acting, prefer deterministic locators, never invent applicant facts, "
-                    "and never submit an application. Use no more than 15 browser-tool calls. "
+                    "acting, prefer deterministic locators, never invent applicant facts or "
+                    "repurpose one field's value for another field, and never submit an "
+                    "application. Leave any field without an exact applicant value blank and "
+                    "report it for human review. Use no more than 20 browser-tool calls. "
                     "If the first role has no reachable application, inspect at most one other "
                     "role, then return the evidence gathered instead of looping."
                 ),
@@ -190,6 +193,9 @@ async def review_application(careers_page: CareersPage, index: int) -> Applicati
                                 "role. Read its requirements, open its application, and "
                                 "fill every field possible from this test applicant record:\n"
                                 f"{json.dumps(APPLICATION_DETAILS, indent=2)}\n"
+                                "The github_url is intentionally null: leave any GitHub field "
+                                "blank and report it as outstanding; do not substitute the "
+                                "portfolio or LinkedIn URL. "
                                 "Upload the resume when a file input is present. Stop before "
                                 "final submission, verify the filled values in the browser, and "
                                 "return the structured review."
@@ -197,7 +203,7 @@ async def review_application(careers_page: CareersPage, index: int) -> Applicati
                         }
                     ]
                 },
-                config={"recursion_limit": 40},
+                config={"recursion_limit": 80},
             )
             review: ApplicationReview = result["structured_response"]
 

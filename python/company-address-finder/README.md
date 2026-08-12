@@ -29,8 +29,8 @@ uv run python main.py
 Edit `COMPANY_NAMES` in `main.py` to change the batch. Keep `MAX_CONCURRENT = 1` unless your
 Browserbase plan supports enough simultaneous sessions.
 
-The first run installs the exact reviewed Stagehand Deep Agents integration commit in `uvx` and
-pins the server to `stagehand==4.0.0`. Replace the source pin when the integration is published.
+The first run installs the Stagehand Deep Agents integration from `stagehand/main` in `uvx`; the
+integration pins its Stagehand server dependency to `stagehand==4.0.0`.
 
 ## Expected outcome
 

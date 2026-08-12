@@ -10,10 +10,8 @@ from pydantic import SecretStr
 
 SERVER_NAME = "stagehand_browser"
 
-# TODO: Replace this commit pin with a published stagehand-deepagents package.
 STAGEHAND_DEEPAGENTS_SOURCE = (
-    "git+https://github.com/browserbase/stagehand.git@"
-    "a46676658b4f1c44f6210ed6d85193d9a4393770"
+    "git+https://github.com/browserbase/stagehand.git@main"
     "#subdirectory=packages/integrations/deepagents"
 )
 

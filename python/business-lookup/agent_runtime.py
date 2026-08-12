@@ -10,10 +10,8 @@ from pydantic import SecretStr
 
 SERVER_NAME = "stagehand_browser"
 
-# TODO: Replace this commit pin with a published stagehand-deepagents package.
 STAGEHAND_DEEPAGENTS_SOURCE = (
-    "git+https://github.com/browserbase/stagehand.git@"
-    "a46676658b4f1c44f6210ed6d85193d9a4393770"
+    "git+https://github.com/browserbase/stagehand.git@main"
     "#subdirectory=packages/integrations/deepagents"
 )
 
@@ -46,7 +44,7 @@ def create_gateway_model(default_model: str) -> ChatOpenAI:
 
 
 def create_stagehand_client() -> MultiServerMCPClient:
-    """Start the pinned Stagehand V4 server in an isolated uvx environment."""
+    """Start the Stagehand V4 server from main in an isolated uvx environment."""
     server_env = {
         "BROWSERBASE_API_KEY": require_env("BROWSERBASE_API_KEY"),
         "STAGEHAND_BROWSER": "browserbase",

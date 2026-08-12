@@ -10,8 +10,7 @@ from pydantic import SecretStr
 
 SERVER_NAME = "stagehand_browser"
 STAGEHAND_DEEPAGENTS_SOURCE = (
-    "git+https://github.com/browserbase/stagehand.git@"
-    "a46676658b4f1c44f6210ed6d85193d9a4393770"
+    "git+https://github.com/browserbase/stagehand.git@main"
     "#subdirectory=packages/integrations/deepagents"
 )
 BROWSER_INSTRUCTIONS = """You control one persistent Browserbase browser through the Stagehand
