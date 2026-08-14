@@ -395,7 +395,7 @@ async function bookTennisPaddleCourt() {
   console.log("Initializing Stagehand with Browserbase");
   const browser = await browserbase.launch({
     apiKey: process.env.BROWSERBASE_API_KEY!,
-    timeout: 900,
+    api_timeout: 900,
     region: "us-west-2",
   });
   const stagehand = await Stagehand.create({
