@@ -44,6 +44,7 @@ async function main() {
 
     console.log("Executing instruction:", instruction);
     const result = await agent.generate({ prompt: instruction });
+    console.log(result.text);
     const sourceUrls = new Set(result.text.match(/https?:\/\/\S+/g) ?? []);
     const futureYears = new Set(
       [...result.text.matchAll(/\b20\d{2}\b/g)]
@@ -53,7 +54,6 @@ async function main() {
     if (!result.text.trim() || sourceUrls.size < 2 || futureYears.size < 2) {
       throw new Error("Agent did not return two future eclipse dates with opened source URLs");
     }
-    console.log(result.text);
   } finally {
     await mcpClient.close();
   }

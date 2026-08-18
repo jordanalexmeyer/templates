@@ -20,49 +20,59 @@ async function main() {
     logging: { level: "info" },
   });
 
-  // Initialize browser session to start data extraction process.
+  try {
+    console.log(`Stagehand Session Started`);
 
-  console.log(`Stagehand Session Started`);
+    const page = (await browser.context.pages())[0];
 
-  const page = (await browser.context.pages())[0];
+    console.log("Navigating to: https://www2.dre.ca.gov/publicasp/pplinfo.asp");
+    await page.goto("https://www2.dre.ca.gov/publicasp/pplinfo.asp");
 
-  // Navigate to California DRE license verification website for data extraction.
-  console.log("Navigating to: https://www2.dre.ca.gov/publicasp/pplinfo.asp");
-  await page.goto("https://www2.dre.ca.gov/publicasp/pplinfo.asp");
+    console.log(`Performing action: type ${variables.input1} into the License ID input field`);
+    await stagehand.act(`type ${variables.input1} into the License ID input field`);
 
-  // Fill in license ID to search for specific real estate professional.
-  console.log(`Performing action: type ${variables.input1} into the License ID input field`);
-  await stagehand.act(`type ${variables.input1} into the License ID input field`);
+    console.log(`Performing action: click the Find button`);
+    await stagehand.act(`click the Find button`);
 
-  // Submit search form to retrieve license verification data.
-  console.log(`Performing action: click the Find button`);
-  await stagehand.act(`click the Find button`);
+    console.log(`Extracting: extract all the license verification details for DRE#02237476`);
+    const { data: license } = await stagehand.extract(
+      `extract all the license verification details for DRE#${variables.input1}`,
+      z.object({
+        licenseType: z.string().nullable(),
+        name: z.string().nullable(),
+        mailingAddress: z.string().nullable(),
+        licenseId: z.string().nullable(),
+        expirationDate: z.string().nullable(),
+        licenseStatus: z.string().nullable(),
+        salespersonLicenseIssued: z.string().nullable(),
+        formerNames: z.string().nullable(),
+        responsibleBroker: z.string().nullable(),
+        brokerLicenseId: z.string().nullable(),
+        brokerAddress: z.string().nullable(),
+        disciplinaryAction: z.string().nullable(),
+        otherComments: z.string().nullable(),
+      }),
+    );
 
-  // Extract structured license data using Zod schema for type safety and validation.
-  console.log(`Extracting: extract all the license verification details for DRE#02237476`);
-  const { data: extractedData4 } = await stagehand.extract(
-    `extract all the license verification details for DRE#02237476`,
-    z.object({
-      licenseType: z.string().optional(), // Type of real estate license
-      name: z.string().optional(), // License holder's full name
-      mailingAddress: z.string().optional(), // Current mailing address
-      licenseId: z.string().optional(), // Unique license identifier
-      expirationDate: z.string().optional(), // License expiration date
-      licenseStatus: z.string().optional(), // Current status (active, expired, etc.)
-      salespersonLicenseIssued: z.string().optional(), // Date salesperson license was issued
-      formerNames: z.string().optional(), // Any previous names used
-      responsibleBroker: z.string().optional(), // Associated broker name
-      brokerLicenseId: z.string().optional(), // Broker's license ID
-      brokerAddress: z.string().optional(), // Broker's business address
-      disciplinaryAction: z.string().optional(), // Any disciplinary actions taken
-      otherComments: z.string().optional(), // Additional relevant information
-    }),
-  );
-  console.log("Extracted:", extractedData4);
-
-  // Always close session to release resources and clean up.
-  await stagehand.close();
-  await browser.close();
+    if (!license.licenseId?.includes(variables.input1)) {
+      throw new Error(`Expected license ${variables.input1}, got ${license.licenseId ?? "none"}`);
+    }
+    if (!license.name?.trim() || !license.licenseStatus?.trim()) {
+      throw new Error("The matching license is missing its holder name or status");
+    }
+    console.log("License identity and status verified:", license);
+  } finally {
+    try {
+      await stagehand.close();
+    } catch (error) {
+      console.warn("Stagehand cleanup warning:", error);
+    }
+    try {
+      await browser.close();
+    } catch (error) {
+      console.warn("Browser cleanup warning:", error);
+    }
+  }
 }
 
 main().catch((err) => {

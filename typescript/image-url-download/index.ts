@@ -235,8 +235,16 @@ async function main(): Promise<void> {
     throw error;
   } finally {
     // Always close session to release resources and clean up.
-    await stagehand.close();
-    await browser.close();
+    try {
+      await stagehand.close();
+    } catch (error) {
+      console.warn("Stagehand cleanup warning:", error);
+    }
+    try {
+      await browser.close();
+    } catch (error) {
+      console.warn("Browser cleanup warning:", error);
+    }
     console.log("Session closed successfully");
   }
 }

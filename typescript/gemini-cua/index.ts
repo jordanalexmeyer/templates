@@ -28,7 +28,7 @@ async function main() {
     const agent = new ToolLoopAgent({
       model: process.env.AGENT_MODEL ?? "google/gemini-3-flash-preview",
       instructions:
-        "You are a Gemini browser agent. Use code_execute for all browser work. Prefer deterministic Stagehand V4 page and locator methods, and use Stagehand AI primitives inside code_execute only when they add value. Never cite a URL unless you navigated directly to it in the browser.",
+        "You are a browser research agent powered by Gemini. Use code_execute for all browser work, prefer deterministic page APIs, and return source URLs for factual claims. Never cite a URL unless you navigated directly to it in the browser.",
       tools,
       prepareStep: ({ stepNumber }) =>
         stepNumber >= 10
@@ -44,6 +44,7 @@ async function main() {
 
     console.log("Executing instruction:", instruction);
     const result = await agent.generate({ prompt: instruction });
+    console.log(result.text);
     const sourceUrls = new Set(result.text.match(/https?:\/\/\S+/g) ?? []);
     const futureYears = new Set(
       [...result.text.matchAll(/\b20\d{2}\b/g)]
@@ -53,7 +54,6 @@ async function main() {
     if (!result.text.trim() || sourceUrls.size < 2 || futureYears.size < 2) {
       throw new Error("Agent did not return two future eclipse dates with opened source URLs");
     }
-    console.log(result.text);
   } finally {
     await mcpClient.close();
   }

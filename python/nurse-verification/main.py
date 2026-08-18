@@ -60,19 +60,26 @@ async def main() -> None:
                     wait_until="domcontentloaded",
                     timeout=60_000,
                 )
-                await stagehand.act(
-                    f"Type {record['first_name']} into the first name field",
-                    page=page,
-                )
-                await stagehand.act(
-                    f"Type {record['last_name']} into the last name field",
-                    page=page,
-                )
-                await stagehand.act(
-                    f"Type {record['license_number']} into the license number field",
-                    page=page,
-                )
-                await stagehand.act("Click the Search button", page=page)
+                for _ in range(30):
+                    if await page.evaluate("Boolean(document.querySelector('#firstName'))"):
+                        break
+                    await page.wait_for_timeout(1_000)
+                else:
+                    raise RuntimeError("License search form did not become visible")
+                await page.locator("#firstName").fill(record["first_name"])
+                await page.locator("#lastName").fill(record["last_name"])
+                await page.locator("#licenseNumber").fill(record["license_number"])
+                await page.locator('button[type="submit"]').click()
+                expected_table_name = f"{record['last_name']}, {record['first_name']}".lower()
+                for _ in range(30):
+                    if await page.evaluate(
+                        "document.body.innerText.toLowerCase().includes("
+                        f"{json.dumps(expected_table_name)})"
+                    ):
+                        break
+                    await page.wait_for_timeout(1_000)
+                else:
+                    raise RuntimeError("License search results did not become visible")
 
                 extracted = await stagehand.extract(
                     "Extract every license result with name, license number, status, and details URL",

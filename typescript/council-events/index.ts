@@ -3,10 +3,9 @@ import "dotenv/config";
 import { browserbase, Stagehand } from "@browserbasehq/stagehand";
 import { z } from "zod/v4";
 
-/**
- * Searches Philadelphia Council Events for 2025 and extracts event information.
- * Uses AI-powered browser automation to navigate and interact with the site.
- */
+const CURRENT_YEAR = new Date().getUTCFullYear();
+
+/** Searches the current Philadelphia Council calendar and extracts event information. */
 async function main() {
   console.log("Starting Philadelphia Council Events automation...");
 
@@ -21,30 +20,23 @@ async function main() {
   });
 
   try {
-    // Initialize browser session
-    console.log("Initializing browser session...");
-
-    console.log("Stagehand session started successfully");
-
     const page = (await browser.context.pages())[0];
 
-    // Navigate to Philadelphia Council
-    console.log("Navigating to: https://phila.legistar.com/");
-    await page.goto("https://phila.legistar.com/");
-    console.log("Page loaded successfully");
-
-    // Click calendar from the navigation menu
-    console.log("Clicking calendar from the navigation menu");
-    await stagehand.act("click calendar from the navigation menu");
-
-    // Select 2025 from the year dropdown
-    console.log("Selecting 2025 from the year dropdown");
-    await stagehand.act("select 2025 from the year dropdown");
+    console.log(`Opening the ${CURRENT_YEAR} Philadelphia Council calendar...`);
+    await page.goto("https://phila.legistar.com/Calendar.aspx", {
+      waitUntil: "domcontentloaded",
+      timeout: 60000,
+    });
+    const selection = await stagehand.act(`select ${CURRENT_YEAR} from the year dropdown`);
+    if (!selection.data.success) {
+      throw new Error(selection.data.message || `Could not select ${CURRENT_YEAR}`);
+    }
+    await page.waitForLoadState("domcontentloaded");
 
     // Extract event data using AI to parse the structured information
     console.log("Extracting event information...");
     const { data: results } = await stagehand.extract(
-      "Extract the table with the name, date and time of the events",
+      `Extract every ${CURRENT_YEAR} event currently visible in the calendar table, including its name, date, and time`,
       z.object({
         results: z.array(
           z.object({
@@ -56,7 +48,11 @@ async function main() {
       }),
     );
 
-    console.log(`Found ${results.results.length} events`);
+    if (results.results.length === 0) {
+      throw new Error(`No ${CURRENT_YEAR} council events were extracted`);
+    }
+
+    console.log(`Found ${results.results.length} events for ${CURRENT_YEAR}`);
     console.log("Event data extracted successfully:");
     console.log(JSON.stringify(results, null, 2));
   } catch (error) {
@@ -71,11 +67,16 @@ async function main() {
 
     throw error;
   } finally {
-    // Clean up browser session
-    console.log("Closing browser session...");
-    await stagehand.close();
-    await browser.close();
-    console.log("Session closed successfully");
+    try {
+      await stagehand.close();
+    } catch (error) {
+      console.warn("Stagehand cleanup warning:", error);
+    }
+    try {
+      await browser.close();
+    } catch (error) {
+      console.warn("Browser cleanup warning:", error);
+    }
   }
 }
 

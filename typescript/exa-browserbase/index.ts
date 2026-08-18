@@ -211,12 +211,11 @@ async function main() {
     );
   }
 
+  console.log(JSON.stringify(results, null, 2));
   const failures = results.filter((result) => !result.success);
   if (failures.length > 0) {
     throw new Error(`${failures.length} of ${results.length} application reviews failed`);
   }
-
-  console.log(JSON.stringify(results, null, 2));
 }
 
 main().catch((error) => {

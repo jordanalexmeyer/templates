@@ -13,7 +13,6 @@ async function main() {
   });
   const stagehand = await Stagehand.create({
     browser,
-    model: { modelName: "google/gemini-2.5-flash" },
     cache: { threshold: 1 },
     logging: { level: "error" },
   });

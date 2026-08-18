@@ -27,6 +27,7 @@
      - `BROWSERBASE_API_KEY`
 4. **Run the script**
    - `npm start`
+   - Optional: `MAX_CONCURRENT_LINKS=8 npm start` to shorten a full audit when your Browserbase plan supports that concurrency
 
 ### EXPECTED OUTPUT
 
@@ -75,9 +76,9 @@
 
 ### TUNING BATCH SIZE & CONCURRENCY
 
-- **`MAX_CONCURRENT_LINKS` in `index.ts`**
+- **`MAX_CONCURRENT_LINKS` environment variable**
   - Default: `1` → sequential link verification (works on all plans)
-  - Set to `> 1` → more concurrent link verifications per batch (requires higher Browserbase concurrency limits)
+  - Set to `> 1` → more concurrent link verifications per batch (requires higher Browserbase concurrency limits), for example `MAX_CONCURRENT_LINKS=8 npm start`
 - **Using Semaphores for advanced control**
   - For more fine-grained control over concurrency (e.g., rate limiting, prioritization, or per-domain limits), you can wrap link verification in a **Semaphore** or similar concurrency primitive.
   - This lets you:

@@ -12,7 +12,11 @@ const URL = "https://www.browserbase.com";
 // Set to > 1 for more concurrent link verification (requires Startup or Developer plan or higher).
 // For more advanced concurrency control (rate limiting, prioritization, per-domain caps),
 // you can also wrap link verification in a Semaphore or similar concurrency primitive.
-const MAX_CONCURRENT_LINKS = 1;
+const configuredConcurrency = Number(process.env.MAX_CONCURRENT_LINKS ?? "1");
+if (!Number.isSafeInteger(configuredConcurrency) || configuredConcurrency < 1) {
+  throw new Error("MAX_CONCURRENT_LINKS must be a positive integer");
+}
+const MAX_CONCURRENT_LINKS = configuredConcurrency;
 
 // Shape of a single hyperlink extracted from the page
 type Link = {
