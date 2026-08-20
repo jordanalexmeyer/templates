@@ -181,15 +181,16 @@ async function main() {
       if (retryResult) {
         console.log("Success on retry!");
       } else {
-        console.log("Authentication failed after retry");
+        throw new Error("Authentication failed after retry");
       }
     }
   } catch (error) {
     console.error("Error during MFA handling:", error);
+    throw error;
   } finally {
     // Always close session to release resources and clean up
-    await stagehand.close();
-    await browser.close();
+    await stagehand.close().catch((error) => console.warn("Stagehand cleanup warning:", error));
+    await browser.close().catch((error) => console.warn("Browser cleanup warning:", error));
     console.log("Session closed successfully");
   }
 }

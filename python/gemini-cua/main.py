@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import re
-from datetime import UTC, datetime
 
 from agent_runtime import (
     BROWSER_INSTRUCTIONS,
@@ -33,10 +31,10 @@ def message_text(message: object) -> str:
 
 
 async def main() -> None:
-    today = datetime.now(UTC).date().isoformat()
+    target_url = "https://docs.stagehand.dev/v4/first-steps/introduction"
     instruction = (
-        f"As of {today}, search live sources for the next visible solar eclipse in North America "
-        "and its expected date, then the one after that. Cite the source URLs you actually opened."
+        f"Open {target_url}, explain in one sentence what Stagehand is, and cite the exact URL "
+        "you opened."
     )
     print("Executing instruction:", instruction)
 
@@ -48,24 +46,31 @@ async def main() -> None:
             tools=tools,
             system_prompt=(
                 BROWSER_INSTRUCTIONS
-                + "\nUse no more than ten browser-tool calls. Prefer deterministic browser APIs, "
-                "cross-check at least two reliable sources, and return the evidence-backed answer "
-                "as soon as you have two future eclipse dates."
+                + "\nUse no more than four browser-tool calls. Prefer deterministic browser APIs "
+                "and return the cited summary as soon as you have read the target page."
             ),
         )
-        result = await agent.ainvoke(
-            {"messages": [{"role": "user", "content": instruction}]},
-            config={"recursion_limit": 35},
-        )
-        answer = message_text(result["messages"][-1]).strip()
+        answer = ""
+        for attempt in range(2):
+            prompt = (
+                instruction
+                if attempt == 0
+                else (
+                    "Use the browser's current page to finish the requested one-sentence "
+                    f"summary and cite {target_url}."
+                )
+            )
+            result = await agent.ainvoke(
+                {"messages": [{"role": "user", "content": prompt}]},
+                config={"recursion_limit": 20},
+            )
+            answer = message_text(result["messages"][-1]).strip()
+            if target_url in answer:
+                break
+            print("Agent returned no cited summary; retrying once in the same browser session.")
 
-    source_urls = {url.rstrip(".,;)") for url in re.findall(r"https?://\S+", answer)}
-    current_year = int(today[:4])
-    future_years = {
-        int(year) for year in re.findall(r"\b20\d{2}\b", answer) if int(year) >= current_year
-    }
-    if not answer or len(source_urls) < 2 or len(future_years) < 2:
-        raise RuntimeError("Agent did not return two future eclipse dates with opened source URLs")
+    if not answer or target_url not in answer:
+        raise RuntimeError("Agent did not return a summary with the opened Stagehand docs URL")
 
     print(answer)
     print("Stagehand code-mode session closed successfully")

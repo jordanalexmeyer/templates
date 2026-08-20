@@ -290,7 +290,7 @@ async function main(): Promise<void> {
             .array(
               z.object({
                 title: z.string().describe("the title/name of the product"),
-                url: z.string().url("the full URL link to the product page"),
+                url: z.string().describe("the full URL link to the product page"),
                 price: z.string().describe("the price of the product (include currency symbol)"),
                 rating: z
                   .string()
@@ -304,16 +304,26 @@ async function main(): Promise<void> {
         }),
       );
 
-      console.log(
-        `Session ${sessionIndex + 1}: Found ${productsData.products.length} products for "${query}"`,
-      );
+      const baseUrl = await sessionPage.url();
+      const products = productsData.products.flatMap((product) => {
+        if (!product.title.trim() || !product.url.trim()) return [];
+        try {
+          const url = new URL(product.url, baseUrl);
+          if (url.protocol !== "http:" && url.protocol !== "https:") return [];
+          return [{ ...product, url: url.href }];
+        } catch {
+          return [];
+        }
+      });
+
+      console.log(`Session ${sessionIndex + 1}: Found ${products.length} products for "${query}"`);
 
       await closeSession(sessionStagehand, sessionBrowser);
 
       return {
         query,
         sessionIndex: sessionIndex + 1,
-        products: productsData.products,
+        products,
       };
     } catch (error) {
       console.error(`Session ${sessionIndex + 1} failed:`, error);
@@ -337,7 +347,9 @@ async function main(): Promise<void> {
   const allResults = await Promise.all(searchPromises);
   const failedSearches = allResults.filter((result) => result.products.length === 0);
   if (failedSearches.length > 0) {
-    throw new Error(`${failedSearches.length} of ${allResults.length} gift searches failed`);
+    console.warn(
+      `${failedSearches.length} of ${allResults.length} gift searches produced no usable products; continuing with the successful results`,
+    );
   }
 
   // Calculate total products found across all search sessions

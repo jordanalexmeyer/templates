@@ -127,6 +127,7 @@ async function discoverCareersPages(exa: Exa): Promise<CareersPage[]> {
   );
 
   const seen = new Set<string>();
+  const candidateLimit = Math.max(config.numCompanies * 3, config.numCompanies);
   const pages = search.results
     .flatMap((result) => {
       const url = parseHttpUrl(result.url);
@@ -144,7 +145,7 @@ async function discoverCareersPages(exa: Exa): Promise<CareersPage[]> {
       ];
     })
     .sort((left, right) => right.score - left.score)
-    .slice(0, config.numCompanies)
+    .slice(0, candidateLimit)
     .map(({ company, careersUrl }) => ({ company, careersUrl }));
 
   if (pages.length === 0) throw new Error("Exa returned no direct careers or ATS pages");
@@ -399,6 +400,7 @@ async function main() {
     results.push(
       ...(await Promise.all(batch.map((page, offset) => reviewApplication(page, index + offset)))),
     );
+    if (results.filter((result) => result.success).length >= config.numCompanies) break;
   }
 
   console.log(JSON.stringify(results, null, 2));

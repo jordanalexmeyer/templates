@@ -3,10 +3,11 @@
 import asyncio
 import json
 import os
+from urllib.parse import urljoin, urlparse
 
 from dotenv import load_dotenv
 from openai import OpenAI
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field
 
 from stagehand import Stagehand, browserbase
 
@@ -18,7 +19,7 @@ DESCRIPTION = "loves cooking and trying new recipes"
 
 class Product(BaseModel):
     title: str
-    url: HttpUrl
+    url: str
     price: str
     rating: str
     ai_score: int | None
@@ -137,7 +138,15 @@ async def search_products(query: str, index: int) -> list[Product]:
                 Products,
                 page=page,
             )
-            products = extracted.data.products
+            base_url = await page.url()
+            products = []
+            for product in extracted.data.products:
+                if not product.title.strip() or not product.url.strip():
+                    continue
+                absolute_url = urljoin(base_url, product.url)
+                parsed_url = urlparse(absolute_url)
+                if parsed_url.scheme in {"http", "https"} and parsed_url.hostname:
+                    products.append(product.model_copy(update={"url": absolute_url}))
             if not products:
                 raise RuntimeError(f"No products found for {query!r}")
             return products
@@ -155,7 +164,10 @@ async def main() -> None:
 
     products: list[Product] = []
     for index, query in enumerate(queries):
-        products.extend(await search_products(query, index))
+        try:
+            products.extend(await search_products(query, index))
+        except Exception as error:
+            print(f"Search {index + 1} produced no usable products: {error}")
     if len(products) < 3:
         raise RuntimeError(f"Expected at least three products, received {len(products)}")
 

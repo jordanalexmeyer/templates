@@ -10,7 +10,7 @@
 
 ## THE 5-STEP FLOW
 
-1. **Discover jobs** — one focused Exa search returns direct company careers or recognized ATS pages.
+1. **Discover jobs** — one focused Exa search returns a small ranked set of direct company careers or recognized ATS pages.
 2. **Inspect a role** — `act()` opens one live role and `extract()` returns its title, requirements, and responsibilities.
 3. **Inspect the application** — `act()` opens the form and `observe()` inventories its fields.
 4. **Prepare for review** — `act()` fills matching non-empty applicant values; the exact file input uploads the résumé.
@@ -27,7 +27,7 @@ Direct page methods are limited to exact navigation, résumé upload, and sessio
 5. Replace the synthetic `applicant` and `Dummy_CV.pdf` with your test data.
 6. `pnpm start`
 
-The default run reviews one application sequentially. For a small, repeatable smoke run, set `COMPANY_QUERY=Browserbase NUM_COMPANIES=1`.
+The default run reviews one application sequentially, trying up to three ranked candidates when an earlier live result has no usable form. For a small, repeatable smoke run, set `COMPANY_QUERY=Browserbase NUM_COMPANIES=1`.
 
 Set `NUM_COMPANIES` to review more candidates. Set `CONCURRENT=true MAX_CONCURRENT_BROWSERS=2` to opt into bounded concurrent sessions.
 

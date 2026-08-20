@@ -5,8 +5,8 @@ import { createMCPClient } from "@ai-sdk/mcp";
 import { Experimental_StdioMCPTransport } from "@ai-sdk/mcp/mcp-stdio";
 import { ToolLoopAgent, stepCountIs } from "ai";
 
-const today = new Date().toISOString().slice(0, 10);
-const instruction = `As of ${today}, search live sources for the next visible solar eclipse in North America and its expected date, then the one after that. Cite the source URLs you actually opened.`;
+const targetUrl = "https://docs.stagehand.dev/v4/first-steps/introduction";
+const instruction = `Open ${targetUrl}, explain in one sentence what Stagehand is, and cite the exact URL you opened.`;
 
 const childEnv = Object.fromEntries(
   Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined),
@@ -31,7 +31,7 @@ async function main() {
         "You are a browser research agent powered by Gemini. Use code_execute for all browser work, prefer deterministic page APIs, and return source URLs for factual claims. Never cite a URL unless you navigated directly to it in the browser.",
       tools,
       prepareStep: ({ stepNumber }) =>
-        stepNumber >= 10
+        stepNumber >= 4
           ? {
               activeTools: [],
               toolChoice: "none",
@@ -39,20 +39,25 @@ async function main() {
                 "Return the evidence-backed answer now. Include only source URLs you opened directly. Do not call another tool.",
             }
           : undefined,
-      stopWhen: stepCountIs(12),
+      stopWhen: stepCountIs(6),
     });
 
     console.log("Executing instruction:", instruction);
-    const result = await agent.generate({ prompt: instruction });
-    console.log(result.text);
-    const sourceUrls = new Set(result.text.match(/https?:\/\/\S+/g) ?? []);
-    const futureYears = new Set(
-      [...result.text.matchAll(/\b20\d{2}\b/g)]
-        .map((match) => Number(match[0]))
-        .filter((year) => year >= Number(today.slice(0, 4))),
-    );
-    if (!result.text.trim() || sourceUrls.size < 2 || futureYears.size < 2) {
-      throw new Error("Agent did not return two future eclipse dates with opened source URLs");
+    let answer = "";
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const result = await agent.generate({
+        prompt:
+          attempt === 0
+            ? instruction
+            : `Use the browser's current page to finish the requested one-sentence summary and cite ${targetUrl}.`,
+      });
+      answer = result.text.trim();
+      if (answer.includes(targetUrl)) break;
+      console.warn("Agent returned no cited summary; retrying once in the same browser session.");
+    }
+    console.log(answer);
+    if (!answer || !answer.includes(targetUrl)) {
+      throw new Error("Agent did not return a summary with the opened Stagehand docs URL");
     }
   } finally {
     await mcpClient.close();

@@ -12,7 +12,7 @@ from urllib.parse import urljoin, urlparse
 
 import httpx
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field
 from stagehand import Page, Stagehand, browserbase
 
 load_dotenv()
@@ -32,7 +32,7 @@ MIME_TO_EXT = {
 
 
 class ImageUrls(BaseModel):
-    urls: list[HttpUrl] = Field(
+    urls: list[str] = Field(
         description="Absolute HTTP(S) image resource URLs from src or background-image values"
     )
 
@@ -115,6 +115,33 @@ async def main() -> None:
                 absolute = urljoin(target_url, str(value))
                 if urlparse(absolute).scheme in {"http", "https"} and absolute not in normalized:
                     normalized.append(absolute)
+            if not normalized:
+                # Accessibility snapshots can omit decorative images. Inspect the exact DOM
+                # shape only when semantic extraction returns no usable candidates at all.
+                dom_urls = await page.evaluate(
+                    r"""(() => {
+                      const urls = new Set();
+                      for (const image of Array.from(document.images)) {
+                        if (image.currentSrc) urls.add(image.currentSrc);
+                        if (image.src) urls.add(image.src);
+                      }
+                      for (const element of Array.from(document.querySelectorAll('[style]'))) {
+                        const background = getComputedStyle(element).backgroundImage;
+                        for (const match of background.matchAll(/url\(["']?(.*?)["']?\)/g)) {
+                          if (match[1]) urls.add(new URL(match[1], document.baseURI).href);
+                        }
+                      }
+                      return [...urls];
+                    })()"""
+                )
+                if isinstance(dom_urls, list):
+                    for value in dom_urls:
+                        absolute = urljoin(target_url, str(value))
+                        if (
+                            urlparse(absolute).scheme in {"http", "https"}
+                            and absolute not in normalized
+                        ):
+                            normalized.append(absolute)
             urls = normalized[:MAX_IMAGES]
             if not urls:
                 raise RuntimeError("No downloadable image URLs were found")

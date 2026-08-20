@@ -163,7 +163,8 @@ async def discover_careers_pages(exa: Exa) -> list[CareersPage]:
         candidates.append((score, CareersPage(company=company, careers_url=result.url)))
 
     candidates.sort(key=lambda candidate: candidate[0], reverse=True)
-    pages = [candidate[1] for candidate in candidates[:NUM_COMPANIES]]
+    candidate_limit = max(NUM_COMPANIES * 3, NUM_COMPANIES)
+    pages = [candidate[1] for candidate in candidates[:candidate_limit]]
     if not pages:
         raise RuntimeError("Exa returned no direct careers or ATS pages")
     return pages
@@ -470,8 +471,12 @@ async def review_application(careers_page: CareersPage, _index: int) -> Applicat
     finally:
         try:
             await stagehand.close()
-        finally:
+        except Exception:
+            pass
+        try:
             await browser.close()
+        except Exception:
+            pass
 
 
 async def main() -> None:
@@ -490,7 +495,11 @@ async def main() -> None:
             *(bounded_review(page, index) for index, page in enumerate(pages))
         )
     else:
-        results = [await review_application(page, index) for index, page in enumerate(pages)]
+        results = []
+        for index, page in enumerate(pages):
+            results.append(await review_application(page, index))
+            if sum(result.success for result in results) >= NUM_COMPANIES:
+                break
 
     print("[" + ",\n".join(result.model_dump_json(indent=2) for result in results) + "]")
     if not any(result.success for result in results):

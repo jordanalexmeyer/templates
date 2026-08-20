@@ -3,8 +3,8 @@
 Stagehand is the SDK for browser agents.
 
 This template pairs a bring-your-own Gemini model with LangChain Deep Agents and Stagehand V4 code
-mode. The agent researches the next two solar eclipses visible in North America and cites only
-sources it opened in the browser.
+mode. The agent opens the live Stagehand introduction, summarizes it, and cites only the URL it
+opened in the browser.
 
 ## How it works
 
@@ -12,7 +12,7 @@ sources it opened in the browser.
 - Stagehand code mode exposes one persistent Browserbase session through `run`, `snapshot`, and
   `screenshot` MCP tools.
 - Vercel AI Gateway provides the Gemini model through its OpenAI-compatible endpoint.
-- Runtime validation requires two future years and at least two opened source URLs.
+- Runtime validation requires a non-empty summary with the opened Stagehand documentation URL.
 - Closing the MCP session shuts down the Stagehand client and Browserbase browser.
 
 ## Quickstart
@@ -26,14 +26,13 @@ uv sync
 uv run python main.py
 ```
 
-The first run installs the Stagehand Deep Agents integration from `stagehand/main` in `uvx`; the
-integration pins its Stagehand server dependency to `stagehand==4.0.0`.
+The first run installs the pinned Stagehand Deep Agents integration in `uvx`; the integration pins
+its Stagehand server dependency to `stagehand==4.0.0`.
 
 ## Expected outcome
 
-The agent returns the dates of the next two relevant eclipses with at least two live source URLs it
-opened directly. The script exits nonzero when the answer is empty, lacks two future years, or does
-not include enough source evidence.
+The agent returns a concise description of Stagehand with the live documentation URL it opened
+directly. The script exits nonzero when the answer is empty or omits that source URL.
 
 ## Configuration
 

@@ -94,7 +94,7 @@ async function main(): Promise<void> {
       "Extract the absolute HTTP(S) source URLs of all rendered images on this page, including image src attributes and background-image URLs. Return actual image resource URLs, never accessibility-tree references such as 0-180.",
       z.object({
         urls: z
-          .array(z.string().url())
+          .array(z.string())
           .describe("Absolute HTTP(S) image resource URLs from src or background-image values"),
       }),
     );
