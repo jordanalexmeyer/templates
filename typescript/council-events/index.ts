@@ -22,16 +22,20 @@ async function main() {
   try {
     const page = (await browser.context.pages())[0];
 
-    console.log(`Opening the ${CURRENT_YEAR} Philadelphia Council calendar...`);
-    await page.goto("https://phila.legistar.com/Calendar.aspx", {
-      waitUntil: "domcontentloaded",
-      timeout: 60000,
-    });
+    console.log("Navigating to: https://phila.legistar.com/");
+    await page.goto("https://phila.legistar.com/");
+
+    console.log("Clicking calendar from the navigation menu");
+    const calendar = await stagehand.act("click calendar from the navigation menu");
+    if (!calendar.data.success) {
+      throw new Error(calendar.data.message || "Could not open the calendar");
+    }
+
+    console.log(`Selecting ${CURRENT_YEAR} from the year dropdown`);
     const selection = await stagehand.act(`select ${CURRENT_YEAR} from the year dropdown`);
     if (!selection.data.success) {
       throw new Error(selection.data.message || `Could not select ${CURRENT_YEAR}`);
     }
-    await page.waitForLoadState("domcontentloaded");
 
     // Extract event data using AI to parse the structured information
     console.log("Extracting event information...");
