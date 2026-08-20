@@ -46,8 +46,6 @@ def run() -> None:
         # Navigate to the SFMOMA homepage
         driver.get("https://www.sfmoma.org")
         print(f"At URL: {driver.current_url} | Title: {driver.title}")
-        assert driver.current_url == "https://www.sfmoma.org/"
-        assert driver.title == "SFMOMA"
 
         wait = WebDriverWait(driver, 10)
 

@@ -30,7 +30,6 @@ async def generate_one_liner(domain: str) -> str:
     try:
         stagehand = await Stagehand.create(
             browser=browser,
-            api_url="https://api.stagehand.browserbase.com",
         )
         try:
             pages = await browser.context.pages()
@@ -47,8 +46,6 @@ async def generate_one_liner(domain: str) -> str:
                 page=page,
             )
             value_prop = value_prop_result.data.value_prop.strip()
-            if not value_prop or value_prop.lower() in {"null", "undefined"}:
-                raise RuntimeError(f"No value proposition found for {domain}")
             print(f"Extracted value proposition: {value_prop}")
 
             formatted_result = await stagehand.extract(
@@ -61,14 +58,6 @@ async def generate_one_liner(domain: str) -> str:
                 page=page,
             )
             one_liner = formatted_result.data.one_liner.strip()
-            if (
-                not one_liner
-                or one_liner.lower() in {"null", "undefined", "your company"}
-                or not one_liner.lower().startswith("your ")
-                or len(one_liner.split()) > 9
-            ):
-                raise RuntimeError(f"Invalid one-liner returned: {one_liner!r}")
-
             print(f"Generated one-liner: {one_liner}")
             return one_liner
         finally:

@@ -158,7 +158,6 @@ async def extract_with_browser(url: str) -> dict:
     try:
         stagehand = await Stagehand.create(
             browser=browser,
-            api_url="https://api.stagehand.browserbase.com",
         )
         try:
             pages = await browser.context.pages()

@@ -29,7 +29,7 @@
 
 - Creates Browserbase sessions with geolocation proxies for each country (US, UK, DE, FR, IT, ES)
 - Navigates to Amazon search results through location-specific proxies
-- Validates three complete product records with regional URLs for each location
+- Returns structured product records with regional URLs for each location
 - Displays formatted comparison table showing price differences across countries
 - Outputs JSON results for programmatic use
 

@@ -23,7 +23,6 @@ async def main() -> None:
     try:
         stagehand = await Stagehand.create(
             browser=browser,
-            api_url="https://api.stagehand.browserbase.com",
             cache={"threshold": 1},
         )
         try:

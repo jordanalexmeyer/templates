@@ -7,16 +7,13 @@ Stagehand is the SDK for browser agents.
 - Goal: showcase how to automate form filling with Stagehand and Browserbase.
 - Smart Form Automation: dynamically fill contact forms with variable-driven data.
 - AI-Powered Interaction: use `act()` to map each labeled input to the right field reliably.
-- Outcome Verification: use `extract()` with a Pydantic schema to read back the completed form state.
-- Correctness fallback: if V4 cannot execute in the contact form's extension world, uses the form's exact field names and still verifies every value.
+- Variable-driven actions: fill each form control with the supplied sample values.
   Docs → https://docs.browserbase.com/fundamentals/create-browser-session
 
 ## GLOSSARY
 
 - act: perform UI actions from a prompt (type, click, fill forms)
   Docs → https://docs.stagehand.dev/v4/basics/act
-- extract: return the completed form state as a typed Pydantic model
-  Docs → https://docs.stagehand.dev/v4/basics/extract
 - variable substitution: inject dynamic values into actions using `%variable%` syntax
 
 ## QUICKSTART
@@ -32,7 +29,6 @@ Stagehand is the SDK for browser agents.
 - Initializes Stagehand session with Browserbase
 - Navigates to contact form page
 - Fills form with sample data using `act()` and variable substitution
-- Verifies every field with schema-validated `extract()` output
 - Closes session cleanly
 
 ## COMMON PITFALLS

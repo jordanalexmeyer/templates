@@ -63,7 +63,6 @@ async def get_weather_for_location(location: Geolocation) -> WeatherResult:
     try:
         stagehand = await Stagehand.create(
             browser=browser,
-            api_url="https://api.stagehand.browserbase.com",
         )
         try:
             pages = await browser.context.pages()

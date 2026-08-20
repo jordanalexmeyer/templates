@@ -46,7 +46,6 @@ def create_stagehand_client() -> MultiServerMCPClient:
     server_env = {
         "BROWSERBASE_API_KEY": require_env("BROWSERBASE_API_KEY"),
         "STAGEHAND_BROWSER": "browserbase",
-        "STAGEHAND_API_URL": "https://api.stagehand.browserbase.com",
         "STAGEHAND_RUN_TIMEOUT_MS": os.environ.get("STAGEHAND_RUN_TIMEOUT_MS", "120000"),
     }
     return MultiServerMCPClient(

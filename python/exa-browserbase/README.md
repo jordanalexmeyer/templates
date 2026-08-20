@@ -37,7 +37,7 @@ Set `NUM_COMPANIES` to review more candidates. Set `CONCURRENT=true MAX_CONCURRE
 
 - A run succeeds when it reaches at least one real application and returns a review.
 - `fields_attempted` lists the fields whose Stagehand actions reported success; it is intentionally not a claim that every ATS persisted every value.
-- `resume_uploaded` is the one exact postcondition because file upload is deterministic browser mechanics.
+- `resume_uploaded` reports that the deterministic file-upload command completed without throwing; persistence is left to external E2E validation.
 - Null, empty, absent, or ambiguous fields remain outstanding instead of being invented or treated as infrastructure failures.
 - The final submit button is never clicked.
 

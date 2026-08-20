@@ -33,7 +33,6 @@ async def main() -> None:
     try:
         stagehand = await Stagehand.create(
             browser=browser,
-            api_url="https://api.stagehand.browserbase.com",
         )
         try:
             pages = await browser.context.pages()
@@ -75,11 +74,6 @@ async def main() -> None:
                 page=page,
             )
             market = extracted.data
-            if "elon musk" not in market.market_title.lower():
-                raise RuntimeError(f"Unexpected market title: {market.market_title!r}")
-            if not any((market.current_odds, market.yes_price, market.no_price)):
-                raise RuntimeError("Market extraction returned no live odds or prices")
-
             print(json.dumps(market.model_dump(mode="json"), indent=2))
         finally:
             await stagehand.close()

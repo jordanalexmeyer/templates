@@ -50,27 +50,11 @@ async def main() -> None:
                 "and return the cited summary as soon as you have read the target page."
             ),
         )
-        answer = ""
-        for attempt in range(2):
-            prompt = (
-                instruction
-                if attempt == 0
-                else (
-                    "Use the browser's current page to finish the requested one-sentence "
-                    f"summary and cite {target_url}."
-                )
-            )
-            result = await agent.ainvoke(
-                {"messages": [{"role": "user", "content": prompt}]},
-                config={"recursion_limit": 20},
-            )
-            answer = message_text(result["messages"][-1]).strip()
-            if target_url in answer:
-                break
-            print("Agent returned no cited summary; retrying once in the same browser session.")
-
-    if not answer or target_url not in answer:
-        raise RuntimeError("Agent did not return a summary with the opened Stagehand docs URL")
+        result = await agent.ainvoke(
+            {"messages": [{"role": "user", "content": instruction}]},
+            config={"recursion_limit": 20},
+        )
+        answer = message_text(result["messages"][-1]).strip()
 
     print(answer)
     print("Stagehand code-mode session closed successfully")

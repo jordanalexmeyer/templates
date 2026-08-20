@@ -5,7 +5,6 @@
 - Goal: Automatically extract and format website value propositions into concise one-liners for email personalization
 - Demonstrates Stagehand's `extract` method with Zod schemas to pull structured data from landing pages
 - Shows how to chain Stagehand V4 extractions to transform grounded page content with custom prompts
-- Includes placeholder page detection and validation logic to filter out non-functional sites
 - Docs → https://docs.stagehand.dev/v4/basics/extract
 
 ## GLOSSARY
@@ -27,9 +26,7 @@
 - Stagehand initializes and creates a Browserbase session
 - Chains two Stagehand V4 extractions to produce the formatted one-liner
 - Navigates to target domain and waits for page load
-- Checks for placeholder pages via meta tag inspection
 - Extracts value proposition from landing page using AI
-- Validates extracted content against placeholder patterns
 - Generates formatted one-liner via LLM (constraints: 9 words max, starts with "your")
 - Prints generated one-liner to console
 - Closes browser session
@@ -39,7 +36,7 @@
 - Dependency install errors: ensure npm install completed
 - Missing credentials:
   - BROWSERBASE_API_KEY (required for browser automation)
-- Placeholder pages: Template includes detection logic, but some custom placeholder pages may still pass validation
+- Placeholder pages: extraction quality depends on the content available on the target page
 - Slow-loading sites: 5-minute timeout configured, but extremely slow sites may still timeout
 
 ## USE CASES

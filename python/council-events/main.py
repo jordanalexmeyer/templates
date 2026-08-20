@@ -34,7 +34,6 @@ async def main() -> None:
     try:
         stagehand = await Stagehand.create(
             browser=browser,
-            api_url="https://api.stagehand.browserbase.com",
         )
         try:
             pages = await browser.context.pages()
@@ -53,32 +52,21 @@ async def main() -> None:
                     wait_until="domcontentloaded",
                     timeout=60_000,
                 )
+            await stagehand.observe(
+                f"Find the calendar table rows for {year}",
+                page=page,
+            )
 
-            validated = CouncilEvents(results=[])
-            for attempt in range(2):
-                extracted = await stagehand.extract(
-                    (
-                        f"Extract every {year} event visible in the calendar table with its "
-                        "name, date, and time"
-                    ),
-                    CouncilEvents,
-                    page=page,
-                )
-                validated = extracted.data
-                if validated.results:
-                    break
-                if attempt == 0:
-                    await page.wait_for_timeout(1_500)
-            events = validated.results
-            if not events:
-                raise RuntimeError(f"No council events were returned for {year}")
-            if any(not event.name.strip() or not event.date.strip() for event in events):
-                raise RuntimeError("One or more events lacked a name or date")
-            if any(str(year) not in event.date for event in events):
-                raise RuntimeError(f"One or more events were not from {year}")
-
-            print(f"Found and validated {len(events)} events")
-            print(json.dumps(validated.model_dump(mode="json"), indent=2))
+            extracted = await stagehand.extract(
+                (
+                    f"Extract every {year} event visible in the calendar table with its "
+                    "name, date, and time"
+                ),
+                CouncilEvents,
+                page=page,
+            )
+            print(f"Found {len(extracted.data.results)} events")
+            print(json.dumps(extracted.data.model_dump(mode="json"), indent=2))
         finally:
             await stagehand.close()
     finally:

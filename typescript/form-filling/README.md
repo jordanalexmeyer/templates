@@ -5,8 +5,7 @@
 - Goal: showcase how to automate form filling with Stagehand and Browserbase.
 - Smart Form Automation: dynamically fill contact forms with variable-driven data.
 - Observe → Act: discovers the live form controls once, then fills the observed actions with the matching values.
-- Outcome Verification: read every input and dropdown value back from the browser before reporting success.
-- Correctness fallback: if V4 cannot execute in the contact form's extension world, uses the form's exact field names and still verifies every value.
+- Variable-driven actions: pair observed form controls with the supplied sample values.
   Docs → https://docs.browserbase.com/fundamentals/create-browser-session
 
 ## GLOSSARY
@@ -27,7 +26,6 @@
 - Initializes Stagehand session with Browserbase
 - Navigates to contact form page
 - Fills the known form fields and help dropdown with sample data
-- Reads every value back to verify the browser retained it
 - Closes both the Stagehand instance and browser handle after the workflow
 - Closes session cleanly
 
@@ -35,7 +33,7 @@
 
 - "Cannot find module": ensure all dependencies are installed
 - Missing credentials: verify .env contains all required API keys
-- Field mismatch: update the stable field-name mapping if the contact form changes
+- Field mismatch: adjust the semantic field descriptions if the contact form changes
 - Network issues: check internet connection and website accessibility
 
 ## USE CASES

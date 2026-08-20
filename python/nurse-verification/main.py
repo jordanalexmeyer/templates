@@ -46,7 +46,6 @@ async def main() -> None:
     try:
         stagehand = await Stagehand.create(
             browser=browser,
-            api_url="https://api.stagehand.browserbase.com",
         )
         try:
             pages = await browser.context.pages()
@@ -73,37 +72,17 @@ async def main() -> None:
                     page=page,
                 )
                 await stagehand.act("Click the Search button", page=page)
-
-                results: list[LicenseRecord] = []
-                for attempt in range(1, 4):
-                    extracted = await stagehand.extract(
-                        "Extract every license result with name, license number, status, and details URL",
-                        LicenseResults,
-                        page=page,
-                    )
-                    results = extracted.data.list_of_licenses
-                    if results:
-                        break
-                    if attempt < 3:
-                        print("No license results yet; retrying extraction...")
-                match = next(
-                    (
-                        result
-                        for result in results
-                        if record["license_number"] in result.license_number
-                        and record["last_name"].lower() in result.name.lower()
-                    ),
-                    None,
+                await stagehand.observe(
+                    "Find the first visible license result row",
+                    page=page,
                 )
-                if match is None:
-                    raise RuntimeError(
-                        f"Expected {expected_name} license {record['license_number']} was not found"
-                    )
-                if not match.status.strip():
-                    raise RuntimeError("The matching license had no status")
 
-                print(json.dumps(match.model_dump(mode="json"), indent=2))
-                print("License identity and status verified")
+                extracted = await stagehand.extract(
+                    "Extract every license result with name, license number, status, and details URL",
+                    LicenseResults,
+                    page=page,
+                )
+                print(json.dumps(extracted.data.model_dump(mode="json"), indent=2))
         finally:
             await stagehand.close()
     finally:

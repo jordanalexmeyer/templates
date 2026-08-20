@@ -26,7 +26,7 @@
 
 - Initializes Stagehand session with Browserbase
 - Uses `act()` to run the configured search through Amazon's live UI
-- Validates three complete product-detail records with Zod
+- Returns structured product-detail records with Zod
 - Extracts the first 3 products with name, price, rating, reviews count, and product URL
 - Outputs JSON to console
 - Closes session cleanly

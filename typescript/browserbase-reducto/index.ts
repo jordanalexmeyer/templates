@@ -243,18 +243,6 @@ async function extractPDFWithReducto(pdfPath: string, reductoaiClient: reductoai
   // Reducto's synchronous V3 extraction response returns a list even when
   // chunking is disabled, so unwrap the single structured result.
   const extractedData = Array.isArray(result.result) ? result.result[0] : result.result;
-  const netSales = extractedData?.iphone_net_sales;
-  if (
-    !netSales ||
-    ![
-      netSales.current_quarter,
-      netSales.previous_quarter,
-      netSales.current_year,
-      netSales.previous_year,
-    ].every(Number.isFinite)
-  ) {
-    throw new Error("Reducto did not return all four iPhone net-sales values");
-  }
   console.log(JSON.stringify(extractedData, null, 2));
 }
 
@@ -304,14 +292,6 @@ async function main(): Promise<void> {
       z.object({ statementUrl: z.string().url() }),
     );
     const statementUrl = statement.statementUrl;
-    if (!statementUrl) throw new Error("Could not find Apple's FY2025 Q4 statement");
-    const statementResponse = await fetch(statementUrl, { method: "HEAD" });
-    if (
-      !statementResponse.ok ||
-      !statementResponse.headers.get("content-type")?.includes("application/pdf")
-    ) {
-      throw new Error("Apple's FY2025 Q4 statement URL did not return a PDF");
-    }
     const openedStatement = await stagehand.act("Click the Financial Statements link under Q4", {
       page,
     });

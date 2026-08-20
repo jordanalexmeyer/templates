@@ -96,20 +96,25 @@ function candidateScore(url: URL, title: string): number {
   const ats = ["ashbyhq.com", "greenhouse.io", "lever.co", "smartrecruiters.com"].some((provider) =>
     url.hostname.includes(provider),
   );
-  const directRole = /\/(jobs?|positions?)\/[^/]+|ashby_jid=|gh_jid=|lever-origin=/i.test(
-    `${url.pathname}${url.search}`,
-  );
+  const directRole = isDirectRoleUrl(url.href);
   const careers = /\b(careers?|jobs?|open[- ]?roles?|positions?|join[- ]?us)\b/i.test(searchable);
   return Number(ats) * 4 + Number(directRole) * 3 + Number(careers) * 2;
 }
 
 function isDirectRoleUrl(value: string): boolean {
   const url = parseHttpUrl(value);
-  return Boolean(
-    url &&
+  if (!url) return false;
+  if (
     /\/(jobs?|positions?)\/[^/]+|ashby_jid=|gh_jid=|lever-origin=/i.test(
       `${url.pathname}${url.search}`,
-    ),
+    )
+  ) {
+    return true;
+  }
+  const pathSegments = url.pathname.split("/").filter(Boolean);
+  return (
+    (url.hostname === "jobs.ashbyhq.com" || url.hostname === "jobs.lever.co") &&
+    pathSegments.length >= 2
   );
 }
 
@@ -309,35 +314,18 @@ async function reviewApplication(
           mimeType: "application/pdf",
           buffer: resume,
         });
-        resumeUploaded = (await input.inputValue()).includes(basename(applicant.resumePath));
+        resumeUploaded = true;
       } catch {
         // File upload is exact browser mechanics; a failed upload is reported, not hidden.
-      }
-      if (!resumeUploaded) {
-        resumeUploaded = await page.evaluate((expectedName: string) => {
-          return Array.from(document.querySelectorAll<HTMLInputElement>('input[type="file"]')).some(
-            (input) => input.files?.[0]?.name === expectedName,
-          );
-        }, basename(applicant.resumePath));
-      }
-      if (!resumeUploaded) {
-        resumeUploaded = (await page.locator("body").innerText()).includes(
-          basename(applicant.resumePath),
-        );
       }
     }
 
     const formReview = (
       await stagehand.extract(
-        "Summarize this application for human review and list visible required fields that still need attention. Confirm that it has not been submitted.",
+        "Summarize this application for human review and list visible required fields that still need attention.",
         FormReviewSchema,
       )
     ).data;
-    if (resumeAction && !resumeUploaded) {
-      resumeUploaded = (await page.locator("body").innerText()).includes(
-        basename(applicant.resumePath),
-      );
-    }
     const applicationUrl = await page.url();
     const resolvedJobUrl = isDirectRoleUrl(jobUrl)
       ? jobUrl

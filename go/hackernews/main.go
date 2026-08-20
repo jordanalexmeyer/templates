@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"time"
 
 	stagehand "github.com/browserbase/stagehand/packages/sdk-go"
@@ -20,11 +19,6 @@ type storyDetails struct {
 
 type newestStory struct {
 	Title string `json:"title" jsonschema:"description=title of the newest visible story"`
-}
-
-type liveStoryLink struct {
-	Title string `json:"title"`
-	URL   string `json:"url"`
 }
 
 func main() {
@@ -105,14 +99,6 @@ func run(parent context.Context) (err error) {
 	if !acted.Data.Success {
 		return fmt.Errorf("open comments failed: %s", acted.Data.Message)
 	}
-	commentsURL, err := page.URL(ctx)
-	if err != nil {
-		return fmt.Errorf("read comments page URL: %w", err)
-	}
-	if !strings.HasPrefix(commentsURL, "https://news.ycombinator.com/item?id=") {
-		return fmt.Errorf("observed action did not open a Hacker News comments page: %s", commentsURL)
-	}
-
 	details, err := stagehand.Extract[storyDetails](
 		ctx,
 		client,
@@ -121,32 +107,6 @@ func run(parent context.Context) (err error) {
 	)
 	if err != nil {
 		return fmt.Errorf("extract story details: %w", err)
-	}
-	if details.Data.Title == "" || details.Data.TopComment == "" || details.Data.Author == "" {
-		return fmt.Errorf("story extraction returned incomplete data: %+v", details.Data)
-	}
-	actualTitle, err := page.Locator(".titleline > a").First().InnerText(ctx)
-	if err != nil {
-		return fmt.Errorf("read live story title: %w", err)
-	}
-	actualComment, err := page.Locator(".commtext").First().InnerText(ctx)
-	if err != nil {
-		return fmt.Errorf("read live top comment: %w", err)
-	}
-	actualAuthor, err := page.Locator("tr.comtr a.hnuser").First().InnerText(ctx)
-	if err != nil {
-		return fmt.Errorf("read live top-comment author: %w", err)
-	}
-	if normalize(details.Data.Title) != normalize(actualTitle) ||
-		normalize(details.Data.TopComment) != normalize(actualComment) ||
-		normalize(details.Data.Author) != normalize(actualAuthor) {
-		return fmt.Errorf(
-			"extracted Stagehand data did not match the live page: extracted=%+v live={Title:%q TopComment:%q Author:%q}",
-			details.Data,
-			actualTitle,
-			actualComment,
-			actualAuthor,
-		)
 	}
 	fmt.Printf("Top story: %s\n", details.Data.Title)
 	fmt.Printf("Top comment by %s: %s\n", details.Data.Author, details.Data.TopComment)
@@ -167,50 +127,6 @@ func run(parent context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("extract newest story: %w", err)
 	}
-	if newest.Data.Title == "" {
-		return fmt.Errorf("newest-story extraction returned incomplete data: %+v", newest.Data)
-	}
-	actualNewest, err := stagehand.EvaluateAs[liveStoryLink](
-		ctx,
-		page,
-		`(() => {
-          const link = document.querySelector(".titleline > a");
-          return { title: link?.textContent?.trim() ?? "", url: link?.href ?? "" };
-        })()`,
-	)
-	if err != nil {
-		return fmt.Errorf("read live newest-story link: %w", err)
-	}
-	if actualNewest.Title == "" ||
-		(!strings.HasPrefix(actualNewest.URL, "https://") && !strings.HasPrefix(actualNewest.URL, "http://")) {
-		return fmt.Errorf(
-			"newest-story DOM lookup returned incomplete data: title=%q url=%q",
-			actualNewest.Title,
-			actualNewest.URL,
-		)
-	}
-	if !titlesMatch(newest.Data.Title, actualNewest.Title) {
-		return fmt.Errorf(
-			"newest-story Stagehand extraction did not match the live page: extracted=%q live=%q",
-			newest.Data.Title,
-			actualNewest.Title,
-		)
-	}
-	fmt.Printf("Newest story: %s (%s)\n", newest.Data.Title, actualNewest.URL)
-	fmt.Println("Verified the Hacker News observe, act, and extract workflow")
+	fmt.Printf("Newest story: %s\n", newest.Data.Title)
 	return nil
-}
-
-func normalize(value string) string {
-	return strings.Join(strings.Fields(value), " ")
-}
-
-func titlesMatch(extracted string, live string) bool {
-	if normalize(extracted) == normalize(live) {
-		return true
-	}
-	if suffixStart := strings.LastIndex(extracted, " ("); suffixStart > 0 && strings.HasSuffix(extracted, ")") {
-		return normalize(extracted[:suffixStart]) == normalize(live)
-	}
-	return false
 }

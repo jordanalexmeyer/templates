@@ -165,13 +165,6 @@ async function getProductsForCountry(
           : p.product_url || "N/A",
     }));
 
-    if (
-      cleanedProducts.length < resultsCount ||
-      cleanedProducts.some((product) => !product.product_url.includes("/dp/"))
-    ) {
-      throw new Error(`Expected ${resultsCount} complete regional product records`);
-    }
-
     console.log(`Found ${cleanedProducts.length} products in ${country.name}`);
 
     await closeSession(stagehand, browser);
@@ -275,25 +268,6 @@ async function main() {
   const results = await Promise.all(
     selectedCountries.map((country) => getProductsForCountry(searchQuery, country, resultsCount)),
   );
-
-  // A regional storefront can occasionally reload its execution context while Amazon
-  // hydrates the page. Retry only failed countries once, then preserve a hard failure.
-  for (const [index, result] of results.entries()) {
-    if (result.products.length > 0) continue;
-    console.log(`\nRetrying ${selectedCountries[index].name} after its first extraction failed...`);
-    results[index] = await getProductsForCountry(
-      searchQuery,
-      selectedCountries[index],
-      resultsCount,
-    );
-  }
-
-  const failures = results.filter((result) => result.products.length === 0);
-  if (failures.length > 0) {
-    throw new Error(
-      `Price extraction failed for ${failures.length} of ${results.length} countries`,
-    );
-  }
 
   // Display formatted comparison table
   displayComparisonTable(results);

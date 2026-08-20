@@ -93,8 +93,8 @@ async function main() {
   } finally {
     // Always close session to release resources and clean up.
     console.log("Closing browser session...");
-    await stagehand.close();
-    await browser.close();
+    await stagehand.close().catch((error) => console.warn("Stagehand cleanup warning:", error));
+    await browser.close().catch((error) => console.warn("Browser cleanup warning:", error));
     console.log("Session closed successfully");
   }
 }

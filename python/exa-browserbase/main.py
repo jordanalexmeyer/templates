@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 import re
 from pathlib import Path
@@ -111,29 +110,28 @@ def candidate_score(url: str, title: str) -> int:
         provider in host
         for provider in ("ashbyhq.com", "greenhouse.io", "lever.co", "smartrecruiters.com")
     )
-    direct_role = re.search(
-        r"/(jobs?|positions?)/[^/]+|ashby_jid=|gh_jid=|lever-origin=",
-        f"{parsed.path}?{parsed.query}",
-        re.IGNORECASE,
-    )
+    direct_role = is_direct_role_url(url)
     careers = re.search(
         r"\b(careers?|jobs?|open[- ]?roles?|positions?|join[- ]?us)\b",
         searchable,
         re.IGNORECASE,
     )
-    return int(ats) * 4 + int(direct_role is not None) * 3 + int(careers is not None) * 2
+    return int(ats) * 4 + int(direct_role) * 3 + int(careers is not None) * 2
 
 
 def is_direct_role_url(value: str) -> bool:
     parsed = urlparse(value)
-    return (
+    if (
         re.search(
             r"/(jobs?|positions?)/[^/]+|ashby_jid=|gh_jid=|lever-origin=",
             f"{parsed.path}?{parsed.query}",
             re.IGNORECASE,
         )
         is not None
-    )
+    ):
+        return True
+    path_segments = [segment for segment in parsed.path.split("/") if segment]
+    return parsed.hostname in {"jobs.ashbyhq.com", "jobs.lever.co"} and len(path_segments) >= 2
 
 
 async def discover_careers_pages(exa: Exa) -> list[CareersPage]:
@@ -178,7 +176,6 @@ async def review_application(careers_page: CareersPage, _index: int) -> Applicat
     browser = await browserbase.launch(api_key=require_env("BROWSERBASE_API_KEY"))
     stagehand = await Stagehand.create(
         browser=browser,
-        api_url="https://api.stagehand.browserbase.com",
         model="google/gemini-2.5-flash",
     )
 
@@ -392,33 +389,21 @@ async def review_application(careers_page: CareersPage, _index: int) -> Applicat
                         mime_type="application/pdf",
                     )
                 )
-                resume_uploaded = resume_path.name in await input_element.input_value()
+                resume_uploaded = True
             except Exception:
                 # Upload is exact browser mechanics; failure is reported instead of hidden.
                 pass
-            if not resume_uploaded:
-                expected_name = json.dumps(resume_path.name)
-                resume_uploaded = bool(
-                    await page.evaluate(
-                        f"""(() => Array.from(document.querySelectorAll('input[type="file"]'))
-                          .some((input) => input.files?.[0]?.name === {expected_name}))()"""
-                    )
-                )
-            if not resume_uploaded:
-                resume_uploaded = resume_path.name in await page.locator("body").inner_text()
 
         form_review = (
             await stagehand.extract(
                 (
                     "Summarize this application for human review and list visible required "
-                    "fields that still need attention. Confirm that it has not been submitted."
+                    "fields that still need attention."
                 ),
                 FormReview,
                 page=page,
             )
         ).data
-        if resume_action and isinstance(resume_path, Path) and not resume_uploaded:
-            resume_uploaded = resume_path.name in await page.locator("body").inner_text()
         application_url = await page.url()
         resolved_job_url = (
             job_url

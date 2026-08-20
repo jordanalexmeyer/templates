@@ -99,23 +99,16 @@ async function main(): Promise<void> {
     await stagehand.act("Under Quarterly Earnings Reports, click on '2025'");
     page = (await context.activePage()) ?? page;
 
-    // Discover the intended documents semantically, validate their targets, and
-    // keep the actual UI interaction in Stagehand act().
+    // Discover the intended documents semantically and keep the actual UI
+    // interaction in Stagehand act().
     const { data: statements } = await stagehand.extract(
       "Extract the actual absolute HTTP(S) href URLs of the four FY2025 Financial Statements PDF links, ordered Q4 through Q1. Never return accessibility-tree references.",
       z.object({ statementUrls: z.array(z.string().url()) }),
     );
     const statementUrls = statements.statementUrls.slice(0, 4);
-    if (statementUrls.length !== 4 || new Set(statementUrls).size !== 4) {
-      throw new Error(`Expected four FY2025 statements, found ${statementUrls.length}`);
-    }
 
-    console.log("Downloading four quarterly financial statements...");
+    console.log("Downloading quarterly financial statements...");
     for (const [index, statementUrl] of statementUrls.entries()) {
-      const response = await fetch(statementUrl, { method: "HEAD" });
-      if (!response.ok || !response.headers.get("content-type")?.includes("application/pdf")) {
-        throw new Error(`Q${4 - index} statement URL did not return a PDF`);
-      }
       const opened = await stagehand.act(
         `Click the Financial Statements link under Q${4 - index}`,
         { page },

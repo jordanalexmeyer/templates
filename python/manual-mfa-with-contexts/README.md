@@ -34,7 +34,7 @@ Stagehand is the SDK for browser agents.
 - Waits for MFA completion (2 minute timeout)
 - Saves authentication state to context
 - Second session: reuses context, navigates to GitHub (already logged in, no MFA)
-- Extracts logged-in username to verify authentication
+- Extracts and prints the logged-in username from the reused context
 - Cleans up context
 
 ## COMMON PITFALLS

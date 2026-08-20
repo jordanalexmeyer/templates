@@ -7,7 +7,7 @@ from dataclasses import asdict, dataclass
 from urllib.parse import urlparse
 
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field
 
 from stagehand import Stagehand, StagehandBrowser, browserbase
 
@@ -52,7 +52,7 @@ class Verification(BaseModel):
 
 
 class ExtractedLink(BaseModel):
-    url: HttpUrl
+    url: str = Field(description="Absolute HTTP(S) destination URL")
     link_text: str
 
 
@@ -68,7 +68,6 @@ async def create_session() -> tuple[StagehandBrowser, Stagehand]:
     try:
         stagehand = await Stagehand.create(
             browser=browser,
-            api_url="https://api.stagehand.browserbase.com",
         )
     except Exception:
         await browser.close()

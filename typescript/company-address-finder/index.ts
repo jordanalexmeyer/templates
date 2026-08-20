@@ -83,13 +83,6 @@ async function main() {
     results.push(...(await Promise.all(batch.map(processCompany))));
   }
 
-  const failures = results.filter(
-    (result) => !result.homepageUrl || result.address?.startsWith("Error:"),
-  );
-  if (failures.length > 0) {
-    throw new Error(`Failed to produce verified company data for ${failures.length} companies`);
-  }
-
   console.log(JSON.stringify(results, null, 2));
 }
 

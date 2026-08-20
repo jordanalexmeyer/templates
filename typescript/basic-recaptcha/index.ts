@@ -64,18 +64,11 @@ async function main() {
     console.log("Clicking submit button after captcha is solved...");
     await stagehand.act("Click the Submit button");
 
-    // Extract and display the page content to verify successful submission.
+    // Extract and display the page content after submission.
     console.log("Extracting page content...");
     const { data: text } = await stagehand.extract("Extract all the text on this page");
     console.log("Page content:");
     console.log(text);
-
-    // Check if captcha was successfully solved by looking for success message.
-    if (text.extraction.includes("Verification Success... Hooray!")) {
-      console.log("reCAPTCHA successfully solved!");
-    } else {
-      console.log("Could not verify captcha success from page content");
-    }
   } catch (error) {
     console.error("Error during reCAPTCHA solving:", error);
   } finally {

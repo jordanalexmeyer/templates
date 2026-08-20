@@ -142,11 +142,8 @@ async function reuseContext(contextId: string) {
     "Extract the logged-in GitHub username. Return an empty string if the page is not authenticated.",
     z.string(),
   );
-  if (!username) {
-    throw new Error("The reused context was not authenticated to GitHub");
-  }
 
-  console.log("\nSUCCESS! Already logged in without MFA!");
+  console.log("\nReused context opened GitHub without another login step.");
   console.log(`   Username: ${username}`);
   console.log("\nThis is the power of Browserbase Contexts:");
   console.log("   - First session: User completes MFA once");

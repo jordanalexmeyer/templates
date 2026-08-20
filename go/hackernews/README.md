@@ -6,7 +6,7 @@ Stagehand is the SDK for browser agents.
 
 - Goal: demonstrate Stagehand V4's core browser automation primitives through a complete Hacker News workflow.
 - Complete workflow: launch a Browserbase browser, attach Stagehand, navigate, observe, act, and extract typed data.
-- Real-world outcome: open the top story's comments, verify its first comment, then extract the newest visible story.
+- Real-world outcome: open the top story's comments, extract its first comment, then extract the newest visible story.
 - Docs → https://docs.stagehand.dev/v4/first-steps/quickstart
 
 ## GLOSSARY
@@ -31,8 +31,8 @@ The V4 Go SDK is temporarily pinned to an exact Stagehand source commit. Replace
 - Launches a real Browserbase browser and attaches Stagehand V4.
 - Navigates to Hacker News and verifies the main-document HTTP response.
 - Observes and opens the comments link for the top-ranked story.
-- Extracts and validates the story title, first comment, and commenter.
-- Navigates to `/newest` and validates the newest story title and URL.
+- Extracts the story title, first comment, and commenter.
+- Navigates to `/newest` and extracts the newest story title.
 - Explicitly closes Stagehand before closing the browser.
 
 ## COMMON PITFALLS
@@ -47,7 +47,7 @@ The V4 Go SDK is temporarily pinned to an exact Stagehand source commit. Replace
 
 - Content aggregation: extract structured records from news sites, forums, and social platforms.
 - Research automation: combine deterministic navigation with AI-guided actions and typed extraction.
-- Workflow testing: validate page interaction and navigation outcomes in a real cloud browser.
+- Content automation: combine page interaction and structured extraction in a real cloud browser.
 
 ## NEXT STEPS
 

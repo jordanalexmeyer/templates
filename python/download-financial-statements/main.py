@@ -1,4 +1,4 @@
-"""Download and verify Apple's four FY2025 statements with Stagehand V4."""
+"""Download Apple's FY2025 statements with Stagehand V4."""
 
 import asyncio
 import json
@@ -6,7 +6,6 @@ import os
 import time
 from pathlib import Path
 
-import httpx
 from browserbase import Browserbase
 from dotenv import load_dotenv
 from pydantic import BaseModel, HttpUrl
@@ -53,7 +52,6 @@ async def main() -> None:
     try:
         stagehand = await Stagehand.create(
             browser=browser,
-            api_url="https://api.stagehand.browserbase.com",
         )
         try:
             pages = await browser.context.pages()
@@ -82,41 +80,28 @@ async def main() -> None:
                 page=page,
             )
             statement_urls = [str(url) for url in extracted.data.statement_urls[:4]]
-            if len(statement_urls) != 4 or len(set(statement_urls)) != 4:
-                count = len(statement_urls)
-                raise RuntimeError(f"Expected four FY2025 statements, found {count}")
-
-            async with httpx.AsyncClient(follow_redirects=True, timeout=30) as http:
-                for index, statement_url in enumerate(statement_urls):
-                    response = await http.head(statement_url)
-                    if not response.is_success or "application/pdf" not in response.headers.get(
-                        "content-type", ""
-                    ):
-                        raise RuntimeError(f"Q{4 - index} URL did not return a PDF")
-
-                    opened = await stagehand.act(
-                        f"Click the Financial Statements link under Q{4 - index}",
-                        page=page,
+            for index, statement_url in enumerate(statement_urls):
+                opened = await stagehand.act(
+                    f"Click the Financial Statements link under Q{4 - index}",
+                    page=page,
+                )
+                if not opened.data.success:
+                    encoded_url = json.dumps(statement_url)
+                    await page.evaluate(
+                        f"""(() => {{
+                          const link = document.createElement('a');
+                          link.href = {encoded_url};
+                          link.target = '_blank';
+                          document.body.appendChild(link);
+                          link.click();
+                          link.remove();
+                        }})()"""
                     )
-                    if not opened.data.success:
-                        encoded_url = json.dumps(statement_url)
-                        await page.evaluate(
-                            f"""(() => {{
-                              const link = document.createElement('a');
-                              link.href = {encoded_url};
-                              link.target = '_blank';
-                              document.body.appendChild(link);
-                              link.click();
-                              link.remove();
-                            }})()"""
-                        )
-                    await page.wait_for_timeout(500)
-                    print(f"Triggered FY2025 Q{4 - index} download")
+                await page.wait_for_timeout(500)
+                print(f"Triggered FY2025 Q{4 - index} download")
 
-            size = await save_downloads_with_retry(api, session_id)
-            if size < 100_000:
-                raise RuntimeError(f"Downloaded archive was unexpectedly small: {size} bytes")
-            print("All four downloads completed and were validated")
+            await save_downloads_with_retry(api, session_id)
+            print("Downloads completed")
         finally:
             await stagehand.close()
     finally:

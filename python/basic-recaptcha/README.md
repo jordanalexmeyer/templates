@@ -9,7 +9,7 @@ Stagehand is the SDK for browser agents.
 - Solving Time: CAPTCHA solving typically takes between 5-30 seconds depending on CAPTCHA type and complexity.
 - Progress Monitoring: Listen for console messages (`browserbase-solving-started`, `browserbase-solving-finished`) to track captcha solving progress in real-time.
 - Proxies Recommended: Enable proxies for higher CAPTCHA solving success rates.
-- Verification: Extracts page content to verify successful captcha solving and form submission.
+- Result inspection: Extracts and prints the page content after form submission.
 - Docs → https://docs.browserbase.com/features/stealth-mode#captcha-solving
 
 ## GLOSSARY
@@ -83,7 +83,7 @@ browserbase_session_create_params = {"browser_settings": {"solveCaptchas": False
 - Logs captcha solving progress messages
 - Clicks submit button after captcha is solved
 - Extracts and displays page content
-- Verifies successful captcha solving by checking for success message
+- Prints the resulting page content for inspection
 - Closes session cleanly
 
 ## COMMON PITFALLS
@@ -94,7 +94,6 @@ browserbase_session_create_params = {"browser_settings": {"solveCaptchas": False
 - Proxies not enabled: enable proxies in browserSettings for higher CAPTCHA solving success rates
 - Demo page inaccessible: verify the reCAPTCHA demo page URL is accessible and hasn't changed
 - Console message timing: ensure console event listeners are set up before triggering the captcha
-- Verification failure: success message check may fail if page structure changes; check extracted text manually
 - Custom captcha selectors: for non-standard CAPTCHAs, verify that `captchaImageSelector` and `captchaInputSelector` are correctly defined
 - Import errors: activate your virtual environment if you created one
 - ModuleNotFoundError: ensure all dependencies are installed via uvx install

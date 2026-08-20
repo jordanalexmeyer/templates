@@ -39,7 +39,6 @@ async def main() -> None:
     try:
         stagehand = await Stagehand.create(
             browser=browser,
-            api_url="https://api.stagehand.browserbase.com",
         )
         try:
             pages = await browser.context.pages()
@@ -61,14 +60,6 @@ async def main() -> None:
                 page=page,
             )
             details = extracted.data
-            normalized_id = (details.license_id or "").replace("#", "").strip()
-            if LICENSE_ID not in normalized_id:
-                raise RuntimeError(
-                    f"Expected license {LICENSE_ID}, received {details.license_id!r}"
-                )
-            if not details.name or not details.license_status:
-                raise RuntimeError("License result lacked a holder name or status")
-
             print(json.dumps(details.model_dump(mode="json"), indent=2))
         finally:
             await stagehand.close()

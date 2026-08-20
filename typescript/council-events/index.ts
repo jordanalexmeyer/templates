@@ -43,6 +43,7 @@ async function main() {
         timeout: 60000,
       });
     }
+    await stagehand.observe(`Find the calendar table rows for ${CURRENT_YEAR}`);
 
     // Extract event data using AI to parse the structured information
     console.log("Extracting event information...");
@@ -55,20 +56,10 @@ async function main() {
         }),
       ),
     });
-    let results = { results: [] as Array<{ name: string; date: string; time: string }> };
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const extracted = await stagehand.extract(
-        `Extract every ${CURRENT_YEAR} event currently visible in the calendar table, including its name, date, and time`,
-        EventResultsSchema,
-      );
-      results = extracted.data;
-      if (results.results.length > 0) break;
-      if (attempt === 0) await page.waitForTimeout(1500);
-    }
-
-    if (results.results.length === 0) {
-      throw new Error(`No ${CURRENT_YEAR} council events were extracted`);
-    }
+    const { data: results } = await stagehand.extract(
+      `Extract every ${CURRENT_YEAR} event currently visible in the calendar table, including its name, date, and time`,
+      EventResultsSchema,
+    );
 
     console.log(`Found ${results.results.length} events for ${CURRENT_YEAR}`);
     console.log("Event data extracted successfully:");

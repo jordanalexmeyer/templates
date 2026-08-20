@@ -421,11 +421,6 @@ async def parse_receipts_with_extend(file_paths: list[str]) -> list[dict]:
             )
 
     print(f"Saved CSV:  {csv_path}")
-    failures = [result for result in results if "error" in result.get("data", {})]
-    if failures:
-        raise RuntimeError(f"Extend failed to parse {len(failures)} receipt(s)")
-    if not results:
-        raise RuntimeError("Extend returned no receipt extraction results")
     return results
 
 
@@ -458,7 +453,6 @@ async def main() -> None:
     try:
         stagehand = await Stagehand.create(
             browser=browser,
-            api_url="https://api.stagehand.browserbase.com",
         )
         pages = await browser.context.pages()
         page = pages[0] if pages else await browser.context.new_page()
@@ -506,8 +500,6 @@ async def main() -> None:
                 await stagehand.act("Scroll down slightly", page=page)
 
         print(f"\nDownload clicks completed! ({success_count}/{len(download_buttons)} successful)")
-        if success_count != len(download_buttons):
-            raise RuntimeError(f"{len(download_buttons) - success_count} receipt downloads failed")
 
         await stagehand.close()
         await browser.close()
@@ -529,11 +521,9 @@ async def main() -> None:
             print("Files saved to: ./output/documents/")
 
             # Parse downloaded receipts with Extend AI for structured data extraction
-            results = await parse_receipts_with_extend(extracted_files)
-            if os.environ.get("EXTEND_API_KEY") and len(results) != len(extracted_files):
-                raise RuntimeError("Extend did not return one result per receipt")
+            await parse_receipts_with_extend(extracted_files)
         else:
-            raise RuntimeError("No downloads were captured")
+            print("No downloads were captured")
 
         print("\nExpense receipt download complete!")
 

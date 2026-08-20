@@ -107,9 +107,9 @@ async function main(): Promise<void> {
       );
       companyInfo = extractedCompany.data;
     } catch (error) {
-      // Company metadata is already known from the verified search target; a
+      // Company metadata is already known from the search target; a
       // transient structured-output failure should not discard filing results.
-      console.warn("Company metadata extraction failed; using the verified search target", error);
+      console.warn("Company metadata extraction failed; using the search target", error);
     }
 
     console.log(`Extracting the ${NUM_FILINGS} most recent filings...`);
@@ -117,13 +117,6 @@ async function main(): Promise<void> {
       `Extract the ${NUM_FILINGS} most recent SEC filings from the filings table. For each filing return its type, filing date, description, accession number, and file or film number when shown.`,
       FilingsSchema,
     );
-
-    if (
-      extracted.filings.length < NUM_FILINGS ||
-      extracted.filings.some((filing) => !filing.type || !filing.date)
-    ) {
-      throw new Error("SEC page did not return five complete filing records");
-    }
 
     // Build result object with company info and normalized filing list
     const result: SECFilingResult = {

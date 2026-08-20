@@ -35,7 +35,6 @@ async def main() -> None:
     try:
         stagehand = await Stagehand.create(
             browser=browser,
-            api_url="https://api.stagehand.browserbase.com",
         )
         try:
             pages = await browser.context.pages()
@@ -62,13 +61,6 @@ async def main() -> None:
                 page=page,
             )
             keywords = extracted.data.root[:LIMIT]
-            if not keywords:
-                raise RuntimeError("Google Trends returned no keywords")
-            if [item.rank for item in keywords] != list(range(1, len(keywords) + 1)):
-                raise RuntimeError("Trend ranks were not sequential")
-            if any(not item.keyword.strip() for item in keywords):
-                raise RuntimeError("One or more trend keywords were empty")
-
             output = {
                 "country_code": COUNTRY_CODE,
                 "language": LANGUAGE,

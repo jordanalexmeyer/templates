@@ -260,7 +260,6 @@ class StagehandFormFiller:
             self.browser = await browserbase.launch(api_key=api_key)
             self.stagehand = await Stagehand.create(
                 browser=self.browser,
-                api_url="https://api.stagehand.browserbase.com",
             )
             pages = await self.browser.context.pages()
             self.page = pages[0] if pages else await self.browser.context.new_page()
@@ -346,16 +345,25 @@ class StagehandFormFiller:
                         instruction = f"Uncheck the '{field.label}' checkbox"
 
             result = None
-            for attempt in range(2):
-                result = await self.stagehand.act(
-                    instruction,
+            if field.field_type == FieldType.RADIO:
+                observed = await self.stagehand.observe(
+                    f"Find the option labeled {answer!r} within the question {field.label!r}",
                     page=self.page,
-                    variables={"answer": answer},
                 )
-                if result.data.success:
-                    break
-                if attempt == 0:
-                    await self.page.wait_for_timeout(750)
+                if not observed.data:
+                    raise RuntimeError(f"Could not find {answer} for {field.label}")
+                result = await self.stagehand.act(observed.data[0], page=self.page)
+            else:
+                for attempt in range(2):
+                    result = await self.stagehand.act(
+                        instruction,
+                        page=self.page,
+                        variables={"answer": answer},
+                    )
+                    if result.data.success:
+                        break
+                    if attempt == 0:
+                        await self.page.wait_for_timeout(750)
 
             if result is None:
                 raise RuntimeError(f"Could not fill {field.label}")

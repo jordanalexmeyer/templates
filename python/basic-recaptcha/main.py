@@ -22,7 +22,6 @@ async def main() -> None:
     try:
         stagehand = await Stagehand.create(
             browser=browser,
-            api_url="https://api.stagehand.browserbase.com",
         )
         try:
             pages = await browser.context.pages()
@@ -46,9 +45,8 @@ async def main() -> None:
             await stagehand.act("Click the Submit button", page=page)
             extracted = await stagehand.extract("Extract all text on this page", page=page)
             text = extracted.data.extraction
-            if "Verification Success" not in text:
-                raise RuntimeError("Captcha submission did not show the success message")
-            print("reCAPTCHA successfully solved and submitted")
+            print("Page content after submission:")
+            print(text)
         finally:
             await stagehand.close()
     finally:

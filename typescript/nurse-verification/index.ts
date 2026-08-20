@@ -54,8 +54,8 @@ async function main() {
       console.log("Clicking search button...");
       await stagehand.act("Click the search button");
 
-      // Wait for search results to load
-      await page.waitForLoadState("domcontentloaded");
+      // Let Stagehand observe the result surface before extracting it.
+      await stagehand.observe("Find the first visible license result row");
 
       // Extract license verification results
       console.log("Extracting license verification results...");
@@ -89,8 +89,8 @@ async function main() {
   } finally {
     // Clean up browser session
     console.log("Closing browser session...");
-    await stagehand.close();
-    await browser.close();
+    await stagehand.close().catch((error) => console.warn("Stagehand cleanup warning:", error));
+    await browser.close().catch((error) => console.warn("Browser cleanup warning:", error));
     console.log("Session closed successfully");
   }
 }

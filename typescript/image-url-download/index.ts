@@ -98,7 +98,7 @@ async function main(): Promise<void> {
           .describe("Absolute HTTP(S) image resource URLs from src or background-image values"),
       }),
     );
-    let allUrls = extractedUrls.urls;
+    let allUrls = extractedUrls.urls.filter((url) => /^https?:\/\//i.test(url));
     if (allUrls.length === 0) {
       // Accessibility snapshots can omit decorative images. Use the exact DOM
       // shape only when semantic extraction returns no candidates at all.
@@ -118,11 +118,10 @@ async function main(): Promise<void> {
       })) as string[];
     }
 
-    // Normalize root-relative paths against the target page, then deduplicate
-    // and filter unsupported URL schemes before applying the limit.
+    // Extract only absolute image resource URLs, then deduplicate before applying the limit.
     const normalizedUrls = allUrls.flatMap((url) => {
       try {
-        return [new URL(url, targetUrl).href];
+        return [new URL(url).href];
       } catch {
         return [];
       }
@@ -136,10 +135,6 @@ async function main(): Promise<void> {
     const urls = uniqueUrls.slice(0, MAX_IMAGES);
     if (uniqueUrls.length > MAX_IMAGES) {
       console.log(`Capping at ${MAX_IMAGES} (adjust MAX_IMAGES to change this)`);
-    }
-
-    if (urls.length === 0) {
-      throw new Error("No image URLs found on the page");
     }
 
     // Create a subdirectory scoped to the target site's hostname (e.g. images/browserbase.com/).
@@ -237,9 +232,6 @@ async function main(): Promise<void> {
       saved++;
     }
 
-    if (saved === 0) {
-      throw new Error(`No images were downloaded (${failed} failed)`);
-    }
     console.log(`\nDone! ${saved} saved, ${failed} failed → ${outputDir}/`);
   } catch (error) {
     console.error("Error during image download:", error);

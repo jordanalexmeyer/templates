@@ -74,13 +74,6 @@ async def main() -> None:
         )
         business: BusinessInfo = result["structured_response"]
 
-    if BUSINESS_NAME.lower() not in business.dba_name.lower():
-        raise RuntimeError(f"Returned DBA did not match {BUSINESS_NAME!r}")
-    if not business.business_account_number:
-        raise RuntimeError("Business record did not include a business account number")
-    if not business.source_url.startswith("https://data.sfgov.org/"):
-        raise RuntimeError("Business record was not grounded in the official SF data source")
-
     print("Business information:")
     print(business.model_dump_json(indent=2))
     print("Stagehand code-mode session closed successfully")

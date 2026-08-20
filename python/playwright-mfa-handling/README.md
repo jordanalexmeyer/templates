@@ -37,7 +37,6 @@ from stagehand import Stagehand, browserbase
 browser = await browserbase.launch(api_key=BROWSERBASE_API_KEY)
 stagehand = await Stagehand.create(
     browser=browser,
-    api_url="https://api.stagehand.browserbase.com",
 )
 pages = await browser.context.pages()
 page = pages[0] if pages else await browser.context.new_page()

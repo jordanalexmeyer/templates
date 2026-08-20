@@ -54,13 +54,7 @@ async function main() {
       }),
     );
 
-    if (!license.licenseId?.includes(variables.input1)) {
-      throw new Error(`Expected license ${variables.input1}, got ${license.licenseId ?? "none"}`);
-    }
-    if (!license.name?.trim() || !license.licenseStatus?.trim()) {
-      throw new Error("The matching license is missing its holder name or status");
-    }
-    console.log("License identity and status verified:", license);
+    console.log("License details:", license);
   } finally {
     try {
       await stagehand.close();

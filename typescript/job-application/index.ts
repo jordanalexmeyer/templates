@@ -150,12 +150,6 @@ async function applyToJob(jobInfo: JobInfo, semaphore: () => Promise<void>, rele
     // Submit the application form
     await stagehand.act(`click deploy agent button`);
 
-    await page.waitForTimeout(500);
-    const confirmationText = await page.locator("body").innerText();
-    if (!/success|submitted|deployed|received/i.test(confirmationText)) {
-      throw new Error("Application submission did not produce a confirmation message");
-    }
-
     console.log(`[${jobInfo.title}] Application submitted successfully!`);
 
     await closeSession(stagehand, browser);

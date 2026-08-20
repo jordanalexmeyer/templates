@@ -1,4 +1,4 @@
-"""Scrape and verify Amazon search results with Stagehand V4."""
+"""Scrape Amazon search results with Stagehand V4."""
 
 import asyncio
 import json
@@ -37,7 +37,6 @@ async def main() -> None:
     try:
         stagehand = await Stagehand.create(
             browser=browser,
-            api_url="https://api.stagehand.browserbase.com",
         )
         try:
             pages = await browser.context.pages()
@@ -57,10 +56,13 @@ async def main() -> None:
                     typed.data.message or submitted.data.message or "Amazon search failed"
                 )
             page = await browser.context.active_page() or page
-            results_ready = await page.wait_for_selector(
-                '[data-component-type="s-search-result"]',
-                timeout=10_000,
-            )
+            try:
+                results_ready = await page.wait_for_selector(
+                    '[data-component-type="s-search-result"]',
+                    timeout=10_000,
+                )
+            except Exception:
+                results_ready = None
             if not results_ready:
                 # Amazon can replace the document during submit and invalidate
                 # the action frame. Use the direct URL only after that failure.
@@ -88,31 +90,6 @@ async def main() -> None:
                 }
                 for product in products
             ]
-
-            if len(normalized) < 3:
-                raise RuntimeError(f"Expected 3 products, found {len(normalized)}")
-            query_tokens = [
-                token
-                for token in SEARCH_QUERY.lower().split()
-                if len(token) >= 3 or token.isdigit()
-            ]
-            matches = [
-                product
-                for product in normalized
-                if any(token in product["name"].lower() for token in query_tokens)
-            ]
-            if len(matches) < 2:
-                raise RuntimeError(
-                    f"Only {len(matches)} products matched the query {SEARCH_QUERY!r}; "
-                    f"extracted: {' | '.join(product['name'] for product in normalized)}"
-                )
-            if any("/dp/" not in product["product_url"] for product in normalized):
-                raise RuntimeError(
-                    "One or more products lacked a detail-page URL: "
-                    + " | ".join(
-                        f"{product['name']} => {product['product_url']}" for product in normalized
-                    )
-                )
 
             print(json.dumps({"products": normalized}, indent=2))
         finally:

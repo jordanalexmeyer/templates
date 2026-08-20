@@ -110,7 +110,6 @@ session = bb.sessions.create(
 - Proxies not enabled: enable proxies in session creation for higher CAPTCHA solving success rates
 - Demo page inaccessible: verify the reCAPTCHA demo page URL is accessible and hasn't changed
 - Console message timing: ensure console event listeners are set up before navigating to the page
-- Verification failure: success message check may fail if page structure changes; check page content manually
 - Custom captcha selectors: for non-standard CAPTCHAs, verify that `captchaImageSelector` and `captchaInputSelector` are correctly defined
 - Import errors: activate your virtual environment if you created one
 

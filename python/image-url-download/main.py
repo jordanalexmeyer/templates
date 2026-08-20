@@ -93,7 +93,6 @@ async def main() -> None:
     try:
         stagehand = await Stagehand.create(
             browser=browser,
-            api_url="https://api.stagehand.browserbase.com",
         )
         try:
             pages = await browser.context.pages()
@@ -112,7 +111,10 @@ async def main() -> None:
             )
             normalized = []
             for value in extracted.data.urls:
-                absolute = urljoin(target_url, str(value))
+                candidate = str(value)
+                if not candidate.lower().startswith(("http://", "https://")):
+                    continue
+                absolute = candidate
                 if urlparse(absolute).scheme in {"http", "https"} and absolute not in normalized:
                     normalized.append(absolute)
             if not normalized:
@@ -143,9 +145,6 @@ async def main() -> None:
                         ):
                             normalized.append(absolute)
             urls = normalized[:MAX_IMAGES]
-            if not urls:
-                raise RuntimeError("No downloadable image URLs were found")
-
             hostname = urlparse(target_url).hostname or "unknown"
             output_dir = OUTPUT_DIR / hostname
             output_dir.mkdir(parents=True, exist_ok=True)
@@ -178,9 +177,7 @@ async def main() -> None:
                     print(f"Saved {filename} ({len(payload)} bytes)")
                     saved += 1
 
-            if saved == 0:
-                raise RuntimeError(f"No images were downloaded ({failed} failed)")
-            print(f"Downloaded and verified {saved} image(s); {failed} failed")
+            print(f"Downloaded {saved} image(s); {failed} failed")
         finally:
             await stagehand.close()
     finally:

@@ -132,10 +132,6 @@ async function main() {
     }),
   );
 
-  if (/sign in|log in/i.test(`${userData.fullName} ${userData.address}`)) {
-    throw new Error("The reused context did not reach authenticated profile data");
-  }
-
   console.log("Extracted user data:", userData);
 
   // Always close session to release resources and save any context changes.

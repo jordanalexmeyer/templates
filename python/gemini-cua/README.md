@@ -12,7 +12,6 @@ opened in the browser.
 - Stagehand code mode exposes one persistent Browserbase session through `run`, `snapshot`, and
   `screenshot` MCP tools.
 - Vercel AI Gateway provides the Gemini model through its OpenAI-compatible endpoint.
-- Runtime validation requires a non-empty summary with the opened Stagehand documentation URL.
 - Closing the MCP session shuts down the Stagehand client and Browserbase browser.
 
 ## Quickstart

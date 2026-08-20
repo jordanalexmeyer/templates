@@ -143,7 +143,6 @@ async def main() -> None:
     try:
         stagehand = await Stagehand.create(
             browser=browser,
-            api_url="https://api.stagehand.browserbase.com",
         )
         try:
             pages = await browser.context.pages()
@@ -152,7 +151,7 @@ async def main() -> None:
             await login(stagehand, page)
             await select_filters(stagehand, page, activity, selected_date, time_of_day)
             courts = await extract_courts(stagehand, page)
-            print("Verified live court availability output:")
+            print("Live court availability:")
             print(json.dumps([court.model_dump(mode="json") for court in courts], indent=2))
 
             if os.environ.get("BOOK_COURT", "false").lower() == "true":
@@ -160,7 +159,7 @@ async def main() -> None:
                 print("Booking confirmed:")
                 print(json.dumps(confirmation.model_dump(mode="json"), indent=2))
             else:
-                print("Availability verified; set BOOK_COURT=true to reserve a court")
+                print("Set BOOK_COURT=true to reserve a court")
         finally:
             await stagehand.close()
     finally:

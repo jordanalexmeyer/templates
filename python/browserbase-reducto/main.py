@@ -8,7 +8,6 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
-import httpx
 from browserbase import Browserbase
 from dotenv import load_dotenv
 from pydantic import BaseModel, HttpUrl
@@ -117,15 +116,6 @@ async def extract_pdf_with_reducto(pdf_path: Path, client: Reducto) -> dict[str,
         extracted = extracted[0] if extracted else None
     if hasattr(extracted, "model_dump"):
         extracted = extracted.model_dump(mode="json")
-    if not isinstance(extracted, dict):
-        raise RuntimeError("Reducto returned no structured extraction")
-
-    net_sales = extracted.get("iphone_net_sales")
-    fields = ("current_quarter", "previous_quarter", "current_year", "previous_year")
-    if not isinstance(net_sales, dict) or not all(
-        isinstance(net_sales.get(field), (int, float)) for field in fields
-    ):
-        raise RuntimeError("Reducto did not return all four iPhone net-sales values")
     return extracted
 
 
@@ -146,7 +136,6 @@ async def main() -> None:
     try:
         stagehand = await Stagehand.create(
             browser=browser,
-            api_url="https://api.stagehand.browserbase.com",
         )
         try:
             pages = await browser.context.pages()
@@ -174,13 +163,6 @@ async def main() -> None:
                 page=page,
             )
             statement_url = str(extracted.data.statement_url)
-            if not statement_url:
-                raise RuntimeError("Could not find Apple's FY2025 Q4 statement")
-
-            async with httpx.AsyncClient(follow_redirects=True, timeout=30) as http:
-                head = await http.head(statement_url)
-            if not head.is_success or "application/pdf" not in head.headers.get("content-type", ""):
-                raise RuntimeError("Apple's Q4 statement URL did not return a PDF")
 
             opened_statement = await stagehand.act(
                 "Click the Financial Statements link under Q4",

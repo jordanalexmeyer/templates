@@ -12,7 +12,8 @@
     "@browserbasehq/stagehand": "4.0.0",
     "adm-zip": "latest",
     "dotenv": "latest",
-    "reductoai": "latest"
+    "reductoai": "latest",
+    "zod": "^4.0.0"
   },
   "devDependencies": {
     "@types/node": "latest",

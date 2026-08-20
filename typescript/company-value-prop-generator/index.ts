@@ -46,16 +46,6 @@ async function generateOneLiner(domain: string): Promise<string> {
 
     console.log(`📊 Extracted value prop for ${domain}:`, valueProp.value_prop);
 
-    // Validate extraction returned meaningful content
-    if (
-      !valueProp.value_prop ||
-      valueProp.value_prop.toLowerCase() === "null" ||
-      valueProp.value_prop.toLowerCase() === "undefined"
-    ) {
-      console.error(`⚠️ Value prop extraction returned empty or invalid result`);
-      throw new Error(`No value prop found for ${domain}`);
-    }
-
     // Generate the one-liner with a second V4 extraction. Including the first extraction
     // keeps the request grounded while Stagehand's configured model handles formatting.
     console.log(`🤖 Generating email one-liner for ${domain}...`);
@@ -66,18 +56,6 @@ async function generateOneLiner(domain: string): Promise<string> {
     );
 
     const oneLiner = formatted.one_liner.trim();
-
-    // Validate LLM response is usable (not empty, not generic placeholder)
-    console.log(`🔍 Validating generated one-liner...`);
-    if (
-      !oneLiner ||
-      oneLiner.toLowerCase() === "null" ||
-      oneLiner.toLowerCase() === "undefined" ||
-      oneLiner.toLowerCase() === "your company"
-    ) {
-      console.error(`⚠️ LLM generated invalid or placeholder response: "${oneLiner}"`);
-      throw new Error(`No valid one-liner generated for ${domain}. AI response: "${oneLiner}"`);
-    }
 
     console.log(`✨ Generated one-liner for ${domain}:`, oneLiner);
     return oneLiner;

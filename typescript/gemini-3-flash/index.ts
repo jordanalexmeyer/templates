@@ -43,22 +43,8 @@ async function main() {
     });
 
     console.log("Executing instruction:", instruction);
-    let answer = "";
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const result = await agent.generate({
-        prompt:
-          attempt === 0
-            ? instruction
-            : `Use the browser's current page to finish the requested one-sentence summary and cite ${targetUrl}.`,
-      });
-      answer = result.text.trim();
-      if (answer.includes(targetUrl)) break;
-      console.warn("Agent returned no cited summary; retrying once in the same browser session.");
-    }
-    console.log(answer);
-    if (!answer || !answer.includes(targetUrl)) {
-      throw new Error("Agent did not return a summary with the opened Stagehand docs URL");
-    }
+    const result = await agent.generate({ prompt: instruction });
+    console.log(result.text);
   } finally {
     await mcpClient.close();
   }

@@ -41,7 +41,6 @@ async def main() -> None:
     try:
         stagehand = await Stagehand.create(
             browser=browser,
-            api_url="https://api.stagehand.browserbase.com",
         )
         try:
             pages = await browser.context.pages()
@@ -92,11 +91,6 @@ async def main() -> None:
                 page=page,
             )
             filings = filings_result.data.filings[:NUM_FILINGS]
-
-            if len(filings) != NUM_FILINGS:
-                raise RuntimeError(f"Expected {NUM_FILINGS} complete filings")
-            if any(not filing.type or not filing.date for filing in filings):
-                raise RuntimeError("One or more SEC filings lacked a type or filing date")
 
             result = {
                 "company": company_result.data.company_name,

@@ -28,7 +28,7 @@
 
 - Initializes Stagehand session with Browserbase
 - Uses `act()` to navigate from Apple.com to the FY2025 investor statements
-- Discovers and validates four unique FY2025 Financial Statements PDF URLs
+- Discovers the FY2025 Financial Statements PDF URLs
 - Opens each statement to trigger Browserbase downloads
 - Polls Browserbase API until downloads are ready
 - Saves all PDFs as `downloaded_files.zip` in current directory

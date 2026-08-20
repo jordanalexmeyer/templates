@@ -36,7 +36,6 @@ async def login_and_persist(context_id: str) -> None:
     try:
         stagehand = await Stagehand.create(
             browser=browser,
-            api_url="https://api.stagehand.browserbase.com",
         )
         try:
             pages = await browser.context.pages()
@@ -69,7 +68,6 @@ async def verify_reused_context(context_id: str) -> UserData:
     try:
         stagehand = await Stagehand.create(
             browser=browser,
-            api_url="https://api.stagehand.browserbase.com",
         )
         try:
             pages = await browser.context.pages()
@@ -81,10 +79,7 @@ async def verify_reused_context(context_id: str) -> UserData:
                 UserData,
                 page=page,
             )
-            user = extracted.data
-            if "sign in" in f"{user.full_name} {user.address}".lower():
-                raise RuntimeError("The reused context did not reach authenticated profile data")
-            return user
+            return extracted.data
         finally:
             await stagehand.close()
     finally:

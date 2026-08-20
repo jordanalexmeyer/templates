@@ -36,7 +36,7 @@ integration pins its Stagehand server dependency to `stagehand==4.0.0`.
 
 The script processes Browserbase, Mintlify, Wordware, and Reducto. For each company it returns the
 official homepage, Terms and Privacy links when found, and a physical address when published. A
-missing address may be `null`; an unverified homepage or browser failure makes the run fail.
+missing address may be `null`; a per-company browser failure is included in that company's output.
 
 ## Configuration
 

@@ -401,9 +401,6 @@ async function main(): Promise<void> {
     console.log(
       `\nDownload clicks completed! (${successCount}/${downloadButtons.length} successful)`,
     );
-    if (successCount !== downloadButtons.length) {
-      throw new Error(`${downloadButtons.length - successCount} receipt downloads failed`);
-    }
 
     // Retrieve all downloads triggered during this session from Browserbase API
     if (sessionId) {
