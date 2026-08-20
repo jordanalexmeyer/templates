@@ -16,7 +16,10 @@ const ProductSchema = z.object({
   reviews_count: z.string().describe("The number of customer reviews (e.g., '1,234')"),
   product_url: z
     .string()
-    .describe("The full href URL link to the product detail page (starting with https:// or /dp/)"),
+    .url()
+    .describe(
+      "The absolute href URL of the product detail page; never an accessibility-tree reference",
+    ),
 });
 
 // Schema for extracting multiple products from search results
@@ -106,7 +109,7 @@ async function getProductsForCountry(
   try {
     console.log(`Initializing browser session with ${country.name} proxy...`);
 
-    const page = (await browser.context.pages())[0];
+    let page = (await browser.context.pages())[0];
 
     // Alternative: Skip the search bar and go straight to results by building the search URL.
     // Uncomment below to use direct navigation instead of stagehand.act() typing + clicking.
@@ -114,67 +117,42 @@ async function getProductsForCountry(
     // console.log(`Navigating to: ${searchUrl}`);
     // await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
 
-    // Use the matching regional Amazon storefront and a deterministic search URL.
+    // Use the matching regional storefront, then let Stagehand perform the
+    // semantic search interaction rather than coupling the template to the DOM.
     const origin = `https://${country.domain}`;
-    const searchUrl = `${origin}/s?k=${encodeURIComponent(searchQuery)}`;
-    console.log(`[${country.name}] Navigating to ${searchUrl}...`);
-    await page.goto(searchUrl, {
+    console.log(`[${country.name}] Navigating to ${origin}...`);
+    await page.goto(origin, {
       waitUntil: "domcontentloaded",
       timeout: 60000,
     });
-
-    // Regional storefronts hydrate result cards at different speeds. Wait for complete
-    // product links instead of assuming DOMContentLoaded means every card is ready.
-    const resultsDeadline = Date.now() + 15000;
-    let visibleProductCount = 0;
-    while (Date.now() < resultsDeadline) {
-      visibleProductCount = await page.evaluate(
-        () =>
-          Array.from(document.querySelectorAll('[data-component-type="s-search-result"]')).filter(
-            (card) =>
-              (card.querySelector("h2")?.textContent?.trim().length ?? 0) > 0 &&
-              card.querySelector('a[href*="/dp/"]'),
-          ).length,
-      );
-      if (visibleProductCount >= resultsCount) break;
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
-    if (visibleProductCount < resultsCount) {
-      throw new Error(
-        `Only ${visibleProductCount} complete product cards rendered at ${await page.url()}`,
+    let semanticSearchSucceeded = false;
+    try {
+      const typed = await stagehand.act(`Type "${searchQuery}" into the search bar`);
+      const submitted = await stagehand.act("Click the search button");
+      semanticSearchSucceeded = typed.data.success && submitted.data.success;
+    } catch (error) {
+      console.warn(
+        `[${country.name}] Semantic search failed; checking results before fallback`,
+        error,
       );
     }
+    page = (await browser.context.activePage()) ?? page;
+    const resultsReady = semanticSearchSucceeded
+      ? await page
+          .waitForSelector('[data-component-type="s-search-result"]', { timeout: 10000 })
+          .catch(() => false)
+      : false;
+    if (!resultsReady) {
+      const searchUrl = `${origin}/s?k=${encodeURIComponent(searchQuery)}`;
+      await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
+      await page.waitForSelector('[data-component-type="s-search-result"]', { timeout: 15000 });
+    }
 
-    // Amazon result cards have a known structure, so read them deterministically.
     console.log(`[${country.name}] Extracting top ${resultsCount} products...`);
-    const rawProducts = (await page.evaluate(
-      (limit: number) =>
-        Array.from(document.querySelectorAll('[data-component-type="s-search-result"]'))
-          .map((card) => {
-            const productLinks = Array.from(
-              card.querySelectorAll<HTMLAnchorElement>('a[href*="/dp/"]'),
-            );
-            const productLink =
-              card.querySelector<HTMLAnchorElement>('h2 a[href*="/dp/"]') ??
-              productLinks.find((link) => (link.textContent?.trim().length ?? 0) > 10) ??
-              productLinks[0];
-            const title =
-              card.querySelector("h2")?.textContent?.trim() ??
-              productLink?.textContent?.trim() ??
-              "";
-            return {
-              name: title,
-              price: card.querySelector(".a-price .a-offscreen")?.textContent?.trim() ?? "N/A",
-              rating: card.querySelector(".a-icon-alt")?.textContent?.trim() ?? "N/A",
-              reviews_count: card.querySelector(".s-underline-text")?.textContent?.trim() ?? "N/A",
-              product_url: productLink?.href ?? "",
-            };
-          })
-          .filter((product) => product.name.length > 0 && product.product_url.includes("/dp/"))
-          .slice(0, limit),
-      resultsCount,
-    )) as unknown;
-    const extractionResult = ProductsSchema.parse({ products: rawProducts });
+    const { data: extractionResult } = await stagehand.extract(
+      `Extract the first ${resultsCount} product search results from this Amazon page. For each product, extract the full title, displayed price with currency symbol (or "N/A"), star rating, review count, and absolute product-page href. Each URL must be a real Amazon link containing /dp/, never an accessibility-tree reference such as /2-8109. Only extract actual product listings.`,
+      ProductsSchema,
+    );
 
     // Clean up products - ensure price is never null and URLs are absolute
     const cleanedProducts = extractionResult.products.map((p) => ({
@@ -276,29 +254,38 @@ async function main() {
   // Configure search parameters
   const searchQuery = "iPhone 15 Pro Max 256GB";
   const resultsCount = 3;
+  const countryLimit = Number.parseInt(process.env.MAX_COUNTRIES ?? String(COUNTRIES.length), 10);
+  if (!Number.isInteger(countryLimit) || countryLimit < 1) {
+    throw new Error("MAX_COUNTRIES must be a positive integer");
+  }
+  const selectedCountries = COUNTRIES.slice(0, countryLimit);
 
   console.log("=".repeat(60));
   console.log("AMAZON PRICE COMPARISON - GEOLOCATION PROXY DEMO");
   console.log("=".repeat(60));
   console.log(`Search Query: ${searchQuery}`);
   console.log(`Results per country: ${resultsCount}`);
-  console.log(`Countries: ${COUNTRIES.map((c) => c.code).join(", ")}`);
+  console.log(`Countries: ${selectedCountries.map((c) => c.code).join(", ")}`);
   console.log("=".repeat(60));
 
   // Process all countries concurrently for faster execution
   // Each country uses its own browser session, so they can run in parallel
-  console.log(`\nFetching prices from ${COUNTRIES.length} countries concurrently...`);
+  console.log(`\nFetching prices from ${selectedCountries.length} countries concurrently...`);
 
   const results = await Promise.all(
-    COUNTRIES.map((country) => getProductsForCountry(searchQuery, country, resultsCount)),
+    selectedCountries.map((country) => getProductsForCountry(searchQuery, country, resultsCount)),
   );
 
   // A regional storefront can occasionally reload its execution context while Amazon
   // hydrates the page. Retry only failed countries once, then preserve a hard failure.
   for (const [index, result] of results.entries()) {
     if (result.products.length > 0) continue;
-    console.log(`\nRetrying ${COUNTRIES[index].name} after its first extraction failed...`);
-    results[index] = await getProductsForCountry(searchQuery, COUNTRIES[index], resultsCount);
+    console.log(`\nRetrying ${selectedCountries[index].name} after its first extraction failed...`);
+    results[index] = await getProductsForCountry(
+      searchQuery,
+      selectedCountries[index],
+      resultsCount,
+    );
   }
 
   const failures = results.filter((result) => result.products.length === 0);

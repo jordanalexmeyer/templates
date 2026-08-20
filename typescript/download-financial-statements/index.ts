@@ -4,6 +4,7 @@ import { Browserbase } from "@browserbasehq/sdk";
 import { browserbase, Stagehand } from "@browserbasehq/stagehand";
 import "dotenv/config";
 import fs from "fs";
+import { z } from "zod/v4";
 
 /**
  * Polls Browserbase API for downloads with timeout handling.
@@ -85,28 +86,26 @@ async function main(): Promise<void> {
 
     console.log("Stagehand initialized successfully!");
     const context = browser.context;
-    const page = (await context.pages())[0];
+    let page = (await context.pages())[0];
 
     // The session can be monitored from the Browserbase Sessions dashboard.
     // Avoid printing its signed Live View URL into application logs.
     console.log("Live View is available in the Browserbase Sessions dashboard");
 
-    // Collect all four URLs before opening any PDF. Browserbase captures PDF
-    // navigations as downloads, which can close the page that initiated them.
-    console.log("Navigating to Apple Investor Relations...");
-    await page.goto("https://investor.apple.com/investor-relations/default.aspx", {
-      waitUntil: "domcontentloaded",
-      timeout: 60000,
-    });
-    const statementUrls = await page.evaluate(() =>
-      Array.from(document.querySelectorAll<HTMLAnchorElement>("a"))
-        .filter(
-          (link) =>
-            link.textContent?.trim() === "Financial Statements" && /fy2025/i.test(link.href),
-        )
-        .map((link) => link.href)
-        .slice(0, 4),
+    console.log("Navigating to Apple.com...");
+    await page.goto("https://www.apple.com/", { waitUntil: "domcontentloaded", timeout: 60000 });
+    await stagehand.act("Click the 'Investors' button at the bottom of the page");
+    await stagehand.act("Scroll down to the Financial Data section of the page");
+    await stagehand.act("Under Quarterly Earnings Reports, click on '2025'");
+    page = (await context.activePage()) ?? page;
+
+    // Discover the intended documents semantically, validate their targets, and
+    // keep the actual UI interaction in Stagehand act().
+    const { data: statements } = await stagehand.extract(
+      "Extract the actual absolute HTTP(S) href URLs of the four FY2025 Financial Statements PDF links, ordered Q4 through Q1. Never return accessibility-tree references.",
+      z.object({ statementUrls: z.array(z.string().url()) }),
     );
+    const statementUrls = statements.statementUrls.slice(0, 4);
     if (statementUrls.length !== 4 || new Set(statementUrls).size !== 4) {
       throw new Error(`Expected four FY2025 statements, found ${statementUrls.length}`);
     }
@@ -117,14 +116,22 @@ async function main(): Promise<void> {
       if (!response.ok || !response.headers.get("content-type")?.includes("application/pdf")) {
         throw new Error(`Q${4 - index} statement URL did not return a PDF`);
       }
-      await page.evaluate((url: string) => {
-        const link = document.createElement("a");
-        link.href = url;
-        link.target = "_blank";
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-      }, statementUrl);
+      const opened = await stagehand.act(
+        `Click the Financial Statements link under Q${4 - index}`,
+        { page },
+      );
+      if (!opened.data.success) {
+        // A direct link trigger is the smallest correctness fallback when the
+        // semantic click cannot interact with a PDF target.
+        await page.evaluate((url: string) => {
+          const link = document.createElement("a");
+          link.href = url;
+          link.target = "_blank";
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+        }, statementUrl);
+      }
       await page.waitForTimeout(500);
       console.log(`Triggered FY2025 Q${4 - index} download`);
     }

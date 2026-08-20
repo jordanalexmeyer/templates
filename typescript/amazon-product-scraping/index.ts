@@ -17,7 +17,10 @@ const ProductSchema = z.object({
   reviews_count: z.string().describe("The number of customer reviews (e.g., '1,234')"),
   product_url: z
     .string()
-    .describe("The absolute or root-relative URL link to the product detail page on Amazon"),
+    .url()
+    .describe(
+      "The absolute href of the Amazon product detail page; never an accessibility-tree reference",
+    ),
 });
 
 // Schema for extracting multiple products from search results
@@ -42,7 +45,7 @@ async function main(): Promise<void> {
     // Initialize browser session to start automation.
 
     console.log("Stagehand initialized successfully!");
-    const page = (await browser.context.pages())[0];
+    let page = (await browser.context.pages())[0];
 
     // Alternative: skip the search bar and go straight to results by building the search URL.
     // Uncomment below to use direct navigation instead of stagehand.act() typing + clicking.
@@ -55,45 +58,37 @@ async function main(): Promise<void> {
     //   waitUntil: "domcontentloaded",
     // });
 
-    // Navigate directly to a deterministic search URL so a failed form action
-    // cannot leave extraction on the Amazon homepage.
-    const searchUrl = `https://www.amazon.com/s?k=${encodeURIComponent(SEARCH_QUERY)}`;
-    console.log(`Navigating to Amazon search: ${searchUrl}`);
-    await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
+    // Navigate to Amazon and use Stagehand's semantic browser primitives for
+    // the search workflow so the template remains resilient to UI changes.
+    console.log("Navigating to Amazon...");
+    await page.goto("https://www.amazon.com", {
+      waitUntil: "domcontentloaded",
+      timeout: 60000,
+    });
+    console.log(`Searching for: ${SEARCH_QUERY}`);
+    const typed = await stagehand.act(`Type "${SEARCH_QUERY}" into the search bar`);
+    const submitted = await stagehand.act("Click the search button");
+    if (!typed.data.success || !submitted.data.success) {
+      throw new Error(typed.data.message || submitted.data.message || "Amazon search failed");
+    }
+    page = (await browser.context.activePage()) ?? page;
+    const resultsReady = await page
+      .waitForSelector('[data-component-type="s-search-result"]', { timeout: 10000 })
+      .catch(() => false);
+    if (!resultsReady) {
+      // Amazon occasionally replaces the document during the semantic submit,
+      // invalidating the result frame. Fall back only after the readiness check
+      // proves the act-driven navigation did not produce a results page.
+      const searchUrl = `https://www.amazon.com/s?k=${encodeURIComponent(SEARCH_QUERY)}`;
+      await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
+      await page.waitForSelector('[data-component-type="s-search-result"]', { timeout: 15000 });
+    }
 
-    // Read Amazon's result cards deterministically. Known layouts are more
-    // reliable and cheaper with locators/DOM reads than semantic extraction.
     console.log("Extracting product data...");
-    const rawProducts = (await page.evaluate(() =>
-      Array.from(document.querySelectorAll('[data-component-type="s-search-result"]'))
-        .map((card) => {
-          const productLinks = Array.from(
-            card.querySelectorAll<HTMLAnchorElement>('a[href*="/dp/"]'),
-          );
-          const productLink = productLinks.find(
-            (link) => link.href && (link.textContent?.trim().length ?? 0) > 10,
-          );
-          if (!productLink) return null;
-
-          const brand = card.querySelector("h2 span")?.textContent?.trim() ?? "";
-          const title = productLink.textContent?.trim() ?? "";
-          return {
-            name: [brand, title].filter(Boolean).join(" "),
-            price: card.querySelector(".a-price .a-offscreen")?.textContent?.trim() ?? "",
-            rating: card.querySelector(".a-icon-alt")?.textContent?.trim() ?? "",
-            reviews_count:
-              card
-                .querySelector('[data-csa-c-content-id="alf-customer-ratings-count-component"]')
-                ?.textContent?.trim() ??
-              card.querySelector(".s-underline-text")?.textContent?.trim() ??
-              "",
-            product_url: productLink.href,
-          };
-        })
-        .filter((product) => product !== null)
-        .slice(0, 3),
-    )) as unknown;
-    const products = ProductsSchema.parse({ products: rawProducts });
+    const { data: products } = await stagehand.extract(
+      "Extract the details of the FIRST 3 products in the search results. Get the product name, price, star rating, number of reviews, and the absolute href of the product page. The product URL must be a real Amazon link containing /dp/, never an accessibility-tree reference such as /2-8109.",
+      ProductsSchema,
+    );
 
     const normalizedProducts = products.products.map((product) => ({
       ...product,
@@ -103,7 +98,9 @@ async function main(): Promise<void> {
       throw new Error(`Expected 3 products, found ${normalizedProducts.length}`);
     }
     const queryTokens = SEARCH_QUERY.toLowerCase().match(/[a-z0-9]+/g) ?? [];
-    const significantQueryTokens = queryTokens.filter((token) => token.length >= 3);
+    const significantQueryTokens = queryTokens.filter(
+      (token) => token.length >= 3 || /^\d+$/.test(token),
+    );
     const matchTokens = significantQueryTokens.length > 0 ? significantQueryTokens : queryTokens;
     const queryMatches = normalizedProducts.filter((product) => {
       const normalizedName = product.name.toLowerCase();
@@ -111,7 +108,7 @@ async function main(): Promise<void> {
     });
     if (queryMatches.length < 2) {
       throw new Error(
-        `Search results did not match ${SEARCH_QUERY}: only ${queryMatches.length} products contained a query term`,
+        `Search results did not match ${SEARCH_QUERY}: only ${queryMatches.length} products contained a query term; extracted ${normalizedProducts.map((product) => product.name).join(" | ")}`,
       );
     }
     if (
@@ -119,7 +116,9 @@ async function main(): Promise<void> {
         (product) => !product.product_url.includes("/dp/") || product.name.length < 10,
       )
     ) {
-      throw new Error("One or more product records lacked a full title or product-detail URL");
+      throw new Error(
+        `One or more product records lacked a full title or product-detail URL: ${normalizedProducts.map((product) => `${product.name} => ${product.product_url}`).join(" | ")}`,
+      );
     }
 
     console.log("Products found:");
@@ -129,8 +128,8 @@ async function main(): Promise<void> {
     throw error;
   } finally {
     // Always close session to release resources and clean up.
-    await stagehand.close();
-    await browser.close();
+    await stagehand.close().catch((error) => console.warn("Stagehand cleanup warning:", error));
+    await browser.close().catch((error) => console.warn("Browser cleanup warning:", error));
     console.log("Session closed successfully");
   }
 }

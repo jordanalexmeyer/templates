@@ -91,34 +91,30 @@ async function main() {
 
     console.log(`Credentials extracted - Email: ${credentials.email}`);
 
-    // Leave enough time for deterministic form filling and submit.
-    // Starting close to the end of a 30-second window can expire an otherwise
-    // valid code before the browser sends it.
+    // Fill in login form with email and password
+    console.log("Filling in email...");
+    await stagehand.act(`Type '${credentials.email}' into the email field`);
+
+    console.log("Filling in password...");
+    await stagehand.act(`Type '${credentials.password}' into the password field`);
+
+    // Generate the short-lived code only after the slower semantic actions.
     let secondsLeft = 30 - (Math.floor(Date.now() / 1000) % 30);
-    if (secondsLeft < 8) {
+    if (secondsLeft < 12) {
       console.log(`Waiting ${secondsLeft + 1} seconds for a fresh TOTP window...`);
       await page.waitForTimeout((secondsLeft + 1) * 1000);
     }
-
-    // Generate TOTP code using RFC 6238 algorithm
     const totpCode = generateTOTP(credentials.totpSecret);
     secondsLeft = 30 - (Math.floor(Date.now() / 1000) % 30);
     console.log(`Generated TOTP code: ${totpCode} (valid for ${secondsLeft} seconds)`);
 
-    // Fill in login form with email and password
-    console.log("Filling in email...");
-    await page.locator("#email").fill(credentials.email);
-
-    console.log("Filling in password...");
-    await page.locator("#password").fill(credentials.password);
-
     // Fill in TOTP code
     console.log("Filling in TOTP code...");
-    await page.locator("#totpmfa").fill(totpCode);
+    await stagehand.act(`Type '${totpCode}' into the TOTP code field`);
 
     // Submit the form
     console.log("Submitting form...");
-    await page.locator('input[type="submit"]').click();
+    await stagehand.act("Click the submit or login button");
 
     // Wait for response - be tolerant of sites that never reach full "networkidle"
     try {
@@ -159,13 +155,13 @@ async function main() {
         await page.waitForTimeout((secondsLeft + 1) * 1000);
       }
 
+      await stagehand.act(`Type '${credentials.email}' into the email field`);
+      await stagehand.act(`Type '${credentials.password}' into the password field`);
+
       const newCode = generateTOTP(credentials.totpSecret);
       console.log(`New TOTP code: ${newCode}`);
-
-      await page.locator("#email").fill(credentials.email);
-      await page.locator("#password").fill(credentials.password);
-      await page.locator("#totpmfa").fill(newCode);
-      await page.locator('input[type="submit"]').click();
+      await stagehand.act(`Type '${newCode}' into the TOTP code field`);
+      await stagehand.act("Click the submit or login button");
 
       try {
         console.log("Waiting for page to finish loading after retry submit...");

@@ -4,10 +4,10 @@ import asyncio
 import json
 import os
 from dataclasses import asdict, dataclass
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urljoin
 
 from dotenv import load_dotenv
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, HttpUrl
 from stagehand import BrowserbaseProxyConfig, Stagehand, browserbase
 
 load_dotenv()
@@ -15,10 +15,16 @@ load_dotenv()
 
 class Product(BaseModel):
     name: str
-    price: str = "N/A"
-    rating: str = "N/A"
-    reviews_count: str = "N/A"
-    product_url: str
+    price: str
+    rating: str
+    reviews_count: str
+    product_url: HttpUrl = Field(
+        description=("Absolute Amazon product-detail href; never an accessibility-tree reference")
+    )
+
+
+class Products(BaseModel):
+    products: list[Product]
 
 
 @dataclass(frozen=True)
@@ -75,55 +81,61 @@ async def products_for_country(
             pages = await browser.context.pages()
             page = pages[0] if pages else await browser.context.new_page()
             origin = f"https://{country.domain}"
-            search_url = f"{origin}/s?k={quote_plus(query)}"
-            await page.goto(search_url, wait_until="domcontentloaded", timeout=60_000)
-
-            visible_count = 0
-            for _ in range(30):
-                value = await page.evaluate(
-                    """Array.from(
-                      document.querySelectorAll('[data-component-type="s-search-result"]')
-                    ).filter((card) =>
-                      (card.querySelector('h2')?.textContent?.trim().length ?? 0) > 0 &&
-                      card.querySelector('a[href*="/dp/"]')
-                    ).length"""
+            await page.goto(origin, wait_until="domcontentloaded", timeout=60_000)
+            semantic_search_succeeded = False
+            try:
+                typed = await stagehand.act(f'Type "{query}" into the search bar', page=page)
+                submitted = await stagehand.act("Click the search button", page=page)
+                semantic_search_succeeded = typed.data.success and submitted.data.success
+            except Exception as error:
+                print(
+                    f"[{country.name}] Semantic search failed; "
+                    f"checking results before fallback: {error}"
                 )
-                visible_count = int(value) if isinstance(value, (int, float)) else 0
-                if visible_count >= result_count:
-                    break
-                await page.wait_for_timeout(500)
-            if visible_count < result_count:
-                raise RuntimeError(f"Only {visible_count} complete product cards rendered")
-
-            raw_products = await page.evaluate(
-                f"""Array.from(
-                  document.querySelectorAll('[data-component-type="s-search-result"]')
-                ).map((card) => {{
-                  const links = Array.from(card.querySelectorAll('a[href*="/dp/"]'));
-                  const link = card.querySelector('h2 a[href*="/dp/"]') ||
-                    links.find((item) => (item.textContent?.trim().length ?? 0) > 10) ||
-                    links[0];
-                  return {{
-                    name: card.querySelector('h2')?.textContent?.trim() ||
-                      link?.textContent?.trim() || '',
-                    price: card.querySelector('.a-price .a-offscreen')
-                      ?.textContent?.trim() || 'N/A',
-                    rating: card.querySelector('.a-icon-alt')?.textContent?.trim() || 'N/A',
-                    reviews_count: card.querySelector('.s-underline-text')
-                      ?.textContent?.trim() || 'N/A',
-                    product_url: link?.href || '',
-                  }};
-                }}).filter((item) => item.name && item.product_url.includes('/dp/'))
-                  .slice(0, {result_count})"""
+            page = await browser.context.active_page() or page
+            results_ready = None
+            if semantic_search_succeeded:
+                try:
+                    results_ready = await page.wait_for_selector(
+                        '[data-component-type="s-search-result"]',
+                        timeout=10_000,
+                    )
+                except Exception:
+                    results_ready = None
+            if not results_ready:
+                search_url = f"{origin}/s?k={quote_plus(query)}"
+                await page.goto(search_url, wait_until="domcontentloaded", timeout=60_000)
+                await page.wait_for_selector(
+                    '[data-component-type="s-search-result"]',
+                    timeout=15_000,
+                )
+            extracted = await stagehand.extract(
+                (
+                    f"Extract the first {result_count} product search results. For each product, "
+                    "return the full title, displayed price with currency symbol or N/A, star "
+                    "rating, review count, and absolute product-page href. Each URL must be a "
+                    "real Amazon link containing /dp/, never an accessibility-tree reference. "
+                    "Only include actual listings."
+                ),
+                Products,
+                page=page,
             )
-            products = [Product.model_validate(item) for item in raw_products]
+            products = [
+                {
+                    **product.model_dump(mode="json"),
+                    "product_url": urljoin(origin, str(product.product_url)),
+                }
+                for product in extracted.data.products[:result_count]
+            ]
             if len(products) != result_count:
                 raise RuntimeError(f"Expected {result_count} products, received {len(products)}")
+            if any("/dp/" not in product["product_url"] for product in products):
+                raise RuntimeError("One or more products lacked a detail-page URL")
             return CountryResult(
                 country=country.name,
                 country_code=country.code,
                 currency=country.currency,
-                products=[product.model_dump() for product in products],
+                products=products,
             )
         finally:
             await stagehand.close()

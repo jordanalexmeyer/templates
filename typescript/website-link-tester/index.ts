@@ -6,6 +6,11 @@ import { z } from "zod/v4";
 
 // Base URL whose links we want to crawl and verify
 const URL = "https://www.browserbase.com";
+const configuredLinkLimit = Number(process.env.MAX_LINKS ?? Number.MAX_SAFE_INTEGER);
+if (!Number.isSafeInteger(configuredLinkLimit) || configuredLinkLimit < 1) {
+  throw new Error("MAX_LINKS must be a positive integer");
+}
+const MAX_LINKS = configuredLinkLimit;
 
 // Maximum number of links to verify concurrently.
 // Default: 1 (sequential processing - works on all plans)
@@ -96,19 +101,20 @@ async function collectLinksFromHomepage(): Promise<Link[]> {
 
     console.log(`Successfully loaded ${URL}. Extracting links...`);
 
-    const extractedLinks = {
-      links: await page.evaluate(() =>
-        Array.from(document.querySelectorAll<HTMLAnchorElement>("a[href]"))
-          .map((link) => ({
-            url: link.href,
-            linkText:
-              link.textContent?.trim() ||
-              link.getAttribute("aria-label")?.trim() ||
-              "Untitled link",
-          }))
-          .filter((link) => /^https?:\/\//.test(link.url)),
-      ),
-    };
+    const { data: extractedLinks } = await stagehand.extract(
+      "Extract all rendered links on the page with their visible link text or accessible label and their absolute HTTP(S) href. Return actual destination URLs, never accessibility-tree references.",
+      z.object({
+        links: z.array(
+          z.object({
+            url: z
+              .string()
+              .url()
+              .describe("The absolute HTTP(S) href, never an accessibility-tree reference"),
+            linkText: z.string(),
+          }),
+        ),
+      }),
+    );
 
     // Remove duplicate URLs and log both raw and unique counts for visibility
     const uniqueLinks = deduplicateLinks(extractedLinks);
@@ -122,7 +128,7 @@ async function collectLinksFromHomepage(): Promise<Link[]> {
     await closeSession(stagehand, browser);
     console.log("Initial browser closed");
 
-    return uniqueLinks;
+    return uniqueLinks.slice(0, MAX_LINKS);
   } catch (error) {
     console.error("Error while collecting links:", error);
     // Ensure the browser is closed even when link collection fails

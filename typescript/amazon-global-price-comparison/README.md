@@ -4,7 +4,7 @@
 
 - Goal: compare Amazon product prices across multiple countries using geolocation proxies.
 - Uses Browserbase's managed proxy infrastructure to route traffic through different geographic locations (US, UK, Germany, France, Italy, Spain).
-- Opens each matching regional Amazon storefront and reads its result cards with deterministic V4 page APIs, then validates the records with Zod.
+- Opens each matching regional Amazon storefront, searches with `act()`, and extracts validated product records with `extract()` and Zod.
 - Sequential processing shows how different proxy locations return different pricing from the same Amazon search.
 - Docs → https://docs.browserbase.com/features/proxies
 
@@ -12,8 +12,8 @@
 
 - geolocation proxies: route traffic through specific geographic locations (city, country) to access location-specific content and pricing
   Docs → https://docs.browserbase.com/features/proxies#set-proxy-geolocation
-- page APIs: use the V4 browser context and page directly when the target has a known, stable structure
-  Docs → https://docs.stagehand.dev/v4/reference/page
+- act / extract: interact semantically and return schema-validated product records
+  Docs → https://docs.stagehand.dev/v4/basics/extract
 - proxies: Browserbase's managed proxy infrastructure supporting 201+ countries for geolocation-based routing
   Docs → https://docs.browserbase.com/features/proxies
 

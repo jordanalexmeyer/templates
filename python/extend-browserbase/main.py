@@ -495,7 +495,7 @@ async def main() -> None:
                 # If click fails, scroll element into view and retry
                 print(f"  Could not click download button {i + 1}, trying to scroll and retry...")
                 try:
-                    await page.evaluate("window.scrollBy(0, 200)")
+                    await stagehand.act("Scroll down slightly", page=page)
                     await stagehand.act(action, page=page)
                     success_count += 1
                 except Exception:
@@ -503,7 +503,7 @@ async def main() -> None:
 
             # Scroll down periodically to ensure elements are in view
             if (i + 1) % 4 == 0 and (i + 1) < len(download_buttons):
-                await page.evaluate("window.scrollBy(0, 300)")
+                await stagehand.act("Scroll down slightly", page=page)
 
         print(f"\nDownload clicks completed! ({success_count}/{len(download_buttons)} successful)")
         if success_count != len(download_buttons):

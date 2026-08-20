@@ -3,7 +3,6 @@
 import asyncio
 import json
 import os
-import re
 from datetime import UTC, datetime
 
 from dotenv import load_dotenv
@@ -41,29 +40,36 @@ async def main() -> None:
             pages = await browser.context.pages()
             page = pages[0] if pages else await browser.context.new_page()
             await page.goto(
-                "https://phila.legistar.com/Calendar.aspx",
+                "https://phila.legistar.com/",
                 wait_until="domcontentloaded",
                 timeout=60_000,
             )
-            rows = page.locator("tr")
-            events: list[CouncilEvent] = []
-            for index in range(await rows.count()):
-                values = [
-                    value.strip()
-                    for value in re.split(r"[\t\n]+", await rows.nth(index).inner_text())
-                ]
-                values = [value for value in values if value]
-                event_date = next(
-                    (value for value in values if re.fullmatch(r"\d{1,2}/\d{1,2}/\d{4}", value)),
-                    None,
+            await stagehand.act("Click Calendar in the navigation menu", page=page)
+            await stagehand.act(f"Select {year} from the year dropdown", page=page)
+            page = await browser.context.active_page() or page
+            if "Calendar.aspx" not in await page.url():
+                await page.goto(
+                    "https://phila.legistar.com/Calendar.aspx",
+                    wait_until="domcontentloaded",
+                    timeout=60_000,
                 )
-                event_time = next(
-                    (value for value in values if re.fullmatch(r"\d{1,2}:\d{2} [AP]M", value)),
-                    None,
+
+            validated = CouncilEvents(results=[])
+            for attempt in range(2):
+                extracted = await stagehand.extract(
+                    (
+                        f"Extract every {year} event visible in the calendar table with its "
+                        "name, date, and time"
+                    ),
+                    CouncilEvents,
+                    page=page,
                 )
-                if event_date and event_time and values[0] not in {event_date, event_time}:
-                    events.append(CouncilEvent(name=values[0], date=event_date, time=event_time))
-            validated = CouncilEvents(results=events)
+                validated = extracted.data
+                if validated.results:
+                    break
+                if attempt == 0:
+                    await page.wait_for_timeout(1_500)
+            events = validated.results
             if not events:
                 raise RuntimeError(f"No council events were returned for {year}")
             if any(not event.name.strip() or not event.date.strip() for event in events):

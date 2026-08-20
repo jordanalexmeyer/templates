@@ -4,14 +4,15 @@
 
 - Goal: showcase how to automate form filling with Stagehand and Browserbase.
 - Smart Form Automation: dynamically fill contact forms with variable-driven data.
-- Deterministic Mapping: fill the known contact-form field names with V4 page APIs.
+- Observe → Act: discovers the live form controls once, then fills the observed actions with the matching values.
 - Outcome Verification: read every input and dropdown value back from the browser before reporting success.
+- Correctness fallback: if V4 cannot execute in the contact form's extension world, uses the form's exact field names and still verifies every value.
   Docs → https://docs.browserbase.com/fundamentals/create-browser-session
 
 ## GLOSSARY
 
-- page APIs: use the V4 browser page directly for stable form fields
-  Docs → https://docs.stagehand.dev/v4/reference/page
+- observe / act: discover interactive elements, then execute the observed actions
+  Docs → https://docs.stagehand.dev/v4/basics/observe
 
 ## QUICKSTART
 

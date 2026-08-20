@@ -68,7 +68,7 @@ Stagehand is the SDK for browser agents.
 - "ModuleNotFoundError": run `uv sync` or `pip install -e .` in sec-filing-research
 - Missing credentials: ensure .env has BROWSERBASE_API_KEY
 - No company match: use a valid company name, ticker, or CIK; SEC search is case-sensitive for some queries
-- Extraction errors: SEC page layout changes can break selectors; check live view and adjust act/extract prompts if needed
+- Extraction errors: if SEC changes its UI, inspect the session and adjust the act/extract prompts
 - Rate limiting: avoid excessive runs; SEC may throttle heavy or automated traffic
 
 ## USE CASES

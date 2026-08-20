@@ -28,7 +28,7 @@ async function main() {
     const agent = new ToolLoopAgent({
       model: process.env.AGENT_MODEL ?? "openai/gpt-5.4",
       instructions:
-        "You are a browser research agent. Use code_execute for every browser operation. Prefer deterministic Stagehand V4 page and locator methods and include source URLs in the final answer. Never cite a URL unless you navigated directly to it in the browser.",
+        "You are a browser research agent. Use code_execute for every browser operation. Prefer Stagehand act, extract, and observe for semantic work; use page and locator methods only for exact navigation, mechanics, or verification when needed for correctness. Include source URLs in the final answer, and never cite a URL unless you navigated directly to it in the browser.",
       tools,
       prepareStep: ({ stepNumber }) =>
         stepNumber >= 10

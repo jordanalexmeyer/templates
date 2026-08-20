@@ -1,11 +1,11 @@
 """Verify geolocation proxies with live weather data and Stagehand V4."""
 
 import asyncio
-import json
 import os
 from dataclasses import dataclass
 
 from dotenv import load_dotenv
+from pydantic import BaseModel
 
 from stagehand import BrowserbaseProxyConfig, Stagehand, browserbase
 
@@ -30,6 +30,13 @@ class Geolocation:
 class WeatherResult:
     city: str
     country: str
+    temperature: float
+    conditions: str
+    reported_location: str
+    reported_country: str
+
+
+class ExtractedWeather(BaseModel):
     temperature: float
     conditions: str
     reported_location: str
@@ -66,13 +73,19 @@ async def get_weather_for_location(location: Geolocation) -> WeatherResult:
                 wait_until="domcontentloaded",
                 timeout=60_000,
             )
-            payload = json.loads(await page.locator("body").inner_text())
-            current = payload.get("current_condition", [{}])[0]
-            nearest = payload.get("nearest_area", [{}])[0]
-            temperature = float(current.get("temp_C", "nan"))
-            conditions = current.get("weatherDesc", [{}])[0].get("value", "").strip()
-            reported_location = nearest.get("areaName", [{}])[0].get("value", "").strip()
-            reported_country = nearest.get("country", [{}])[0].get("value", "").strip()
+            extracted = await stagehand.extract(
+                (
+                    "Extract the current temperature in Celsius, current weather description, "
+                    "nearest reported city or area, and reported country from this weather JSON"
+                ),
+                ExtractedWeather,
+                page=page,
+            )
+            weather = extracted.data
+            temperature = weather.temperature
+            conditions = weather.conditions.strip()
+            reported_location = weather.reported_location.strip()
+            reported_country = weather.reported_country.strip()
 
             if not conditions or not reported_location or not reported_country:
                 raise RuntimeError("Weather service returned incomplete current conditions")

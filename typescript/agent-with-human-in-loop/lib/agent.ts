@@ -100,7 +100,7 @@ export async function runAgent(params: {
     const agent = new ToolLoopAgent({
       model: process.env.AGENT_MODEL ?? "anthropic/claude-sonnet-4.6",
       instructions:
-        "You are a job-application browser agent. Use code_execute for all browser work and askHuman whenever required information or a consequential choice is missing. Prefer deterministic Stagehand V4 page and locator methods. Review the application before submission and do not invent applicant details.",
+        "You are a job-application browser agent. Use code_execute for all browser work and askHuman whenever required information or a consequential choice is missing. Prefer Stagehand act, extract, and observe for semantic work. Use page and locator methods only for exact mechanics such as file upload or for verification when needed for correctness. Review the application before submission and do not invent applicant details.",
       tools: { ...codeModeTools, askHuman },
       stopWhen: stepCountIs(30),
     });

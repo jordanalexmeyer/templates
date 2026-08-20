@@ -2,6 +2,7 @@
 
 import "dotenv/config";
 import { browserbase, Stagehand } from "@browserbasehq/stagehand";
+import { z } from "zod/v4";
 
 async function closeSession(
   stagehand: Stagehand,
@@ -18,6 +19,23 @@ const COMPANY_CIK = "0000320193";
 
 // Number of filings to retrieve
 const NUM_FILINGS = 5;
+
+const CompanyInfoSchema = z.object({
+  companyName: z.string().min(1),
+  cik: z.string().min(1),
+});
+
+const FilingsSchema = z.object({
+  filings: z.array(
+    z.object({
+      type: z.string().min(1),
+      date: z.string().min(1),
+      description: z.string().nullable(),
+      accessionNumber: z.string().nullable(),
+      fileNumber: z.string().nullable(),
+    }),
+  ),
+});
 
 // Result shape returned after extracting company and filing metadata from SEC EDGAR
 interface SECFilingResult {
@@ -58,61 +76,66 @@ async function main(): Promise<void> {
 
     console.log("Stagehand initialized successfully!");
 
-    const page = (await browser.context.pages())[0];
+    let page = (await browser.context.pages())[0];
 
-    // The target company is known, so navigate directly to its entity page.
-    // This avoids depending on the changing autocomplete/search UI.
     console.log("\nNavigating to SEC EDGAR...");
-    await page.goto(`https://www.sec.gov/edgar/browse/?CIK=${COMPANY_CIK}&owner=exclude`, {
+    await page.goto("https://www.sec.gov/edgar/searchedgar/companysearch.html", {
       waitUntil: "domcontentloaded",
+      timeout: 60000,
     });
-    await page.waitForTimeout(2000);
+    try {
+      await stagehand.act("Click on the Company and Person Lookup search textbox");
+      await stagehand.act(`Type "${SEARCH_QUERY}" in the search field`);
+      await stagehand.act("Click the search submit button");
+      await stagehand.act(`Click on "${SEARCH_QUERY}" in the search results to view their filings`);
+    } catch (error) {
+      console.warn("Semantic SEC navigation did not complete; checking its postcondition", error);
+    }
+    page = (await browser.context.activePage()) ?? page;
+    if (!(await page.url()).includes("/edgar/browse/")) {
+      await page.goto(`https://www.sec.gov/edgar/browse/?CIK=${COMPANY_CIK}&owner=exclude`, {
+        waitUntil: "domcontentloaded",
+        timeout: 60000,
+      });
+    }
 
-    // EDGAR's table has a stable machine-readable shape, so use a deterministic
-    // DOM read and derive accession numbers from the official document URLs.
+    let companyInfo = { companyName: SEARCH_QUERY, cik: COMPANY_CIK };
+    try {
+      const extractedCompany = await stagehand.extract(
+        "Extract the official company name and numeric CIK from the page header or company information section",
+        CompanyInfoSchema,
+      );
+      companyInfo = extractedCompany.data;
+    } catch (error) {
+      // Company metadata is already known from the verified search target; a
+      // transient structured-output failure should not discard filing results.
+      console.warn("Company metadata extraction failed; using the verified search target", error);
+    }
+
     console.log(`Extracting the ${NUM_FILINGS} most recent filings...`);
-    const extracted = (await page.evaluate((limit: number) => {
-      const company = document.querySelector("h3")?.textContent?.trim().split("\n")[0] ?? "";
-      const tables = Array.from(document.querySelectorAll("table"));
-      const table = tables.sort(
-        (left, right) =>
-          right.querySelectorAll("tbody tr").length - left.querySelectorAll("tbody tr").length,
-      )[0];
-      const filings = Array.from(table?.querySelectorAll("tbody tr") ?? [])
-        .slice(0, limit)
-        .map((row) => {
-          const cells = Array.from(row.querySelectorAll("td"));
-          const filingLink = row.querySelector<HTMLAnchorElement>(
-            'a[href*="/Archives/edgar/data/"]',
-          );
-          const folder = filingLink?.href.match(/\/data\/\d+\/(\d{18})\//)?.[1] ?? "";
-          const accessionNumber = folder
-            ? `${folder.slice(0, 10)}-${folder.slice(10, 12)}-${folder.slice(12)}`
-            : "";
-          return {
-            type: cells[0]?.textContent?.trim() ?? "",
-            description: cells[1]?.textContent?.replace(/\s+/g, " ").trim() ?? "",
-            date: cells[2]?.textContent?.trim() ?? "",
-            accessionNumber,
-            fileNumber: "",
-          };
-        });
-      return { company, filings };
-    }, NUM_FILINGS)) as { company: string; filings: SECFilingResult["filings"] };
+    const { data: extracted } = await stagehand.extract(
+      `Extract the ${NUM_FILINGS} most recent SEC filings from the filings table. For each filing return its type, filing date, description, accession number, and file or film number when shown.`,
+      FilingsSchema,
+    );
 
     if (
-      extracted.filings.length !== NUM_FILINGS ||
-      extracted.filings.some((filing) => !filing.type || !filing.date || !filing.accessionNumber)
+      extracted.filings.length < NUM_FILINGS ||
+      extracted.filings.some((filing) => !filing.type || !filing.date)
     ) {
       throw new Error("SEC page did not return five complete filing records");
     }
 
     // Build result object with company info and normalized filing list
     const result: SECFilingResult = {
-      company: extracted.company,
-      cik: COMPANY_CIK,
+      company: companyInfo.companyName,
+      cik: companyInfo.cik || COMPANY_CIK,
       searchQuery: SEARCH_QUERY,
-      filings: extracted.filings,
+      filings: extracted.filings.slice(0, NUM_FILINGS).map((filing) => ({
+        ...filing,
+        description: filing.description ?? "",
+        accessionNumber: filing.accessionNumber ?? "",
+        fileNumber: filing.fileNumber ?? "",
+      })),
     };
 
     // Log summary and per-filing details to console

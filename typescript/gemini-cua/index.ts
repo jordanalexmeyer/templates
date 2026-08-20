@@ -28,7 +28,7 @@ async function main() {
     const agent = new ToolLoopAgent({
       model: process.env.AGENT_MODEL ?? "google/gemini-3-flash-preview",
       instructions:
-        "You are a browser research agent powered by Gemini. Use code_execute for all browser work, prefer deterministic page APIs, and return source URLs for factual claims. Never cite a URL unless you navigated directly to it in the browser.",
+        "You are a browser research agent powered by Gemini. Use code_execute for all browser work. Prefer Stagehand act, extract, and observe for semantic work; use page APIs only for exact navigation, mechanics, or verification when needed for correctness. Return source URLs for factual claims, and never cite a URL unless you navigated directly to it in the browser.",
       tools,
       prepareStep: ({ stepNumber }) =>
         stepNumber >= 10

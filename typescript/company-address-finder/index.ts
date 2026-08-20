@@ -41,7 +41,7 @@ async function processCompany(companyName: string): Promise<CompanyData> {
     const agent = new ToolLoopAgent({
       model: process.env.AGENT_MODEL ?? "anthropic/claude-sonnet-4.6",
       instructions:
-        "You are a browser research agent. Use code_execute for every browser operation. Prefer deterministic page, locator, and page.evaluate APIs. Use no more than 8 code_execute calls. Verify that URLs belong to the requested company's official site, then stop calling tools and return the structured response immediately.",
+        "You are a browser research agent. Use code_execute for every browser operation. Prefer Stagehand act, extract, and observe for semantic work. Use page and locator APIs only for exact navigation, mechanics, or verification when needed for correctness. Use no more than 8 code_execute calls. Verify that URLs belong to the requested company's official site, then stop calling tools and return the structured response immediately.",
       tools,
       output: Output.object({ schema: companySchema }),
       prepareStep: ({ stepNumber }) =>

@@ -28,16 +28,34 @@ async function main() {
 
     console.log("Stagehand session started successfully");
 
-    const page = (await browser.context.pages())[0];
+    let page = (await browser.context.pages())[0];
 
+    const searchQuery = "Will Elon Musk rejoin the Trump administration in 2026";
+    console.log("Navigating to Polymarket...");
+    await page.goto("https://polymarket.com", {
+      waitUntil: "domcontentloaded",
+      timeout: 60000,
+    });
+    const openedSearch = await stagehand.act("Click the search box at the top of the page");
+    const typedSearch = await stagehand.act(`Type '${searchQuery}' into the search box`);
+    const openedMarket = await stagehand.act(
+      "Click the first market result from the search dropdown",
+    );
+    page = (await browser.context.activePage()) ?? page;
     const marketUrl =
       "https://polymarket.com/event/will-elon-musk-rejoin-the-trump-administration-in-2026";
-
-    // Navigate directly to the intended market so homepage search UI changes
-    // cannot silently send extraction to an unrelated page.
-    console.log(`Navigating to: ${marketUrl}`);
-    await page.goto(marketUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
-    console.log("Page loaded successfully");
+    const currentUrl = await page.url();
+    if (
+      !openedSearch.data.success ||
+      !typedSearch.data.success ||
+      !openedMarket.data.success ||
+      !currentUrl.includes("will-elon-musk-rejoin-the-trump-administration-in-2026")
+    ) {
+      // The homepage search currently returns a non-actionable result on some
+      // sessions. Preserve semantic navigation as the primary path and use the
+      // verified market URL only when its postcondition fails.
+      await page.goto(marketUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
+    }
 
     // Extract market data using AI to parse the structured information
     console.log("Extracting market information...");

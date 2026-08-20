@@ -9,8 +9,8 @@
 
 ## GLOSSARY
 
-- page APIs: use the V4 browser context and page directly for known navigation and link discovery
-  Docs → https://docs.stagehand.dev/v4/reference/page
+- act / extract: navigate investor relations semantically and discover the intended statement URLs
+  Docs → https://docs.stagehand.dev/v4/basics/extract
 - downloads API: retrieve files downloaded during a Browserbase session as a ZIP archive
   Docs → https://docs.browserbase.com/features/screenshots#pdfs
 - live view: real-time browser debugging interface for monitoring automation
@@ -27,7 +27,7 @@
 ## EXPECTED OUTPUT
 
 - Initializes Stagehand session with Browserbase
-- Navigates directly to Apple Investor Relations
+- Uses `act()` to navigate from Apple.com to the FY2025 investor statements
 - Discovers and validates four unique FY2025 Financial Statements PDF URLs
 - Opens each statement to trigger Browserbase downloads
 - Polls Browserbase API until downloads are ready

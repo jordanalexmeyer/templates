@@ -12,6 +12,7 @@ from urllib.parse import urljoin, urlparse
 
 import httpx
 from dotenv import load_dotenv
+from pydantic import BaseModel, Field, HttpUrl
 from stagehand import Page, Stagehand, browserbase
 
 load_dotenv()
@@ -28,6 +29,12 @@ MIME_TO_EXT = {
     "image/bmp": "bmp",
     "image/tiff": "tiff",
 }
+
+
+class ImageUrls(BaseModel):
+    urls: list[HttpUrl] = Field(
+        description="Absolute HTTP(S) image resource URLs from src or background-image values"
+    )
 
 
 def image_filename(url: str, mime_type: str, index: int) -> str:
@@ -94,27 +101,18 @@ async def main() -> None:
             await page.goto(target_url, wait_until="domcontentloaded", timeout=60_000)
             await page.wait_for_timeout(3_000)
 
-            raw_urls = await page.evaluate(
-                r"""(() => {
-                  const urls = new Set();
-                  for (const image of Array.from(document.images)) {
-                    if (image.currentSrc) urls.add(image.currentSrc);
-                    if (image.src) urls.add(image.src);
-                  }
-                  for (const element of Array.from(document.querySelectorAll('[style]'))) {
-                    const background = getComputedStyle(element).backgroundImage;
-                    for (const match of background.matchAll(/url\(["']?(.*?)["']?\)/g)) {
-                      if (match[1]) urls.add(new URL(match[1], document.baseURI).href);
-                    }
-                  }
-                  return [...urls];
-                })()"""
+            extracted = await stagehand.extract(
+                (
+                    "Extract all rendered image URLs on this page, including image src "
+                    "attributes and background-image URLs. Return absolute HTTP(S) image "
+                    "resource URLs, never accessibility-tree references such as 0-180."
+                ),
+                ImageUrls,
+                page=page,
             )
             normalized = []
-            for value in raw_urls if isinstance(raw_urls, list) else []:
-                if not isinstance(value, str):
-                    continue
-                absolute = urljoin(target_url, value)
+            for value in extracted.data.urls:
+                absolute = urljoin(target_url, str(value))
                 if urlparse(absolute).scheme in {"http", "https"} and absolute not in normalized:
                     normalized.append(absolute)
             urls = normalized[:MAX_IMAGES]

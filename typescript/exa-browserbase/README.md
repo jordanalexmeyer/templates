@@ -13,7 +13,7 @@
 1. **Search for hiring companies** — Exa finds companies matching your criteria (by default, "AI startups in SF currently hiring")
 2. **Find careers pages** — For each company, Exa keeps verified careers/jobs or branded ATS pages and drops unrelated same-domain pages
 3. **Start a browser agent** — Vercel AI SDK owns the loop and receives Stagehand's `code_execute` MCP tool
-4. **Inspect and fill** — the agent reads the posting and fills known fields with deterministic V4 APIs or Stagehand AI primitives
+4. **Inspect and fill** — the agent prefers Stagehand AI primitives for semantic work and uses locators only for exact mechanics such as resume upload or verification
 5. **Stop for review** — the agent uploads the resume but stops before final submission
 
 ## GLOSSARY

@@ -20,8 +20,8 @@ class GeoInfo(BaseModel):
     loc: str
     timezone: str
     org: str
-    postal: str | None = None
-    hostname: str | None = None
+    postal: str | None
+    hostname: str | None
 
 
 async def test_session(proxies: bool | list[BrowserbaseProxyConfig], name: str) -> GeoInfo:
@@ -40,8 +40,12 @@ async def test_session(proxies: bool | list[BrowserbaseProxyConfig], name: str) 
             pages = await browser.context.pages()
             page = pages[0] if pages else await browser.context.new_page()
             await page.goto("https://ipinfo.io/json", wait_until="domcontentloaded")
-            body = await page.locator("body").inner_text()
-            geo_info = GeoInfo.model_validate_json(body)
+            extracted = await stagehand.extract(
+                "Extract the complete IP geolocation record shown in this JSON response",
+                GeoInfo,
+                page=page,
+            )
+            geo_info = extracted.data
             print(json.dumps(geo_info.model_dump(mode="json"), indent=2))
             return geo_info
         finally:

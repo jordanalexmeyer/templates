@@ -12,8 +12,8 @@ const GeoInfoSchema = z.object({
   loc: z.string().min(1),
   timezone: z.string().min(1),
   org: z.string().min(1),
-  postal: z.string().optional(),
-  hostname: z.string().optional(),
+  postal: z.string().nullable(),
+  hostname: z.string().nullable(),
 });
 
 type GeoInfo = z.infer<typeof GeoInfoSchema>;
@@ -39,8 +39,10 @@ async function testSession(
 
     // ipinfo reports the public IP observed after Browserbase applies the proxy.
     await page.goto("https://ipinfo.io/json", { waitUntil: "domcontentloaded" });
-    const body = await page.evaluate(() => document.body.textContent ?? "");
-    const geoInfo = GeoInfoSchema.parse(JSON.parse(body));
+    const { data: geoInfo } = await stagehand.extract(
+      "Extract the complete IP geolocation record shown in this JSON response",
+      GeoInfoSchema,
+    );
 
     console.log("Geo Info:", JSON.stringify(geoInfo, null, 2));
     console.log(`${sessionName} test completed`);

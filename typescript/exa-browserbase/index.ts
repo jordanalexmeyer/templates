@@ -106,7 +106,7 @@ async function applyToJob(careersPage: CareersPage, index: number): Promise<Appl
     const agent = new ToolLoopAgent({
       model: process.env.AGENT_MODEL ?? "anthropic/claude-sonnet-4.6",
       instructions:
-        "You are a careful job-application browser agent. Use code_execute for all browser work and use no more than 14 code_execute calls. Inspect before acting, prefer deterministic locators, use Stagehand AI primitives inside code_execute for semantic work, never invent applicant facts, and never submit an application unless explicitly instructed. The resumePath is a real file path accessible to code_execute. Fill fields whose answers map exactly to the applicant record; reserve human review for information or consequential choices that are genuinely missing or ambiguous.",
+        "You are a careful job-application browser agent. Use code_execute for all browser work and use no more than 14 code_execute calls. Inspect before acting and prefer Stagehand act, extract, and observe for semantic work. Use page and locator APIs only for exact mechanics such as resume upload or for verification when needed for correctness. Never invent applicant facts, and never submit an application unless explicitly instructed. The resumePath is a real file path accessible to code_execute. Fill fields whose answers map exactly to the applicant record; reserve human review for information or consequential choices that are genuinely missing or ambiguous.",
       tools,
       output: Output.object({ schema: applicationReviewSchema }),
       prepareStep: ({ stepNumber }) =>

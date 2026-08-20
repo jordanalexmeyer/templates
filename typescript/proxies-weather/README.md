@@ -4,7 +4,7 @@
 
 - Goal: demonstrate geolocation proxies by fetching location-specific weather data from multiple cities using Browserbase's proxy infrastructure.
 - Uses geolocation proxies to route traffic through specific geographic locations (New York, London, Tokyo, São Paulo).
-- Reads current `wttr.in` JSON through each proxied browser and verifies that the service reports the expected country.
+- Uses `extract()` to read current `wttr.in` JSON through each proxied browser and verifies that the service reports the expected country.
 - Sequential processing shows how different proxy locations return different weather data from the same website.
 - Docs → https://docs.browserbase.com/features/proxies
 
@@ -12,8 +12,8 @@
 
 - geolocation proxies: route traffic through specific geographic locations (city, country, state) to access location-specific content
   Docs → https://docs.browserbase.com/features/proxies#set-proxy-geolocation
-- page APIs: read a known machine-readable response directly through the V4 browser page
-  Docs → https://docs.stagehand.dev/v4/reference/page
+- extract: convert each weather response into schema-validated data
+  Docs → https://docs.stagehand.dev/v4/basics/extract
 - proxies: Browserbase's managed proxy infrastructure supporting 201+ countries for geolocation-based routing
   Docs → https://docs.browserbase.com/features/proxies
 

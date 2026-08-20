@@ -5,9 +5,8 @@ import json
 import os
 from urllib.parse import quote_plus, urljoin
 
-from bs4 import BeautifulSoup
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, HttpUrl
 from stagehand import Stagehand, browserbase
 
 load_dotenv()
@@ -20,7 +19,9 @@ class Product(BaseModel):
     price: str
     rating: str
     reviews_count: str
-    product_url: str
+    product_url: HttpUrl = Field(
+        description=("Absolute Amazon product-detail href; never an accessibility-tree reference")
+    )
 
 
 class Products(BaseModel):
@@ -41,69 +42,79 @@ async def main() -> None:
         try:
             pages = await browser.context.pages()
             page = pages[0] if pages else await browser.context.new_page()
-            search_url = f"https://www.amazon.com/s?k={quote_plus(SEARCH_QUERY)}"
-            await page.goto(search_url, wait_until="domcontentloaded", timeout=60_000)
-
-            cards = page.locator('[data-component-type="s-search-result"]')
-            raw_products: list[dict[str, str]] = []
-            for index in range(await cards.count()):
-                soup = BeautifulSoup(await cards.nth(index).inner_html(), "html.parser")
-                link = soup.select_one('h2 a[href*="/dp/"]') or soup.select_one('a[href*="/dp/"]')
-                heading = soup.select_one("h2")
-                if link is None or heading is None:
-                    continue
-                raw_products.append(
-                    {
-                        "name": heading.get_text(" ", strip=True),
-                        "price": (
-                            soup.select_one(".a-price .a-offscreen").get_text(strip=True)
-                            if soup.select_one(".a-price .a-offscreen")
-                            else ""
-                        ),
-                        "rating": (
-                            soup.select_one(".a-icon-alt").get_text(strip=True)
-                            if soup.select_one(".a-icon-alt")
-                            else ""
-                        ),
-                        "reviews_count": (
-                            soup.select_one(".s-underline-text").get_text(strip=True)
-                            if soup.select_one(".s-underline-text")
-                            else ""
-                        ),
-                        "product_url": str(link.get("href", "")),
-                    }
+            await page.goto(
+                "https://www.amazon.com",
+                wait_until="domcontentloaded",
+                timeout=60_000,
+            )
+            typed = await stagehand.act(
+                f'Type "{SEARCH_QUERY}" into the search bar',
+                page=page,
+            )
+            submitted = await stagehand.act("Click the search button", page=page)
+            if not typed.data.success or not submitted.data.success:
+                raise RuntimeError(
+                    typed.data.message or submitted.data.message or "Amazon search failed"
                 )
-                if len(raw_products) == 3:
-                    break
-            products = Products.model_validate({"products": raw_products}).products
+            page = await browser.context.active_page() or page
+            results_ready = await page.wait_for_selector(
+                '[data-component-type="s-search-result"]',
+                timeout=10_000,
+            )
+            if not results_ready:
+                # Amazon can replace the document during submit and invalidate
+                # the action frame. Use the direct URL only after that failure.
+                search_url = f"https://www.amazon.com/s?k={quote_plus(SEARCH_QUERY)}"
+                await page.goto(search_url, wait_until="domcontentloaded", timeout=60_000)
+                await page.wait_for_selector(
+                    '[data-component-type="s-search-result"]',
+                    timeout=15_000,
+                )
+            extracted = await stagehand.extract(
+                (
+                    "Extract the details of the FIRST 3 products in the search results. "
+                    "Return each product's full name, displayed price, star rating, review "
+                    "count, and absolute product-page href. Each URL must be a real Amazon "
+                    "link containing /dp/, never an accessibility-tree reference like /2-8109."
+                ),
+                Products,
+                page=page,
+            )
+            products = extracted.data.products
             normalized = [
-                product.model_copy(
-                    update={"product_url": urljoin("https://www.amazon.com", product.product_url)}
-                )
+                {
+                    **product.model_dump(mode="json"),
+                    "product_url": urljoin("https://www.amazon.com", str(product.product_url)),
+                }
                 for product in products
             ]
 
             if len(normalized) < 3:
                 raise RuntimeError(f"Expected 3 products, found {len(normalized)}")
-            query_tokens = [token for token in SEARCH_QUERY.lower().split() if len(token) >= 3]
+            query_tokens = [
+                token
+                for token in SEARCH_QUERY.lower().split()
+                if len(token) >= 3 or token.isdigit()
+            ]
             matches = [
                 product
                 for product in normalized
-                if any(token in product.name.lower() for token in query_tokens)
+                if any(token in product["name"].lower() for token in query_tokens)
             ]
             if len(matches) < 2:
                 raise RuntimeError(
-                    f"Only {len(matches)} products matched the query {SEARCH_QUERY!r}"
+                    f"Only {len(matches)} products matched the query {SEARCH_QUERY!r}; "
+                    f"extracted: {' | '.join(product['name'] for product in normalized)}"
                 )
-            if any("/dp/" not in product.product_url for product in normalized):
-                raise RuntimeError("One or more products lacked a detail-page URL")
+            if any("/dp/" not in product["product_url"] for product in normalized):
+                raise RuntimeError(
+                    "One or more products lacked a detail-page URL: "
+                    + " | ".join(
+                        f"{product['name']} => {product['product_url']}" for product in normalized
+                    )
+                )
 
-            print(
-                json.dumps(
-                    {"products": [product.model_dump() for product in normalized]},
-                    indent=2,
-                )
-            )
+            print(json.dumps({"products": normalized}, indent=2))
         finally:
             await stagehand.close()
     finally:

@@ -40,11 +40,27 @@ def generate_totp(secret: str, window: int = 0) -> str:
     return str(code % 1_000_000).zfill(6)
 
 
-async def submit(page: Page, credentials: Credentials, code: str) -> None:
-    await page.locator("#email").fill(credentials.email)
-    await page.locator("#password").fill(credentials.password)
-    await page.locator("#totpmfa").fill(code)
-    await page.locator('input[type="submit"]').click()
+async def submit(stagehand: Stagehand, page: Page, credentials: Credentials) -> None:
+    await stagehand.act(
+        "Fill the email field with %email%",
+        page=page,
+        variables={"email": credentials.email},
+    )
+    await stagehand.act(
+        "Fill the password field with %password%",
+        page=page,
+        variables={"password": credentials.password},
+    )
+    seconds_left = 30 - int(time.time()) % 30
+    if seconds_left < 12:
+        await asyncio.sleep(seconds_left + 1)
+    code = generate_totp(credentials.totp_secret)
+    await stagehand.act(
+        "Fill the TOTP code field with %code%",
+        page=page,
+        variables={"code": code},
+    )
+    await stagehand.act("Click the submit or login button", page=page)
 
 
 async def main() -> None:
@@ -68,10 +84,7 @@ async def main() -> None:
                 page=page,
             )
             credentials = extracted.data
-            if 30 - int(time.time()) % 30 < 8:
-                await asyncio.sleep(30 - int(time.time()) % 30 + 1)
-
-            await submit(page, credentials, generate_totp(credentials.totp_secret))
+            await submit(stagehand, page, credentials)
             await page.wait_for_timeout(1_000)
             result = await stagehand.extract(
                 "Check whether the TOTP login succeeded and return its message",
@@ -80,9 +93,7 @@ async def main() -> None:
             )
             if not result.data.success:
                 await page.goto(DEMO_URL, wait_until="domcontentloaded")
-                if 30 - int(time.time()) % 30 < 8:
-                    await asyncio.sleep(30 - int(time.time()) % 30 + 1)
-                await submit(page, credentials, generate_totp(credentials.totp_secret))
+                await submit(stagehand, page, credentials)
                 await page.wait_for_timeout(1_000)
                 result = await stagehand.extract(
                     "Check whether the TOTP login succeeded and return its message",

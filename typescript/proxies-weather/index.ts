@@ -2,6 +2,7 @@
 
 import "dotenv/config";
 import { browserbase, Stagehand } from "@browserbasehq/stagehand";
+import { z } from "zod/v4";
 
 interface GeolocationConfig {
   city: string;
@@ -20,16 +21,12 @@ interface WeatherResult {
   error?: string;
 }
 
-interface WttrResponse {
-  current_condition?: Array<{
-    temp_C?: string;
-    weatherDesc?: Array<{ value?: string }>;
-  }>;
-  nearest_area?: Array<{
-    areaName?: Array<{ value?: string }>;
-    country?: Array<{ value?: string }>;
-  }>;
-}
+const WeatherSchema = z.object({
+  temperature: z.number().describe("Current temperature in degrees Celsius"),
+  conditions: z.string().min(1).describe("Current weather description"),
+  reportedLocation: z.string().min(1).describe("Nearest reported city or area"),
+  reportedCountry: z.string().min(1).describe("Reported country name"),
+});
 
 const EXPECTED_COUNTRIES: Record<string, string> = {
   US: "United States",
@@ -86,24 +83,19 @@ async function getWeatherForLocation(geolocation: GeolocationConfig): Promise<We
     });
     console.log(`Page loaded for ${cityName}`);
 
-    // wttr.in derives the location from the proxied IP and returns current conditions as JSON.
-    console.log(`Reading current weather data for ${cityName}...`);
-    const body = await page.evaluate(() => document.body.textContent ?? "");
-    const weather = JSON.parse(body) as WttrResponse;
-    const current = weather.current_condition?.[0];
-    const nearestArea = weather.nearest_area?.[0];
-    const temperature = Number.parseFloat(current?.temp_C ?? "");
-    const conditions = current?.weatherDesc?.[0]?.value?.trim() ?? "";
-    const reportedLocation = nearestArea?.areaName?.[0]?.value?.trim() ?? "";
-    const reportedCountry = nearestArea?.country?.[0]?.value?.trim() ?? "";
+    // wttr.in derives the location from the proxied IP and returns current
+    // conditions as JSON; Stagehand turns that response into the template schema.
+    console.log(`Extracting current weather data for ${cityName}...`);
+    const { data: weather } = await stagehand.extract(
+      "Extract the current temperature in Celsius, weather description, nearest reported city or area, and reported country from this weather JSON",
+      WeatherSchema,
+    );
+    const { temperature, conditions, reportedLocation, reportedCountry } = weather;
+
+    const expectedCountry = EXPECTED_COUNTRIES[geolocation.country];
     if (!Number.isFinite(temperature)) {
       throw new Error("Weather service did not return a numeric current temperature");
     }
-    if (!conditions || !reportedLocation || !reportedCountry) {
-      throw new Error("Weather service returned incomplete current conditions");
-    }
-
-    const expectedCountry = EXPECTED_COUNTRIES[geolocation.country];
     if (!reportedCountry.toLowerCase().includes(expectedCountry.toLowerCase())) {
       throw new Error(
         `Proxy location mismatch: expected ${expectedCountry}, received ${reportedCountry}`,

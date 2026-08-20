@@ -4,14 +4,15 @@
 
 - Goal: extract all image URLs from a page with Stagehand and download each image through the browser's direct connection.
 - Browser-context downloads: `fetch()` runs inside the browser via `page.evaluate()` — no special proxy configuration needed. It automatically inherits any active Browserbase proxy and session cookies, so you get the same image the browser sees, even for auth-gated or same-origin-only URLs.
-- Deterministic URL discovery: reads rendered `<img>` sources and inline background images with V4 page APIs.
+- Semantic URL discovery: uses `extract()` with a Zod schema to find rendered image and background-image URLs.
+- Correctness fallback: reads the exact image DOM shape only when the accessibility snapshot yields no URLs.
 - Format-agnostic: uses `FileReader.readAsDataURL()` inside the browser to encode image bytes and detect the real MIME type — files are saved with the correct extension (`.jpg`, `.png`, `.svg`, `.webp`, etc.).
 - Organized output: images are saved to `./images/<hostname>/` so runs against different sites never mix.
   Docs → https://docs.stagehand.dev/v4/reference/page
 
 ## GLOSSARY
 
-- page.evaluate: read rendered image URLs and fetch same-session assets inside the browser context; it inherits the active proxy, cookies, and headers.
+- page.evaluate: fetch same-session assets inside the browser context after Stagehand discovers their URLs; it inherits the active proxy, cookies, and headers.
   Docs → https://docs.stagehand.dev/v4/reference/page
 - MAX_IMAGES: configurable cap (default: 10) on how many images to download per run. Set via the `MAX_IMAGES` env var or the constant at the top of `index.ts`.
 
@@ -53,7 +54,7 @@
 
 ## NEXT STEPS
 
-• Scroll before discovery: call `page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))` to trigger lazy-loaded images.
+• Scroll before discovery: call `stagehand.act("Scroll to the bottom of the page")` to trigger lazy-loaded images.
 • Concurrent downloads: fan out the `page.evaluate` fetch calls with `Promise.allSettled` for faster bulk downloads.
 • Metadata CSV: write a `manifest.csv` alongside the images recording original URL, filename, MIME type, byte size, and download timestamp.
 • Extend MIME support: add entries to the `MIME_TO_EXT` map at the top of `index.ts` for any formats not already covered.

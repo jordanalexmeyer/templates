@@ -9,10 +9,15 @@ from pathlib import Path
 import httpx
 from browserbase import Browserbase
 from dotenv import load_dotenv
+from pydantic import BaseModel, HttpUrl
 
 from stagehand import Stagehand, browserbase
 
 load_dotenv()
+
+
+class StatementLinks(BaseModel):
+    statement_urls: list[HttpUrl]
 
 
 async def save_downloads_with_retry(
@@ -53,49 +58,58 @@ async def main() -> None:
         try:
             pages = await browser.context.pages()
             page = pages[0] if pages else await browser.context.new_page()
-            await page.goto(
-                "https://investor.apple.com/investor-relations/default.aspx",
-                wait_until="domcontentloaded",
-                timeout=60_000,
+            await page.goto("https://www.apple.com/", wait_until="domcontentloaded", timeout=60_000)
+            await stagehand.act(
+                "Click the Investors button at the bottom of the page",
+                page=page,
             )
-            statement_urls = await page.evaluate(
-                """Array.from(document.querySelectorAll('a'))
-                  .filter((link) =>
-                    link.textContent?.trim() === 'Financial Statements' &&
-                    /fy2025/i.test(link.href)
-                  )
-                  .map((link) => link.href)
-                  .slice(0, 4)"""
+            await stagehand.act(
+                "Scroll down to the Financial Data section",
+                page=page,
             )
-            if (
-                not isinstance(statement_urls, list)
-                or len(statement_urls) != 4
-                or len(set(statement_urls)) != 4
-            ):
-                count = len(statement_urls) if isinstance(statement_urls, list) else 0
+            await stagehand.act(
+                "Under Quarterly Earnings Reports, click 2025",
+                page=page,
+            )
+            page = await browser.context.active_page() or page
+            extracted = await stagehand.extract(
+                (
+                    "Extract the actual absolute HTTP(S) href URLs of the four FY2025 Financial "
+                    "Statements PDF links, ordered Q4 through Q1. Never return accessibility-tree "
+                    "references."
+                ),
+                StatementLinks,
+                page=page,
+            )
+            statement_urls = [str(url) for url in extracted.data.statement_urls[:4]]
+            if len(statement_urls) != 4 or len(set(statement_urls)) != 4:
+                count = len(statement_urls)
                 raise RuntimeError(f"Expected four FY2025 statements, found {count}")
 
             async with httpx.AsyncClient(follow_redirects=True, timeout=30) as http:
                 for index, statement_url in enumerate(statement_urls):
-                    if not isinstance(statement_url, str):
-                        raise RuntimeError("Apple returned a non-string statement URL")
                     response = await http.head(statement_url)
                     if not response.is_success or "application/pdf" not in response.headers.get(
                         "content-type", ""
                     ):
                         raise RuntimeError(f"Q{4 - index} URL did not return a PDF")
 
-                    encoded_url = json.dumps(statement_url)
-                    await page.evaluate(
-                        f"""(() => {{
-                          const link = document.createElement('a');
-                          link.href = {encoded_url};
-                          link.target = '_blank';
-                          document.body.appendChild(link);
-                          link.click();
-                          link.remove();
-                        }})()"""
+                    opened = await stagehand.act(
+                        f"Click the Financial Statements link under Q{4 - index}",
+                        page=page,
                     )
+                    if not opened.data.success:
+                        encoded_url = json.dumps(statement_url)
+                        await page.evaluate(
+                            f"""(() => {{
+                              const link = document.createElement('a');
+                              link.href = {encoded_url};
+                              link.target = '_blank';
+                              document.body.appendChild(link);
+                              link.click();
+                              link.remove();
+                            }})()"""
+                        )
                     await page.wait_for_timeout(500)
                     print(f"Triggered FY2025 Q{4 - index} download")
 

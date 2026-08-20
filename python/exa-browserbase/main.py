@@ -177,7 +177,8 @@ async def review_application(careers_page: CareersPage, index: int) -> Applicati
                 system_prompt=(
                     BROWSER_INSTRUCTIONS
                     + "\nYou are a careful job-application browser agent. Inspect before "
-                    "acting, prefer deterministic locators, never invent applicant facts or "
+                    "acting, use hydrated snapshot actions for semantic interaction, reserve "
+                    "locators for exact mechanics or verification, never invent applicant facts or "
                     "repurpose one field's value for another field, and never submit an "
                     "application. Leave any field without an exact applicant value blank and "
                     "report it for human review. Use no more than 20 browser-tool calls. "

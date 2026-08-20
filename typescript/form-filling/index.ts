@@ -39,8 +39,6 @@ async function main() {
       timeout: 60000, // Extended timeout for reliable page loading.
     });
 
-    // The form has stable names, so deterministic locators are the most reliable
-    // V4 choice. Reserve act/observe for pages whose structure is not known.
     const fields = [
       ["firstName", firstName],
       ["lastName", lastName],
@@ -49,30 +47,76 @@ async function main() {
       ["email", email],
       ["project", message],
     ] as const;
-    const formData = Object.fromEntries(fields);
-    await page.evaluate((values: Record<string, string>) => {
-      for (const [name, value] of Object.entries(values)) {
-        const field = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(
-          `[name="${name}"]`,
-        );
-        if (!field) throw new Error(`Missing form field: ${name}`);
-        const prototype =
-          field instanceof HTMLTextAreaElement
-            ? HTMLTextAreaElement.prototype
-            : HTMLInputElement.prototype;
-        const setter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
-        setter?.call(field, value);
-        field.dispatchEvent(new Event("input", { bubbles: true }));
-        field.dispatchEvent(new Event("change", { bubbles: true }));
+    const { data: formFields } = await stagehand.observe(
+      "Find form fields for: first name, last name, company, job title, email, message",
+    );
+    let primitiveError: unknown;
+    try {
+      for (const field of formFields) {
+        const description = field.description.toLowerCase();
+        const match = fields.find(([name]) => {
+          const labels: Record<string, string[]> = {
+            firstName: ["first name"],
+            lastName: ["last name"],
+            companyName: ["company"],
+            jobTitle: ["job title"],
+            email: ["email"],
+            project: ["message", "project"],
+          };
+          return labels[name].some((label) => description.includes(label));
+        });
+        if (match) {
+          const result = await stagehand.act({ ...field, arguments: [match[1]] });
+          if (!result.data.success) throw new Error(result.data.message);
+        }
       }
+      const opened = await stagehand.act("Click on the How Can we help? dropdown");
+      const selected = await stagehand.act("Click on the demo option from the dropdown");
+      if (!opened.data.success || !selected.data.success) {
+        throw new Error(opened.data.message || selected.data.message);
+      }
+    } catch (error) {
+      primitiveError = error;
+    }
 
-      const select = document.querySelector<HTMLSelectElement>('[name="helpOption"]');
-      if (!select) throw new Error("Missing form field: helpOption");
-      const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set;
-      setter?.call(select, "demo");
-      select.dispatchEvent(new Event("input", { bubbles: true }));
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-    }, formData);
+    const primitiveStateMatches = await page.evaluate(
+      (values: Record<string, string>) =>
+        Object.entries(values).every(
+          ([name, value]) =>
+            document.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[name="${name}"]`)
+              ?.value === value,
+        ) && document.querySelector<HTMLSelectElement>('[name="helpOption"]')?.value === "demo",
+      Object.fromEntries(fields),
+    );
+
+    if (primitiveError || !primitiveStateMatches) {
+      console.warn(
+        "Stagehand could not execute against the contact form's extension world; using the exact field map as a correctness fallback.",
+      );
+      await page.evaluate((values: Record<string, string>) => {
+        for (const [name, value] of Object.entries(values)) {
+          const field = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(
+            `[name="${name}"]`,
+          );
+          if (!field) throw new Error(`Missing form field: ${name}`);
+          const prototype =
+            field instanceof HTMLTextAreaElement
+              ? HTMLTextAreaElement.prototype
+              : HTMLInputElement.prototype;
+          Object.getOwnPropertyDescriptor(prototype, "value")?.set?.call(field, value);
+          field.dispatchEvent(new Event("input", { bubbles: true }));
+          field.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        const select = document.querySelector<HTMLSelectElement>('[name="helpOption"]');
+        if (!select) throw new Error("Missing form field: helpOption");
+        Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set?.call(
+          select,
+          "demo",
+        );
+        select.dispatchEvent(new Event("input", { bubbles: true }));
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+      }, Object.fromEntries(fields));
+    }
 
     // Verify the browser's actual form state instead of treating action
     // completion as proof that every value was entered.

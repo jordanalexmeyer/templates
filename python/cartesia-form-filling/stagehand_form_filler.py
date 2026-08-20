@@ -7,7 +7,6 @@ mapping, field filling, and form submission.
 
 import asyncio
 import difflib
-import json
 import os
 import re
 from dataclasses import dataclass
@@ -243,39 +242,6 @@ class StagehandFormFiller:
             return best_option
         return None
 
-    async def _select_radio(self, question_id: str, answer: str, options: list[str]) -> bool:
-        if self.page is None:
-            raise RuntimeError("Stagehand form filler is not initialized")
-        group_indexes = {
-            "work_eligibility": 0,
-            "availability_type": 1,
-            "role_selection": 2,
-            "previous_experience": 3,
-        }
-        group_index = group_indexes.get(question_id)
-        if group_index is None:
-            raise RuntimeError(f"No radio group mapping for {question_id}")
-        matched_option = self._match_radio_option(answer, options)
-        if matched_option is None:
-            return False
-        encoded_answer = json.dumps(matched_option)
-        selected = await self.page.evaluate(
-            f"""(() => {{
-              const group = document.querySelectorAll('[role="radiogroup"]')[{group_index}];
-              const answer = {encoded_answer}.toLowerCase();
-              const option = Array.from(group?.querySelectorAll('[role="radio"]') || [])
-                .find((item) =>
-                  (item.getAttribute('value') || item.textContent || '')
-                    .trim().toLowerCase() === answer
-                );
-              if (!option) return false;
-              option.click();
-              return true;
-            }})()"""
-        )
-        await self.page.wait_for_timeout(250)
-        return selected is True
-
     async def initialize(self) -> None:
         """Initialize Stagehand and open the form.
 
@@ -350,9 +316,13 @@ class StagehandFormFiller:
 
             # Use Stagehand's natural language API to fill the field
             if field.field_type == FieldType.RADIO:
-                if not await self._select_radio(question_id, answer, field.options or []):
+                matched_option = self._match_radio_option(answer, field.options or [])
+                if matched_option is None:
                     raise RuntimeError(f"Could not select {answer} for {field.label}")
-                return True
+                answer = matched_option
+                instruction = (
+                    f"Within the question '{field.label}', click the option labeled %answer%"
+                )
             if field.field_type in [FieldType.TEXT, FieldType.EMAIL, FieldType.PHONE]:
                 instruction = f"Fill the '{field.label}' field with %answer%"
 
@@ -410,18 +380,12 @@ class StagehandFormFiller:
             logger.info("Submitting the form")
             logger.info(f"Form has {len(self.collected_data)} fields filled")
 
-            clicked = await self.page.evaluate(
-                """(() => {
-                  const button = Array.from(document.querySelectorAll('button')).find((item) =>
-                    /apply for a role at ab technologies/i.test(item.textContent || '')
-                  );
-                  if (!button) return false;
-                  button.click();
-                  return true;
-                })()"""
+            result = await self.stagehand.act(
+                "Click the Apply for a role at AB Technologies submit button",
+                page=self.page,
             )
-            if clicked is not True:
-                raise RuntimeError("Form submission button was not found")
+            if not result.data.success:
+                raise RuntimeError(result.data.message or "Form submission button was not found")
 
             # Wait for submission to process
             await asyncio.sleep(1)

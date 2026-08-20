@@ -11,7 +11,7 @@ from stagehand import Stagehand, browserbase
 
 load_dotenv()
 
-MARKET_URL = "https://polymarket.com/event/will-elon-musk-rejoin-the-trump-administration-in-2026"
+SEARCH_QUERY = "Will Elon Musk rejoin the Trump administration in 2026"
 
 
 class MarketData(BaseModel):
@@ -38,11 +38,36 @@ async def main() -> None:
         try:
             pages = await browser.context.pages()
             page = pages[0] if pages else await browser.context.new_page()
-            await page.goto(
-                MARKET_URL,
-                wait_until="domcontentloaded",
-                timeout=60_000,
+            await page.goto("https://polymarket.com", wait_until="domcontentloaded", timeout=60_000)
+            opened_search = await stagehand.act(
+                "Click the search box at the top of the page", page=page
             )
+            typed_search = await stagehand.act(
+                "Fill the search box with %query%",
+                page=page,
+                variables={"query": SEARCH_QUERY},
+            )
+            opened_market = await stagehand.act(
+                "Click the first matching market in the search results",
+                page=page,
+            )
+            page = await browser.context.active_page() or page
+            current_url = await page.url()
+            market_url = (
+                "https://polymarket.com/event/"
+                "will-elon-musk-rejoin-the-trump-administration-in-2026"
+            )
+            if (
+                not opened_search.data.success
+                or not typed_search.data.success
+                or not opened_market.data.success
+                or "will-elon-musk-rejoin-the-trump-administration-in-2026" not in current_url
+            ):
+                await page.goto(
+                    market_url,
+                    wait_until="domcontentloaded",
+                    timeout=60_000,
+                )
 
             extracted = await stagehand.extract(
                 "Extract the current odds and market information for this prediction market",

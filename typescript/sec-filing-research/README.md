@@ -3,14 +3,14 @@
 ## AT A GLANCE
 
 - Goal: automate searching SEC EDGAR for a company and extracting recent filing metadata (type, date, description, accession number, file number).
-- Entity selection: uses Apple's known CIK by default; edit `SEARCH_QUERY` and `COMPANY_CIK` together for another company.
-- Data extraction: navigates directly to the official EDGAR entity page and reads its stable filing table with V4 page APIs.
+- Entity selection: uses `act()` to search EDGAR and open the requested company.
+- Data extraction: uses schema-validated `extract()` for the company identity and recent filing records.
 - Output: company name, CIK, and a configurable number of most recent filings, printed as summary and JSON.
 
 ## GLOSSARY
 
-- page APIs: use the V4 browser context and page directly for stable, machine-readable tables.
-  Docs → https://docs.stagehand.dev/v4/reference/page
+- act / extract: navigate changing interfaces semantically and return typed filing data.
+  Docs → https://docs.stagehand.dev/v4/basics/extract
 - SEC EDGAR: SEC’s company and filing search and filing system.
   https://www.sec.gov/edgar/searchedgar/companysearch.html
 - CIK: Central Index Key — unique numeric identifier for each company in EDGAR.
@@ -27,8 +27,8 @@
 ## EXPECTED OUTPUT
 
 - Initializes Stagehand V4 with an explicit Browserbase browser handle
-- Navigates directly to the configured SEC EDGAR entity page
-- Reads the official filing table and derives accession numbers from document URLs
+- Uses `act()` to search SEC EDGAR and open the configured company
+- Uses `extract()` to return the official company identity and filing metadata
 - Extracts the N most recent filings (type, date, description, accession number, file number)
 - Logs SEC FILING METADATA summary and per-filing details
 - Outputs full result as JSON

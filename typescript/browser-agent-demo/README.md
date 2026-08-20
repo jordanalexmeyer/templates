@@ -50,7 +50,7 @@
 
 • Building research agents that search, evaluate, and extract from web pages
 • Token-efficient web browsing pipelines (cheap Search/Fetch before expensive browser sessions)
-• Agent-driven browsing with deterministic APIs and Stagehand AI primitives available inside `code_execute`
+• Agent-driven browsing that prefers Stagehand AI primitives and reserves page APIs for exact mechanics and verification
 • Prototyping browser agents with the full Browserbase platform
 
 ## NEXT STEPS

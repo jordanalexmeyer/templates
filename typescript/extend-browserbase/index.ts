@@ -384,7 +384,7 @@ async function main(): Promise<void> {
         // If click fails, scroll element into view and retry
         console.log(`  Could not click download button ${i + 1}, trying to scroll and retry...`);
         try {
-          await page.evaluate(() => window.scrollBy(0, 200));
+          await stagehand.act("Scroll down slightly", { page });
           await stagehand.act(action, { page });
           successCount++;
         } catch {
@@ -394,7 +394,7 @@ async function main(): Promise<void> {
 
       // Scroll down periodically to ensure elements are in view
       if ((i + 1) % 4 === 0 && i + 1 < downloadButtons.length) {
-        await page.evaluate(() => window.scrollBy(0, 300));
+        await stagehand.act("Scroll down slightly", { page });
       }
     }
 

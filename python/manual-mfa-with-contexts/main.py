@@ -18,6 +18,10 @@ class MFAStatus(BaseModel):
     mfa_required: bool
 
 
+class AuthenticationState(BaseModel):
+    username: str
+
+
 def require_env(name: str) -> str:
     value = os.environ.get(name)
     if not value:
@@ -93,10 +97,16 @@ async def verify_context(context_id: str) -> None:
             pages = await browser.context.pages()
             page = pages[0] if pages else await browser.context.new_page()
             await page.goto("https://github.com", wait_until="domcontentloaded")
-            username = await page.evaluate(
-                "document.querySelector('meta[name=\"user-login\"]')?.content || ''"
+            extracted = await stagehand.extract(
+                (
+                    "Extract the logged-in GitHub username. Return an empty string if the page "
+                    "is not authenticated."
+                ),
+                AuthenticationState,
+                page=page,
             )
-            if not isinstance(username, str) or not username:
+            username = extracted.data.username
+            if not username:
                 raise RuntimeError("Reused context was not authenticated to GitHub")
             print("Second session reused GitHub authentication without another login")
         finally:

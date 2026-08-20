@@ -7,7 +7,7 @@ from dataclasses import asdict, dataclass
 from urllib.parse import urlparse
 
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, HttpUrl
 
 from stagehand import Stagehand, StagehandBrowser, browserbase
 
@@ -51,6 +51,15 @@ class Verification(BaseModel):
     assessment: str = Field(description="Brief assessment of at most eight words")
 
 
+class ExtractedLink(BaseModel):
+    url: HttpUrl
+    link_text: str
+
+
+class ExtractedLinks(BaseModel):
+    links: list[ExtractedLink]
+
+
 async def create_session() -> tuple[StagehandBrowser, Stagehand]:
     api_key = os.environ.get("BROWSERBASE_API_KEY")
     if not api_key:
@@ -73,23 +82,20 @@ async def collect_links() -> list[Link]:
         pages = await browser.context.pages()
         page = pages[0] if pages else await browser.context.new_page()
         await page.goto(BASE_URL, wait_until="domcontentloaded", timeout=60_000)
-        raw_links = await page.evaluate(
-            r"""Array.from(document.querySelectorAll('a[href]'))
-              .map((link) => ({
-                url: link.href,
-                link_text: link.textContent?.trim() ||
-                  link.getAttribute('aria-label')?.trim() || 'Untitled link',
-              }))
-              .filter((link) => /^https?:\/\//.test(link.url))"""
+        extracted = await stagehand.extract(
+            (
+                "Extract all rendered links on the page with their visible link text or "
+                "accessible label and their absolute HTTP(S) href. Return actual destination "
+                "URLs, never accessibility-tree references."
+            ),
+            ExtractedLinks,
+            page=page,
         )
         unique: dict[str, Link] = {}
-        for item in raw_links if isinstance(raw_links, list) else []:
-            if not isinstance(item, dict):
-                continue
-            url = item.get("url")
-            link_text = item.get("link_text")
-            if isinstance(url, str) and isinstance(link_text, str):
-                unique.setdefault(url, Link(url=url, link_text=link_text))
+        for item in extracted.data.links:
+            url = str(item.url)
+            if url.startswith(("http://", "https://")):
+                unique.setdefault(url, Link(url=url, link_text=item.link_text))
         links = list(unique.values())[:MAX_LINKS]
         if not links:
             raise RuntimeError("No HTTP links were collected from the homepage")

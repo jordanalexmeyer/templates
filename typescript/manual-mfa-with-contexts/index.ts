@@ -138,10 +138,9 @@ async function reuseContext(contextId: string) {
   await page.goto("https://github.com");
   await page.waitForLoadState("networkidle");
 
-  // GitHub exposes the authenticated login in page metadata. Verify that the
-  // second session inherited real authentication instead of trusting navigation.
-  const username = await page.evaluate(
-    () => document.querySelector<HTMLMetaElement>('meta[name="user-login"]')?.content ?? "",
+  const { data: username } = await stagehand.extract(
+    "Extract the logged-in GitHub username. Return an empty string if the page is not authenticated.",
+    z.string(),
   );
   if (!username) {
     throw new Error("The reused context was not authenticated to GitHub");

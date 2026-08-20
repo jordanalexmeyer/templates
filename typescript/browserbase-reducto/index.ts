@@ -7,6 +7,7 @@ import fs from "fs";
 import path from "path";
 import reductoai from "reductoai";
 import AdmZip from "adm-zip";
+import { z } from "zod/v4";
 
 // Net sales data structure extracted from financial statements
 interface IPhoneNetSales {
@@ -288,22 +289,21 @@ async function main(): Promise<void> {
     // Initialize browser session to start automation
 
     console.log("Stagehand initialized successfully!");
-    const page = (await browser.context.pages())[0];
+    let page = (await browser.context.pages())[0];
 
     console.log("Live View is available in the Browserbase Sessions dashboard");
 
-    console.log("Navigating to Apple Investor Relations...");
-    await page.goto("https://investor.apple.com/investor-relations/default.aspx", {
-      waitUntil: "domcontentloaded",
-      timeout: 60000,
-    });
-    const statementUrl = await page.evaluate(
-      () =>
-        Array.from(document.querySelectorAll<HTMLAnchorElement>("a")).find(
-          (link) =>
-            link.textContent?.trim() === "Financial Statements" && /fy2025-q4/i.test(link.href),
-        )?.href ?? "",
+    console.log("Navigating to Apple.com...");
+    await page.goto("https://www.apple.com/", { waitUntil: "domcontentloaded", timeout: 60000 });
+    await stagehand.act("Click the 'Investors' button at the bottom of the page");
+    await stagehand.act("Scroll down to the Financial Data section of the page");
+    await stagehand.act("Under Quarterly Earnings Reports, click on '2025'");
+    page = (await browser.context.activePage()) ?? page;
+    const { data: statement } = await stagehand.extract(
+      "Extract the actual absolute HTTP(S) href URL of the FY2025 Q4 Financial Statements PDF. Never return an accessibility-tree reference.",
+      z.object({ statementUrl: z.string().url() }),
     );
+    const statementUrl = statement.statementUrl;
     if (!statementUrl) throw new Error("Could not find Apple's FY2025 Q4 statement");
     const statementResponse = await fetch(statementUrl, { method: "HEAD" });
     if (
@@ -312,14 +312,19 @@ async function main(): Promise<void> {
     ) {
       throw new Error("Apple's FY2025 Q4 statement URL did not return a PDF");
     }
-    await page.evaluate((url: string) => {
-      const link = document.createElement("a");
-      link.href = url;
-      link.target = "_blank";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    }, statementUrl);
+    const openedStatement = await stagehand.act("Click the Financial Statements link under Q4", {
+      page,
+    });
+    if (!openedStatement.data.success) {
+      await page.evaluate((url: string) => {
+        const link = document.createElement("a");
+        link.href = url;
+        link.target = "_blank";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      }, statementUrl);
+    }
     console.log("Triggered FY2025 Q4 financial statement download");
 
     // Retrieve all downloads triggered during this session from Browserbase API

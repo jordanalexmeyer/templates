@@ -3,7 +3,7 @@
 ## AT A GLANCE
 
 - Goal: demonstrate how to automate market research on prediction markets using Stagehand.
-- Deterministic Navigation: opens the intended market URL directly so result ordering cannot select a different market.
+- Semantic Navigation: uses `act()` to search for and open the requested live market.
 - Data Extraction: extract structured market data with validated output using Zod schemas.
 - Practical Example: research and extract current odds from Polymarket prediction markets.
 

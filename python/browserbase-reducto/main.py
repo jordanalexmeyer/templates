@@ -11,10 +11,15 @@ from typing import Any
 import httpx
 from browserbase import Browserbase
 from dotenv import load_dotenv
+from pydantic import BaseModel, HttpUrl
 from reducto import Reducto
 from stagehand import Stagehand, browserbase
 
 load_dotenv()
+
+
+class StatementLink(BaseModel):
+    statement_url: HttpUrl
 
 
 async def save_downloads_with_retry(
@@ -146,39 +151,53 @@ async def main() -> None:
         try:
             pages = await browser.context.pages()
             page = pages[0] if pages else await browser.context.new_page()
-            await page.goto(
-                "https://investor.apple.com/investor-relations/default.aspx",
-                wait_until="domcontentloaded",
-                timeout=60_000,
+            await page.goto("https://www.apple.com/", wait_until="domcontentloaded", timeout=60_000)
+            await stagehand.act(
+                "Click the Investors button at the bottom of the page",
+                page=page,
             )
-            urls = await page.evaluate(
-                """Array.from(document.querySelectorAll('a'))
-                  .filter((link) =>
-                    link.textContent?.trim() === 'Financial Statements' &&
-                    /fy2025/i.test(link.href)
-                  )
-                  .map((link) => link.href)"""
+            await stagehand.act(
+                "Scroll down to the Financial Data section",
+                page=page,
             )
-            if not isinstance(urls, list) or not urls or not isinstance(urls[0], str):
+            await stagehand.act(
+                "Under Quarterly Earnings Reports, click 2025",
+                page=page,
+            )
+            page = await browser.context.active_page() or page
+            extracted = await stagehand.extract(
+                (
+                    "Extract the actual absolute HTTP(S) href URL of the FY2025 Q4 Financial "
+                    "Statements PDF. Never return an accessibility-tree reference."
+                ),
+                StatementLink,
+                page=page,
+            )
+            statement_url = str(extracted.data.statement_url)
+            if not statement_url:
                 raise RuntimeError("Could not find Apple's FY2025 Q4 statement")
-            statement_url = urls[0]
 
             async with httpx.AsyncClient(follow_redirects=True, timeout=30) as http:
                 head = await http.head(statement_url)
             if not head.is_success or "application/pdf" not in head.headers.get("content-type", ""):
                 raise RuntimeError("Apple's Q4 statement URL did not return a PDF")
 
-            encoded_url = json.dumps(statement_url)
-            await page.evaluate(
-                f"""(() => {{
-                  const link = document.createElement('a');
-                  link.href = {encoded_url};
-                  link.target = '_blank';
-                  document.body.appendChild(link);
-                  link.click();
-                  link.remove();
-                }})()"""
+            opened_statement = await stagehand.act(
+                "Click the Financial Statements link under Q4",
+                page=page,
             )
+            if not opened_statement.data.success:
+                encoded_url = json.dumps(statement_url)
+                await page.evaluate(
+                    f"""(() => {{
+                      const link = document.createElement('a');
+                      link.href = {encoded_url};
+                      link.target = '_blank';
+                      document.body.appendChild(link);
+                      link.click();
+                      link.remove();
+                    }})()"""
+                )
             print("Triggered FY2025 Q4 statement download")
             await save_downloads_with_retry(api, session_id)
             pdf_path = extract_pdf_from_zip("downloaded_files.zip")

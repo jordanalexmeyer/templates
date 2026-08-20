@@ -20,7 +20,7 @@ async function main() {
   });
 
   try {
-    const page = (await browser.context.pages())[0];
+    let page = (await browser.context.pages())[0];
 
     console.log("Navigating to: https://phila.legistar.com/");
     await page.goto("https://phila.legistar.com/");
@@ -36,21 +36,35 @@ async function main() {
     if (!selection.data.success) {
       throw new Error(selection.data.message || `Could not select ${CURRENT_YEAR}`);
     }
+    page = (await browser.context.activePage()) ?? page;
+    if (!(await page.url()).includes("Calendar.aspx")) {
+      await page.goto("https://phila.legistar.com/Calendar.aspx", {
+        waitUntil: "domcontentloaded",
+        timeout: 60000,
+      });
+    }
 
     // Extract event data using AI to parse the structured information
     console.log("Extracting event information...");
-    const { data: results } = await stagehand.extract(
-      `Extract every ${CURRENT_YEAR} event currently visible in the calendar table, including its name, date, and time`,
-      z.object({
-        results: z.array(
-          z.object({
-            name: z.string(),
-            date: z.string(),
-            time: z.string(),
-          }),
-        ),
-      }),
-    );
+    const EventResultsSchema = z.object({
+      results: z.array(
+        z.object({
+          name: z.string(),
+          date: z.string(),
+          time: z.string(),
+        }),
+      ),
+    });
+    let results = { results: [] as Array<{ name: string; date: string; time: string }> };
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const extracted = await stagehand.extract(
+        `Extract every ${CURRENT_YEAR} event currently visible in the calendar table, including its name, date, and time`,
+        EventResultsSchema,
+      );
+      results = extracted.data;
+      if (results.results.length > 0) break;
+      if (attempt === 0) await page.waitForTimeout(1500);
+    }
 
     if (results.results.length === 0) {
       throw new Error(`No ${CURRENT_YEAR} council events were extracted`);

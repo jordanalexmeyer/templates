@@ -6,6 +6,7 @@
 
 import "dotenv/config";
 import { browserbase, Stagehand } from "@browserbasehq/stagehand";
+import { z } from "zod/v4";
 import fs from "fs";
 import path from "path";
 
@@ -88,23 +89,34 @@ async function main(): Promise<void> {
     });
     await page.waitForTimeout(3000);
 
-    // Image URLs are a known DOM shape, so use a deterministic page read. This
-    // avoids a model mistaking accessibility references for relative URLs.
     console.log("Extracting image URLs from page...");
-    const allUrls = (await page.evaluate(() => {
-      const urls = new Set<string>();
-      for (const image of Array.from(document.images)) {
-        if (image.currentSrc) urls.add(image.currentSrc);
-        if (image.src) urls.add(image.src);
-      }
-      for (const element of Array.from(document.querySelectorAll<HTMLElement>("[style]"))) {
-        const background = getComputedStyle(element).backgroundImage;
-        for (const match of background.matchAll(/url\(["']?(.*?)["']?\)/g)) {
-          if (match[1]) urls.add(new URL(match[1], document.baseURI).href);
+    const { data: extractedUrls } = await stagehand.extract(
+      "Extract the absolute HTTP(S) source URLs of all rendered images on this page, including image src attributes and background-image URLs. Return actual image resource URLs, never accessibility-tree references such as 0-180.",
+      z.object({
+        urls: z
+          .array(z.string().url())
+          .describe("Absolute HTTP(S) image resource URLs from src or background-image values"),
+      }),
+    );
+    let allUrls = extractedUrls.urls;
+    if (allUrls.length === 0) {
+      // Accessibility snapshots can omit decorative images. Use the exact DOM
+      // shape only when semantic extraction returns no candidates at all.
+      allUrls = (await page.evaluate(() => {
+        const urls = new Set<string>();
+        for (const image of Array.from(document.images)) {
+          if (image.currentSrc) urls.add(image.currentSrc);
+          if (image.src) urls.add(image.src);
         }
-      }
-      return [...urls];
-    })) as string[];
+        for (const element of Array.from(document.querySelectorAll<HTMLElement>("[style]"))) {
+          const background = getComputedStyle(element).backgroundImage;
+          for (const match of background.matchAll(/url\(["']?(.*?)["']?\)/g)) {
+            if (match[1]) urls.add(new URL(match[1], document.baseURI).href);
+          }
+        }
+        return [...urls];
+      })) as string[];
+    }
 
     // Normalize root-relative paths against the target page, then deduplicate
     // and filter unsupported URL schemes before applying the limit.
@@ -127,8 +139,7 @@ async function main(): Promise<void> {
     }
 
     if (urls.length === 0) {
-      console.log("No image URLs found on the page.");
-      return;
+      throw new Error("No image URLs found on the page");
     }
 
     // Create a subdirectory scoped to the target site's hostname (e.g. images/browserbase.com/).

@@ -3,15 +3,15 @@
 ## AT A GLANCE
 
 - Goal: scrape the first 3 Amazon search results for a given query and return structured product data.
-- Deterministic Search: navigates directly to the Amazon search URL so a failed form action cannot leave the workflow on the homepage.
-- Structured Results: reads known Amazon result cards with V4 page APIs and validates product name, price, rating, review count, and URL with Zod.
+- Semantic Search: uses `act()` to find and operate Amazon's current search UI.
+- Structured Results: uses `extract()` with Zod to return and validate product name, price, rating, review count, and URL.
 - Model: uses `google/gemini-2.5-flash` for fast, cost-effective automation.
   Docs → https://docs.stagehand.dev
 
 ## GLOSSARY
 
-- page APIs: use the V4 browser context and page directly when the target has a known structure
-  Docs → https://docs.stagehand.dev/v4/reference/page
+- act / extract: use natural-language interaction and schema-validated semantic extraction
+  Docs → https://docs.stagehand.dev/v4/basics/act
 
 ## QUICKSTART
 
@@ -25,7 +25,7 @@
 ## EXPECTED OUTPUT
 
 - Initializes Stagehand session with Browserbase
-- Navigates directly to the configured Amazon search
+- Uses `act()` to run the configured search through Amazon's live UI
 - Validates three complete product-detail records with Zod
 - Extracts the first 3 products with name, price, rating, reviews count, and product URL
 - Outputs JSON to console
@@ -35,7 +35,7 @@
 
 - "Cannot find module": ensure npm install completed
 - Missing credentials: verify .env contains BROWSERBASE_API_KEY
-- Amazon layout changes: DOM selectors may need updates if Amazon changes its result-card structure
+- Amazon access challenges: retry if Amazon presents a CAPTCHA or consent interstitial
 - Find more information on your Browserbase dashboard → https://www.browserbase.com/sign-in
 
 ## USE CASES

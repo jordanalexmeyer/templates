@@ -3,7 +3,7 @@
 ### AT A GLANCE
 
 - **Goal**: Crawl a website’s homepage, collect all links, and verify that each link loads successfully and matches its link text.
-- **Link extraction**: Reads every rendered HTTP(S) anchor deterministically so hidden/nav links are not omitted.
+- **Link extraction**: Uses schema-validated `extract()` to collect rendered HTTP(S) links and their accessible text.
 - **Content verification**: Opens each link and uses AI to assess whether the page content matches what the link text suggests.
 - **Social link handling**: Detects social media domains and only checks that they load (skipping full content verification).
 - **Batch processing**: Processes links in batches controlled by `MAX_CONCURRENT_LINKS` (sequential by default, can be made concurrent).

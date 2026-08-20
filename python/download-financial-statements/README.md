@@ -7,7 +7,7 @@ Stagehand is the SDK for browser agents.
 - Goal: automate downloading Apple's quarterly financial statements (PDFs) from their investor relations site.
 - Download Handling: Browserbase automatically captures PDFs opened during the session and bundles them into a ZIP file.
 - Retry Logic: polls Browserbase downloads API with configurable timeout to ensure files are ready before retrieval.
-- Live Debugging: displays live view URL for real-time session monitoring.
+- Live Debugging: the session remains available in the Browserbase Sessions dashboard without logging a signed URL.
 
 ## GLOSSARY
 

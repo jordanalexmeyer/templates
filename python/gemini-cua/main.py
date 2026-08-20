@@ -48,7 +48,7 @@ async def main() -> None:
             tools=tools,
             system_prompt=(
                 BROWSER_INSTRUCTIONS
-                + "\nUse no more than ten browser-tool calls. Prefer deterministic browser APIs, "
+                + "\nUse no more than ten browser-tool calls. Prefer snapshot-guided interaction, "
                 "cross-check at least two reliable sources, and return the evidence-backed answer "
                 "as soon as you have two future eclipse dates."
             ),

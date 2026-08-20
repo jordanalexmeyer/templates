@@ -5,20 +5,20 @@ Stagehand is the SDK for browser agents.
 ## AT A GLANCE
 
 - Goal: extract all image URLs from a page with Stagehand and download each image through the browser's direct connection.
-- Browser-context downloads: `context.request.get()` sends requests through the Playwright browser context — no special proxy configuration needed. It automatically inherits any active Browserbase proxy and session cookies, so you get the same image the browser sees, even for auth-gated or same-origin-only URLs (e.g. Next.js `/_next/image`).
+- Browser-context downloads: `fetch()` runs through the Stagehand V4 page so it inherits the Browserbase proxy and session cookies; `httpx` is a fallback for public images blocked by browser CORS.
 - AI-powered URL extraction: uses `extract()` with a JSON schema to reliably pull `<img>` src attributes and background image URLs from any page.
 - Format-agnostic: uses the `Content-Type` response header to detect the real MIME type — files are saved with the correct extension (`.jpg`, `.png`, `.svg`, `.webp`, etc.).
 - Organized output: images are saved to `./images/<hostname>/` so runs against different sites never mix.
-- Why Playwright is used alongside Stagehand: this template connects both Stagehand and Playwright to the **same** Browserbase session via CDP. The TypeScript SDK exposes `stagehand.context.pages()[0]` for direct Playwright access, but the Python SDK does not. Playwright is added here for reliable navigation waits (`page.goto(wait_until="networkidle")` blocks until the page is fully rendered, unlike the Python SDK's non-blocking `sessions.navigate()`) and proxy-aware downloads (`context.request.get()` inherits the browser context's proxy and cookies, avoiding 403s that a plain `httpx` call would get on auth-gated URLs).
+- V4 page access: the Python SDK exposes the active Stagehand page directly for navigation and same-session asset fetches; URL discovery remains an `extract()` operation.
   Docs → https://docs.stagehand.dev/v4/basics/extract
 
 ## GLOSSARY
 
 - extract: pull structured data from a page using a natural language instruction and a JSON schema.
   Docs → https://docs.stagehand.dev/v4/basics/extract
-- context.request.get: make an HTTP request through the Playwright browser context — inherits the Browserbase proxy, cookies, and session headers. Used here instead of in-browser `fetch()` because the Python Stagehand SDK does not expose `page.evaluate()` directly.
-  Docs → https://playwright.dev/python/docs/api/class-apirequestcontext
-- IMAGE_URL_SCHEMA: plain dict JSON schema passed to `extract()`. Uses `"format": "uri"` on array items — the Python equivalent of `z.string().url()` in the TypeScript template — which signals to the model to return actual URL strings.
+- page.evaluate: fetch a discovered asset inside the active browser session so proxy and cookie state are preserved.
+  Docs → https://docs.stagehand.dev/v4/reference/page
+- ImageUrls: Pydantic schema passed to `extract()` for typed URL discovery.
 - MAX_IMAGES: configurable cap (default: 10) on how many images to download per run. Set via the `MAX_IMAGES` env var or the constant at the top of `main.py`.
 
 ## QUICKSTART
