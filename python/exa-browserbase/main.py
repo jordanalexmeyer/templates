@@ -1,44 +1,54 @@
-"""Find jobs with Exa and review applications with Stagehand V4 code mode."""
+"""Review job applications with Exa and direct Stagehand V4 primitives."""
 
 from __future__ import annotations
 
 import asyncio
 import json
 import os
+import re
+from pathlib import Path
 from urllib.parse import urlparse
 
-from deepagents import create_deep_agent
 from dotenv import load_dotenv
 from exa_py import Exa
-from langchain_mcp_adapters.tools import load_mcp_tools
-from pydantic import BaseModel, ConfigDict, Field
-
-from agent_runtime import (
-    BROWSER_INSTRUCTIONS,
-    SERVER_NAME,
-    create_gateway_model,
-    create_stagehand_client,
-    require_env,
-)
+from pydantic import BaseModel, Field
+from stagehand import FilePayload, Stagehand, browserbase
 
 load_dotenv()
 
-APPLICATION_DETAILS = {
+APPLICANT = {
     "name": "John Doe",
     "email": "john.doe@example.com",
-    "github_url": None,
-    "linkedin_url": "https://linkedin.com/in/johndoe",
-    "resume_path": "./Dummy_CV.pdf",
-    "current_location": "San Francisco, CA",
-    "willing_to_relocate": True,
-    "requires_sponsorship": False,
-    "visa_status": "",
     "phone": "+1-555-123-4567",
-    "portfolio_url": "https://johndoe.dev",
-    "cover_letter": "I am excited to apply for this position...",
+    "linkedin": "https://linkedin.com/in/johndoe",
+    "github": None,
+    "resume": Path("Dummy_CV.pdf").resolve(),
+    "current_location": "San Francisco, CA",
+    "relocation": True,
+    "sponsorship": False,
+    "visa_status": "",
+    "portfolio": "https://johndoe.dev",
+    "cover_letter": "I am excited to apply for this position.",
 }
-COMPANY_QUERY = os.environ.get("COMPANY_QUERY", "AI startups in SF")
-NUM_COMPANIES = int(os.environ.get("NUM_COMPANIES", "5"))
+
+
+def positive_integer(name: str, fallback: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None:
+        return fallback
+    try:
+        value = int(raw)
+    except ValueError as error:
+        raise RuntimeError(f"{name} must be a positive integer") from error
+    if value < 1:
+        raise RuntimeError(f"{name} must be a positive integer")
+    return value
+
+
+COMPANY_QUERY = os.environ.get("COMPANY_QUERY", "AI startups in SF currently hiring")
+NUM_COMPANIES = positive_integer("NUM_COMPANIES", 1)
+CONCURRENT = os.environ.get("CONCURRENT") == "true"
+MAX_CONCURRENT_BROWSERS = positive_integer("MAX_CONCURRENT_BROWSERS", 2)
 
 
 class CareersPage(BaseModel):
@@ -46,19 +56,36 @@ class CareersPage(BaseModel):
     careers_url: str
 
 
-class ApplicationReview(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class JobHeadline(BaseModel):
+    company: str = Field(min_length=1)
+    job_title: str = Field(min_length=1)
 
+
+class JobDescription(BaseModel):
+    requirements_summary: str
+    responsibilities_summary: str
+
+
+class RoleSummary(BaseModel):
+    role_summary: str = Field(min_length=1)
+
+
+class FormReview(BaseModel):
+    summary: str = Field(min_length=1)
+    visible_required_fields: list[str]
+
+
+class ApplicationReview(BaseModel):
     job_title: str
     job_url: str
-    fields_filled: list[str] = Field(description="Application fields filled with test data")
-    outstanding_fields: list[str]
-    github_field_present: bool = Field(description="Whether the application has a GitHub field")
-    github_left_blank: bool = Field(
-        description="Whether an existing GitHub field was verified blank"
-    )
+    application_url: str
+    requirements: list[str]
+    responsibilities: list[str]
+    observed_fields: list[str]
+    fields_attempted: list[str]
     resume_uploaded: bool
-    review_summary: str
+    outstanding_fields: list[str]
+    summary: str
 
 
 class ApplicationResult(BaseModel):
@@ -69,189 +96,405 @@ class ApplicationResult(BaseModel):
     error: str | None = None
 
 
-def describe_error(error: BaseException) -> str:
-    if isinstance(error, BaseExceptionGroup):
-        details = [describe_error(child) for child in error.exceptions]
-        return " | ".join(detail for detail in details if detail)
-    return str(error) or type(error).__name__
+def require_env(name: str) -> str:
+    value = os.environ.get(name)
+    if not value:
+        raise RuntimeError(f"{name} is required")
+    return value
 
 
-async def search_careers_pages(exa: Exa) -> list[CareersPage]:
-    companies = await asyncio.to_thread(
-        exa.search_and_contents,
-        COMPANY_QUERY,
-        category="company",
-        text=True,
-        type="auto",
-        livecrawl="fallback",
-        num_results=NUM_COMPANIES,
+def candidate_score(url: str, title: str) -> int:
+    parsed = urlparse(url)
+    host = parsed.hostname or ""
+    searchable = f"{title} {parsed.path} {parsed.query}"
+    ats = any(
+        provider in host
+        for provider in ("ashbyhq.com", "greenhouse.io", "lever.co", "smartrecruiters.com")
     )
-    if not companies.results:
-        raise RuntimeError("Exa returned no matching companies")
+    direct_role = re.search(
+        r"/(jobs?|positions?)/[^/]+|ashby_jid=|gh_jid=|lever-origin=",
+        f"{parsed.path}?{parsed.query}",
+        re.IGNORECASE,
+    )
+    careers = re.search(
+        r"\b(careers?|jobs?|open[- ]?roles?|positions?|join[- ]?us)\b",
+        searchable,
+        re.IGNORECASE,
+    )
+    return int(ats) * 4 + int(direct_role is not None) * 3 + int(careers is not None) * 2
 
-    careers_pages: list[CareersPage] = []
-    for company in companies.results:
-        company_name = company.title or (urlparse(company.url).hostname or "")
-        homepage_results = await asyncio.to_thread(
-            exa.search_and_contents,
-            f"{company_name} official homepage",
-            context=True,
-            exclude_domains=[
-                "linkedin.com",
-                "crunchbase.com",
-                "pitchbook.com",
-                "cbinsights.com",
-                "builtin.com",
-            ],
-            num_results=5,
-            text=True,
-            type="deep",
-            livecrawl="fallback",
+
+def is_direct_role_url(value: str) -> bool:
+    parsed = urlparse(value)
+    return (
+        re.search(
+            r"/(jobs?|positions?)/[^/]+|ashby_jid=|gh_jid=|lever-origin=",
+            f"{parsed.path}?{parsed.query}",
+            re.IGNORECASE,
         )
-        homepage = next(
+        is not None
+    )
+
+
+async def discover_careers_pages(exa: Exa) -> list[CareersPage]:
+    search = await asyncio.to_thread(
+        exa.search_and_contents,
+        f"{COMPANY_QUERY} official careers jobs open roles",
+        context=True,
+        exclude_domains=["linkedin.com", "indeed.com", "glassdoor.com", "ziprecruiter.com"],
+        livecrawl="fallback",
+        num_results=max(NUM_COMPANIES * 6, 10),
+        text=True,
+        type="deep",
+    )
+
+    seen: set[str] = set()
+    candidates: list[tuple[int, CareersPage]] = []
+    for result in search.results:
+        parsed = urlparse(result.url)
+        if parsed.scheme not in ("http", "https") or not parsed.hostname:
+            continue
+        score = candidate_score(result.url, result.title or "")
+        identity = f"{parsed.hostname.removeprefix('www.')}{parsed.path}"
+        if score < 2 or identity in seen:
+            continue
+        seen.add(identity)
+        company = re.split(r"\s+[|–—]\s+", result.title or parsed.hostname, maxsplit=1)[0]
+        candidates.append((score, CareersPage(company=company, careers_url=result.url)))
+
+    candidates.sort(key=lambda candidate: candidate[0], reverse=True)
+    pages = [candidate[1] for candidate in candidates[:NUM_COMPANIES]]
+    if not pages:
+        raise RuntimeError("Exa returned no direct careers or ATS pages")
+    return pages
+
+
+def includes(description: str, pattern: str) -> bool:
+    return re.search(pattern, description, re.IGNORECASE) is not None
+
+
+async def review_application(careers_page: CareersPage, _index: int) -> ApplicationResult:
+    browser = await browserbase.launch(api_key=require_env("BROWSERBASE_API_KEY"))
+    stagehand = await Stagehand.create(
+        browser=browser,
+        api_url="https://api.stagehand.browserbase.com",
+        model="google/gemini-2.5-flash",
+    )
+
+    try:
+        pages = await browser.context.pages()
+        page = pages[0] if pages else await browser.context.new_page()
+        await page.goto(
+            careers_page.careers_url,
+            wait_until="domcontentloaded",
+            timeout=60_000,
+        )
+
+        # Exa often returns a role page directly, so a no-op role action is non-fatal.
+        if not is_direct_role_url(careers_page.careers_url):
+            try:
+                await stagehand.act(
+                    "Open the first currently open software, engineering, design, or product role.",
+                    page=page,
+                )
+            except Exception:
+                pass
+        page = await browser.context.active_page() or page
+        job_url = await page.url()
+
+        try:
+            description = (
+                await stagehand.extract(
+                    (
+                        "Summarize the visible requirements and responsibilities for this role "
+                        "as two plain-text strings. Use an empty string for a section that is "
+                        "not shown."
+                    ),
+                    JobDescription,
+                    page=page,
+                )
+            ).data
+        except Exception:
+            description = None
+        has_description = bool(
+            description
+            and any(
+                value.strip() and value.strip().casefold() != "null"
+                for value in (
+                    description.requirements_summary,
+                    description.responsibilities_summary,
+                )
+            )
+        )
+        if not has_description:
+            try:
+                fallback_summary = (
+                    await stagehand.extract(
+                        (
+                            "Return one concise plain-text summary of the visible requirements "
+                            "and responsibilities for this role."
+                        ),
+                        RoleSummary,
+                        page=page,
+                    )
+                ).data.role_summary
+            except Exception:
+                fallback_summary = None
+        else:
+            fallback_summary = None
+
+        try:
+            await stagehand.act(
+                (
+                    "Open the application form for this job. Click Apply or Apply for this job, "
+                    "but never submit an application."
+                ),
+                page=page,
+            )
+        except Exception:
+            pass
+        page = await browser.context.active_page() or page
+        await page.wait_for_timeout(1_500)
+
+        headline = (
+            await stagehand.extract(
+                "Extract the exact role title and company shown above this application form.",
+                JobHeadline,
+                page=page,
+            )
+        ).data
+
+        observed = await stagehand.observe(
             (
-                result
-                for result in homepage_results.results
-                if result.url.startswith("https://") and (urlparse(result.url).hostname or "")
+                "Find every visible application input, textarea, select, radio option, checkbox, "
+                "and resume or CV file upload. Exclude the final submit button."
+            ),
+            page=page,
+        )
+        if not observed.data:
+            raise RuntimeError("No usable application form was observed")
+
+        fields_attempted: list[str] = []
+        descriptions = [action.description for action in observed.data]
+
+        async def run(label: str, pattern: str, value: str | bool | None) -> None:
+            if value is None or value == "":
+                return
+            candidates = [
+                action for action in observed.data if includes(action.description, pattern)
+            ]
+            if label == "phone":
+                candidates = [
+                    action for action in candidates if not includes(action.description, r"country")
+                ]
+            if label == "cover letter":
+                candidates = [
+                    action
+                    for action in candidates
+                    if not includes(action.description, r"file (upload|input)|attach.*cover")
+                ]
+            rendered = ("Yes" if value else "No") if isinstance(value, bool) else value
+            if isinstance(value, bool):
+                action = next(
+                    (
+                        candidate
+                        for candidate in candidates
+                        if rendered.casefold() in candidate.description.casefold()
+                    ),
+                    None,
+                )
+            else:
+                action = candidates[0] if candidates else None
+            if action is None:
+                return
+            try:
+                result = await stagehand.act(
+                    action.model_copy(
+                        update={"arguments": [] if action.method == "click" else [rendered]}
+                    ),
+                    page=page,
+                )
+                if result.data.success:
+                    fields_attempted.append(label)
+            except Exception:
+                # Optional and custom controls remain for the human reviewer.
+                pass
+
+        first_name = next(
+            (action for action in observed.data if includes(action.description, r"first name")),
+            None,
+        )
+        last_name = next(
+            (action for action in observed.data if includes(action.description, r"last name")),
+            None,
+        )
+        if first_name and last_name:
+            name_parts = str(APPLICANT["name"]).split()
+            try:
+                first_result = await stagehand.act(
+                    first_name.model_copy(update={"arguments": [name_parts[0]]}), page=page
+                )
+                last_result = await stagehand.act(
+                    last_name.model_copy(update={"arguments": [" ".join(name_parts[1:])]}),
+                    page=page,
+                )
+                if first_result.data.success and last_result.data.success:
+                    fields_attempted.append("name")
+            except Exception:
+                pass
+        else:
+            await run("name", r"\b(full )?name\b", str(APPLICANT["name"]))
+
+        await run("email", r"email", str(APPLICANT["email"]))
+        await run("phone", r"phone|telephone", str(APPLICANT["phone"]))
+        await run("LinkedIn", r"linkedin", str(APPLICANT["linkedin"]))
+        await run("GitHub", r"github", APPLICANT["github"])
+        await run(
+            "portfolio", r"portfolio|personal website|\bwebsite\b", str(APPLICANT["portfolio"])
+        )
+        await run(
+            "current location",
+            r"current.*location|currently based|where.*based",
+            str(APPLICANT["current_location"]),
+        )
+        await run("relocation", r"relocat", bool(APPLICANT["relocation"]))
+        await run("sponsorship", r"sponsor|work authorization", bool(APPLICANT["sponsorship"]))
+        await run("visa status", r"visa.*status|status.*visa", str(APPLICANT["visa_status"]))
+        await run(
+            "cover letter",
+            r"cover letter|why.*apply|why.*interested|why.*want.*work|additional information",
+            (
+                f"{APPLICANT['cover_letter']} I am especially interested in the "
+                f"{headline.job_title} role at {headline.company}."
+            ),
+        )
+
+        resume_uploaded = False
+        resume_action = next(
+            (
+                action
+                for action in observed.data
+                if action.selector
+                and includes(action.description, r"resume|curriculum|\bcv\b|upload.*file")
+                and not includes(action.description, r"autofill")
             ),
             None,
         )
-        if homepage is None:
-            continue
-        domain = (urlparse(homepage.url).hostname or "").removeprefix("www.")
-        careers = await asyncio.to_thread(
-            exa.search_and_contents,
-            f"{company_name} {domain} careers page",
-            context=True,
-            exclude_domains=["linkedin.com"],
-            num_results=5,
-            text=True,
-            type="deep",
-            livecrawl="fallback",
-        )
-        company_terms = {
-            token.lower() for token in company_name.replace("-", " ").split() if len(token) >= 4
-        }
-        same_domain = [
-            result
-            for result in careers.results
-            if (urlparse(result.url).hostname or "").removeprefix("www.") == domain
-            or (urlparse(result.url).hostname or "").endswith(f".{domain}")
-        ]
-        branded_ats = [
-            result
-            for result in careers.results
-            if any(term in f"{result.title or ''} {result.url}".lower() for term in company_terms)
-            and any(
-                provider in (urlparse(result.url).hostname or "")
-                for provider in ("ashbyhq.com", "greenhouse.io", "lever.co", "smartrecruiters.com")
-            )
-        ]
-        direct_same_domain = [
-            result
-            for result in same_domain
-            if any(marker in result.url for marker in ("ashby_jid=", "gh_jid=", "lever-origin="))
-        ]
-        candidate = next(iter(direct_same_domain or branded_ats or same_domain), None)
-        if candidate is not None:
-            careers_pages.append(
-                CareersPage(
-                    company=company_name,
-                    careers_url=candidate.url,
+        resume_path = APPLICANT["resume"]
+        if resume_action and isinstance(resume_path, Path):
+            try:
+                input_element = page.locator(resume_action.selector)
+                await input_element.set_input_files(
+                    FilePayload(
+                        name=resume_path.name,
+                        buffer=resume_path.read_bytes(),
+                        mime_type="application/pdf",
+                    )
                 )
-            )
-    if not careers_pages:
-        raise RuntimeError("Exa returned no company careers pages")
-    return careers_pages
+                resume_uploaded = resume_path.name in await input_element.input_value()
+            except Exception:
+                # Upload is exact browser mechanics; failure is reported instead of hidden.
+                pass
+            if not resume_uploaded:
+                expected_name = json.dumps(resume_path.name)
+                resume_uploaded = bool(
+                    await page.evaluate(
+                        f"""(() => Array.from(document.querySelectorAll('input[type="file"]'))
+                          .some((input) => input.files?.[0]?.name === {expected_name}))()"""
+                    )
+                )
+            if not resume_uploaded:
+                resume_uploaded = resume_path.name in await page.locator("body").inner_text()
 
-
-async def review_application(careers_page: CareersPage, index: int) -> ApplicationResult:
-    print(f"[{index + 1}/{NUM_COMPANIES}] Reviewing {careers_page.company}")
-    client = create_stagehand_client()
-    try:
-        async with client.session(SERVER_NAME) as session:
-            tools = await load_mcp_tools(session)
-            agent = create_deep_agent(
-                model=create_gateway_model("anthropic/claude-sonnet-4.6"),
-                tools=tools,
-                system_prompt=(
-                    BROWSER_INSTRUCTIONS
-                    + "\nYou are a careful job-application browser agent. Inspect before "
-                    "acting, prefer deterministic locators, never invent applicant facts or "
-                    "repurpose one field's value for another field, and never submit an "
-                    "application. Leave any field without an exact applicant value blank and "
-                    "report it for human review. Use no more than 20 browser-tool calls. "
-                    "If the first role has no reachable application, inspect at most one other "
-                    "role, then return the evidence gathered instead of looping."
+        form_review = (
+            await stagehand.extract(
+                (
+                    "Summarize this application for human review and list visible required "
+                    "fields that still need attention. Confirm that it has not been submitted."
                 ),
-                response_format=ApplicationReview,
+                FormReview,
+                page=page,
             )
-            result = await agent.ainvoke(
-                {
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": (
-                                f"Open {careers_page.careers_url}. If a specific open role is "
-                                "already selected, use it; otherwise choose the first relevant "
-                                "role. Read its requirements, open its application, and "
-                                "fill every field possible from this test applicant record:\n"
-                                f"{json.dumps(APPLICATION_DETAILS, indent=2)}\n"
-                                "The github_url is intentionally null. If a GitHub field exists, "
-                                "leave it blank, report it as outstanding, and verify that it is "
-                                "still blank; do not substitute the portfolio or LinkedIn URL. "
-                                "Report whether a GitHub field was present and left blank. "
-                                "Upload the resume when a file input is present. Stop before "
-                                "final submission, verify the filled values in the browser, and "
-                                "return the structured review."
-                            ),
-                        }
-                    ]
-                },
-                config={"recursion_limit": 120},
-            )
-            review: ApplicationReview = result["structured_response"]
-
-        if not review.job_url.startswith("http") or not review.review_summary.strip():
-            raise RuntimeError("Agent returned an unverified application review")
-        github_filled = any("github" in field.casefold() for field in review.fields_filled)
-        github_outstanding = any(
-            "github" in field.casefold() for field in review.outstanding_fields
+        ).data
+        if resume_action and isinstance(resume_path, Path) and not resume_uploaded:
+            resume_uploaded = resume_path.name in await page.locator("body").inner_text()
+        application_url = await page.url()
+        resolved_job_url = (
+            job_url
+            if is_direct_role_url(job_url)
+            else re.sub(r"/application/?$", "", application_url)
         )
-        if github_filled or (
-            review.github_field_present and (not review.github_left_blank or not github_outstanding)
-        ):
-            raise RuntimeError("Agent did not verify that the GitHub field remained blank")
-        if not review.github_field_present and review.github_left_blank:
-            raise RuntimeError("Agent returned an inconsistent GitHub-field review")
+
         return ApplicationResult(
-            company=careers_page.company,
+            company=headline.company,
             careers_url=careers_page.careers_url,
             success=True,
-            review=review,
+            review=ApplicationReview(
+                job_title=headline.job_title,
+                job_url=resolved_job_url,
+                application_url=application_url,
+                requirements=(
+                    [description.requirements_summary.strip()]
+                    if description
+                    and description.requirements_summary.strip()
+                    and description.requirements_summary.strip().casefold() != "null"
+                    else [fallback_summary]
+                    if fallback_summary
+                    else []
+                ),
+                responsibilities=(
+                    [description.responsibilities_summary.strip()]
+                    if description
+                    and description.responsibilities_summary.strip()
+                    and description.responsibilities_summary.strip().casefold() != "null"
+                    else []
+                ),
+                observed_fields=descriptions,
+                fields_attempted=fields_attempted,
+                resume_uploaded=resume_uploaded,
+                outstanding_fields=[
+                    field
+                    for field in form_review.visible_required_fields
+                    if not (resume_uploaded and includes(field, r"resume|\bcv\b"))
+                ],
+                summary=form_review.summary,
+            ),
         )
     except Exception as error:
         return ApplicationResult(
             company=careers_page.company,
             careers_url=careers_page.careers_url,
             success=False,
-            error=describe_error(error),
+            error=str(error) or type(error).__name__,
         )
+    finally:
+        try:
+            await stagehand.close()
+        finally:
+            await browser.close()
 
 
 async def main() -> None:
     require_env("BROWSERBASE_API_KEY")
-    require_env("AI_GATEWAY_API_KEY")
-    exa = Exa(api_key=require_env("EXA_API_KEY"))
-    careers_pages = await search_careers_pages(exa)
-    results = [
-        await review_application(careers_page, index)
-        for index, careers_page in enumerate(careers_pages)
-    ]
-    failures = [result for result in results if not result.success]
+    pages = await discover_careers_pages(Exa(api_key=require_env("EXA_API_KEY")))
+    print(f"Found {len(pages)} direct job or careers page(s)")
+
+    if CONCURRENT:
+        semaphore = asyncio.Semaphore(MAX_CONCURRENT_BROWSERS)
+
+        async def bounded_review(page: CareersPage, index: int) -> ApplicationResult:
+            async with semaphore:
+                return await review_application(page, index)
+
+        results = await asyncio.gather(
+            *(bounded_review(page, index) for index, page in enumerate(pages))
+        )
+    else:
+        results = [await review_application(page, index) for index, page in enumerate(pages)]
+
     print("[" + ",\n".join(result.model_dump_json(indent=2) for result in results) + "]")
-    if failures:
-        raise RuntimeError(f"{len(failures)} of {len(results)} application reviews failed")
+    if not any(result.success for result in results):
+        raise RuntimeError("No application review reached a usable form")
 
 
 if __name__ == "__main__":
@@ -259,5 +502,4 @@ if __name__ == "__main__":
         asyncio.run(main())
     except Exception as error:
         print(f"Exa + Browserbase workflow failed: {error}")
-        print("Check BROWSERBASE_API_KEY, AI_GATEWAY_API_KEY, and EXA_API_KEY")
         raise SystemExit(1) from error

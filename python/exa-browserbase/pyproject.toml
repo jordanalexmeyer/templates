@@ -6,11 +6,9 @@ readme = "README.md"
 requires-python = ">=3.11,<3.14"
 dependencies = [
     "exa-py",
-    "playwright",
-    "python-dotenv",
-    "deepagents==0.7.5",
-    "langchain-mcp-adapters==0.3.2",
-    "langchain-openai==1.4.3",
+    "pydantic>=2.12,<3",
+    "python-dotenv==1.2.2",
+    "stagehand==4.0.0",
 ]
 
 [project.optional-dependencies]

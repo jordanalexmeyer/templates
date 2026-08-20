@@ -1,56 +1,42 @@
-// Stagehand + Browserbase + Exa: agentic job search and application
+// Stagehand + Browserbase + Exa: review a job application without submitting it
 
 import "dotenv/config";
-import { createMCPClient } from "@ai-sdk/mcp";
-import { Experimental_StdioMCPTransport } from "@ai-sdk/mcp/mcp-stdio";
-import { Output, ToolLoopAgent, stepCountIs } from "ai";
+import { browserbase, Stagehand } from "@browserbasehq/stagehand";
 import { Exa } from "exa-js";
-import { resolve } from "node:path";
+import { readFile } from "node:fs/promises";
+import { basename, resolve } from "node:path";
 import { z } from "zod/v4";
 
-const childEnv = Object.fromEntries(
-  Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined),
-);
-
-const applicationDetails = {
+const applicant = {
   name: "John Doe",
   email: "john.doe@example.com",
+  phone: "+1-555-123-4567",
   linkedInUrl: "https://linkedin.com/in/johndoe",
+  githubUrl: null,
   resumePath: resolve("Dummy_CV.pdf"),
   currentLocation: "San Francisco, CA",
   willingToRelocate: true,
   requiresSponsorship: false,
   visaStatus: "",
-  phone: "+1-555-123-4567",
   portfolioUrl: "https://johndoe.dev",
-  coverLetter: "I am excited to apply for this position...",
+  coverLetter: "I am excited to apply for this position.",
 };
 
-function readPositiveInteger(name: string, fallback: number): number {
-  const rawValue = process.env[name];
-  if (rawValue === undefined) return fallback;
-
-  const value = Number(rawValue);
+function positiveInteger(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw === undefined) return fallback;
+  const value = Number(raw);
   if (!Number.isSafeInteger(value) || value < 1) {
-    throw new Error(`${name} must be a positive integer; received ${JSON.stringify(rawValue)}`);
+    throw new Error(`${name} must be a positive integer`);
   }
   return value;
 }
 
-function parseHttpUrl(value: string): URL | null {
-  try {
-    const parsed = new URL(value);
-    return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-const searchConfig = {
+const config = {
   companyQuery: process.env.COMPANY_QUERY ?? "AI startups in SF currently hiring",
-  numCompanies: readPositiveInteger("NUM_COMPANIES", 5),
+  numCompanies: positiveInteger("NUM_COMPANIES", 1),
   concurrent: process.env.CONCURRENT === "true",
-  maxConcurrentBrowsers: readPositiveInteger("MAX_CONCURRENT_BROWSERS", 5),
+  maxConcurrentBrowsers: positiveInteger("MAX_CONCURRENT_BROWSERS", 2),
 };
 
 interface CareersPage {
@@ -62,226 +48,366 @@ interface ApplicationResult {
   company: string;
   careersUrl: string;
   success: boolean;
-  message: string;
+  review?: {
+    jobTitle: string;
+    jobUrl: string;
+    applicationUrl: string;
+    requirements: string[];
+    responsibilities: string[];
+    observedFields: string[];
+    fieldsAttempted: string[];
+    resumeUploaded: boolean;
+    outstandingFields: string[];
+    summary: string;
+  };
+  error?: string;
 }
 
-const applicationReviewSchema = z.object({
-  roleFound: z.boolean(),
-  applicationOpened: z.boolean(),
-  jobTitle: z.string().nullable(),
-  jobUrl: z.string().nullable(),
-  fieldsFilled: z.array(z.string()),
-  outstandingFields: z.array(z.string()),
-  providedFieldStatus: z.object({
-    name: z.object({ present: z.boolean(), filled: z.boolean() }),
-    email: z.object({ present: z.boolean(), filled: z.boolean() }),
-    phone: z.object({ present: z.boolean(), filled: z.boolean() }),
-    linkedIn: z.object({ present: z.boolean(), filled: z.boolean() }),
-    resume: z.object({ present: z.boolean(), filled: z.boolean() }),
-    portfolio: z.object({ present: z.boolean(), filled: z.boolean() }),
-    coverLetter: z.object({ present: z.boolean(), filled: z.boolean() }),
-    currentLocation: z.object({ present: z.boolean(), filled: z.boolean() }),
-    relocation: z.object({ present: z.boolean(), filled: z.boolean() }),
-    sponsorship: z.object({ present: z.boolean(), filled: z.boolean() }),
-    visaStatus: z.object({ present: z.boolean(), filled: z.boolean() }),
-  }),
-  resumeUploaded: z.boolean(),
-  summary: z.string().min(1),
+const JobHeadlineSchema = z.object({
+  company: z.string().min(1),
+  jobTitle: z.string().min(1),
 });
 
-async function applyToJob(careersPage: CareersPage, index: number): Promise<ApplicationResult> {
-  const prefix = `[${index + 1}/${searchConfig.numCompanies}] ${careersPage.company}:`;
-  const mcpClient = await createMCPClient({
-    transport: new Experimental_StdioMCPTransport({
-      command: "stagehand-codemode",
-      env: childEnv,
-      stderr: "inherit",
-    }),
+const JobDescriptionSchema = z.object({
+  requirementsSummary: z.string(),
+  responsibilitiesSummary: z.string(),
+});
+
+const RoleSummarySchema = z.object({
+  roleSummary: z.string().min(1),
+});
+
+const FormReviewSchema = z.object({
+  summary: z.string().min(1),
+  visibleRequiredFields: z.array(z.string()),
+});
+
+function parseHttpUrl(value: string): URL | null {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url : null;
+  } catch {
+    return null;
+  }
+}
+
+function candidateScore(url: URL, title: string): number {
+  const searchable = `${title} ${url.pathname} ${url.search}`;
+  const ats = ["ashbyhq.com", "greenhouse.io", "lever.co", "smartrecruiters.com"].some((provider) =>
+    url.hostname.includes(provider),
+  );
+  const directRole = /\/(jobs?|positions?)\/[^/]+|ashby_jid=|gh_jid=|lever-origin=/i.test(
+    `${url.pathname}${url.search}`,
+  );
+  const careers = /\b(careers?|jobs?|open[- ]?roles?|positions?|join[- ]?us)\b/i.test(searchable);
+  return Number(ats) * 4 + Number(directRole) * 3 + Number(careers) * 2;
+}
+
+function isDirectRoleUrl(value: string): boolean {
+  const url = parseHttpUrl(value);
+  return Boolean(
+    url &&
+    /\/(jobs?|positions?)\/[^/]+|ashby_jid=|gh_jid=|lever-origin=/i.test(
+      `${url.pathname}${url.search}`,
+    ),
+  );
+}
+
+async function discoverCareersPages(exa: Exa): Promise<CareersPage[]> {
+  const search = await exa.searchAndContents(
+    `${config.companyQuery} official careers jobs open roles`,
+    {
+      context: true,
+      excludeDomains: ["linkedin.com", "indeed.com", "glassdoor.com", "ziprecruiter.com"],
+      livecrawl: "fallback",
+      numResults: Math.max(config.numCompanies * 6, 10),
+      text: true,
+      type: "deep",
+    },
+  );
+
+  const seen = new Set<string>();
+  const pages = search.results
+    .flatMap((result) => {
+      const url = parseHttpUrl(result.url);
+      if (!url) return [];
+      const score = candidateScore(url, result.title ?? "");
+      const identity = `${url.hostname.replace(/^www\./, "")}${url.pathname}`;
+      if (score < 2 || seen.has(identity)) return [];
+      seen.add(identity);
+      return [
+        {
+          score,
+          company: (result.title || url.hostname).split(/\s+[|–—]\s+/)[0],
+          careersUrl: url.href,
+        },
+      ];
+    })
+    .sort((left, right) => right.score - left.score)
+    .slice(0, config.numCompanies)
+    .map(({ company, careersUrl }) => ({ company, careersUrl }));
+
+  if (pages.length === 0) throw new Error("Exa returned no direct careers or ATS pages");
+  return pages;
+}
+
+function includes(description: string, pattern: RegExp): boolean {
+  return pattern.test(description.toLowerCase());
+}
+
+async function reviewApplication(
+  careersPage: CareersPage,
+  _index: number,
+): Promise<ApplicationResult> {
+  const browser = await browserbase.launch({ apiKey: process.env.BROWSERBASE_API_KEY! });
+  const stagehand = await Stagehand.create({
+    browser,
+    model: { modelName: "google/gemini-2.5-flash" },
+    logging: { level: "info" },
   });
 
   try {
-    const tools = await mcpClient.tools();
-    if (!tools.code_execute) throw new Error("Stagehand code mode did not expose code_execute");
-
-    const agent = new ToolLoopAgent({
-      model: process.env.AGENT_MODEL ?? "anthropic/claude-sonnet-4.6",
-      instructions:
-        "You are a careful job-application browser agent. Use code_execute for all browser work and use no more than 14 code_execute calls. Inspect before acting, prefer deterministic locators, use Stagehand AI primitives inside code_execute for semantic work, never invent applicant facts, and never submit an application unless explicitly instructed. The resumePath is a real file path accessible to code_execute. Fill fields whose answers map exactly to the applicant record; reserve human review for information or consequential choices that are genuinely missing or ambiguous.",
-      tools,
-      output: Output.object({ schema: applicationReviewSchema }),
-      prepareStep: ({ stepNumber }) =>
-        stepNumber >= 15
-          ? {
-              activeTools: [],
-              toolChoice: "none",
-              instructions:
-                "Stop browser work and return the structured application review now. Report truthfully whether a role and its application were reached, which fields were filled, whether the resume was uploaded, and what remains. For every providedFieldStatus entry, set present to whether that form field existed and filled to whether you filled it from the applicant record; an absent field must be { present: false, filled: false }. Do not call another tool.",
-            }
-          : undefined,
-      stopWhen: stepCountIs(30),
+    let page = (await browser.context.pages())[0] ?? (await browser.context.newPage());
+    await page.goto(careersPage.careersUrl, {
+      waitUntil: "domcontentloaded",
+      timeout: 60_000,
     });
 
-    console.log(`${prefix} starting code-mode agent`);
-    const result = await agent.generate({
-      prompt: `Open ${careersPage.careersUrl}. Choose the first relevant open role, read its requirements, open its application, and fill every field you can from this applicant record:\n${JSON.stringify(applicationDetails, null, 2)}\nUpload the resume from ${JSON.stringify(applicationDetails.resumePath)} when a file input is present. Stop before final submission and summarize what remains for human review.`,
-    });
-    const review = result.output;
-    if (!review) {
-      throw new Error("Agent returned no structured application review");
+    // The Exa result is often already a role page. A failed action is therefore non-fatal.
+    if (!isDirectRoleUrl(careersPage.careersUrl)) {
+      await stagehand
+        .act("Open the first currently open software, engineering, design, or product role.")
+        .catch(() => undefined);
     }
-    console.log(`${prefix} review`, JSON.stringify(review));
-    if (
-      !review.roleFound ||
-      !review.applicationOpened ||
-      !review.jobTitle?.trim() ||
-      !parseHttpUrl(review.jobUrl ?? "")
-    ) {
-      throw new Error(`No verified application was opened: ${review.summary}`);
+    page = (await browser.context.activePage()) ?? page;
+    const jobUrl = await page.url();
+
+    const description = await stagehand
+      .extract(
+        "Summarize the visible requirements and responsibilities for this role as two plain-text strings. Use an empty string for a section that is not shown.",
+        JobDescriptionSchema,
+      )
+      .then((result) => result.data)
+      .catch(() => null);
+    const hasDescription = Boolean(
+      description &&
+      [description.requirementsSummary, description.responsibilitiesSummary].some(
+        (value) => value.trim() && value.trim().toLowerCase() !== "null",
+      ),
+    );
+    const fallbackSummary = hasDescription
+      ? null
+      : await stagehand
+          .extract(
+            "Return one concise plain-text summary of the visible requirements and responsibilities for this role.",
+            RoleSummarySchema,
+          )
+          .then((result) => result.data.roleSummary)
+          .catch(() => null);
+
+    await stagehand
+      .act(
+        "Open the application form for this job. Click Apply or Apply for this job, but never submit an application.",
+      )
+      .catch(() => undefined);
+    page = (await browser.context.activePage()) ?? page;
+    await page.waitForTimeout(1_500);
+
+    const headline = (
+      await stagehand.extract(
+        "Extract the exact role title and company shown above this application form.",
+        JobHeadlineSchema,
+      )
+    ).data;
+
+    const observed = await stagehand.observe(
+      "Find every visible application input, textarea, select, radio option, checkbox, and resume or CV file upload. Exclude the final submit button.",
+    );
+    if (observed.data.length === 0) throw new Error("No usable application form was observed");
+
+    const fieldsAttempted: string[] = [];
+    const descriptions = observed.data.map((action) => action.description);
+
+    const run = async (label: string, pattern: RegExp, value: string | boolean | null) => {
+      if (value === null || value === "") return;
+      let candidates = observed.data.filter((action) => includes(action.description, pattern));
+      if (label === "phone") {
+        candidates = candidates.filter((action) => !includes(action.description, /country/));
+      }
+      if (label === "cover letter") {
+        candidates = candidates.filter(
+          (action) => !includes(action.description, /file (upload|input)|attach.*cover/),
+        );
+      }
+      const rendered = typeof value === "boolean" ? (value ? "Yes" : "No") : value;
+      const action =
+        typeof value === "boolean"
+          ? candidates.find((candidate) =>
+              candidate.description.toLowerCase().includes(rendered.toLowerCase()),
+            )
+          : candidates[0];
+      if (!action) return;
+      try {
+        const result = await stagehand.act({
+          ...action,
+          arguments: action.method === "click" ? [] : [rendered],
+        });
+        if (result.data.success) fieldsAttempted.push(label);
+      } catch {
+        // Optional or custom controls remain for the human reviewer.
+      }
+    };
+
+    const firstName = observed.data.find((action) => includes(action.description, /first name/));
+    const lastName = observed.data.find((action) => includes(action.description, /last name/));
+    if (firstName && lastName) {
+      const [first, ...rest] = applicant.name.split(/\s+/);
+      const firstResult = await stagehand
+        .act({ ...firstName, arguments: [first] })
+        .catch(() => undefined);
+      const lastResult = await stagehand
+        .act({ ...lastName, arguments: [rest.join(" ")] })
+        .catch(() => undefined);
+      if (firstResult?.data.success && lastResult?.data.success) fieldsAttempted.push("name");
+    } else {
+      await run("name", /\b(full )?name\b/, applicant.name);
     }
-    const unfilledPresentFields = Object.entries(review.providedFieldStatus)
-      .filter(([, status]) => status.present && !status.filled)
-      .map(([field]) => field);
-    if (!review.resumeUploaded || unfilledPresentFields.length > 0) {
-      throw new Error(
-        `Application review was incomplete: ${JSON.stringify({
-          resumeUploaded: review.resumeUploaded,
-          unfilledPresentFields,
-        })}`,
+
+    await run("email", /email/, applicant.email);
+    await run("phone", /phone|telephone/, applicant.phone);
+    await run("LinkedIn", /linkedin/, applicant.linkedInUrl);
+    await run("GitHub", /github/, applicant.githubUrl);
+    await run("portfolio", /portfolio|personal website|\bwebsite\b/, applicant.portfolioUrl);
+    await run(
+      "current location",
+      /current.*location|currently based|where.*based/,
+      applicant.currentLocation,
+    );
+    await run("relocation", /relocat/, applicant.willingToRelocate);
+    await run("sponsorship", /sponsor|work authorization/, applicant.requiresSponsorship);
+    await run("visa status", /visa.*status|status.*visa/, applicant.visaStatus);
+    await run(
+      "cover letter",
+      /cover letter|why.*apply|why.*interested|why.*want.*work|additional information/,
+      `${applicant.coverLetter} I am especially interested in the ${headline.jobTitle} role at ${headline.company}.`,
+    );
+
+    let resumeUploaded = false;
+    const resumeAction = observed.data.find(
+      (action) =>
+        action.selector &&
+        includes(action.description, /resume|curriculum|\bcv\b|upload.*file/) &&
+        !includes(action.description, /autofill/),
+    );
+    if (resumeAction) {
+      try {
+        const resume = await readFile(applicant.resumePath);
+        const input = page.locator(resumeAction.selector);
+        await input.setInputFiles({
+          name: basename(applicant.resumePath),
+          mimeType: "application/pdf",
+          buffer: resume,
+        });
+        resumeUploaded = (await input.inputValue()).includes(basename(applicant.resumePath));
+      } catch {
+        // File upload is exact browser mechanics; a failed upload is reported, not hidden.
+      }
+      if (!resumeUploaded) {
+        resumeUploaded = await page.evaluate((expectedName: string) => {
+          return Array.from(document.querySelectorAll<HTMLInputElement>('input[type="file"]')).some(
+            (input) => input.files?.[0]?.name === expectedName,
+          );
+        }, basename(applicant.resumePath));
+      }
+      if (!resumeUploaded) {
+        resumeUploaded = (await page.locator("body").innerText()).includes(
+          basename(applicant.resumePath),
+        );
+      }
+    }
+
+    const formReview = (
+      await stagehand.extract(
+        "Summarize this application for human review and list visible required fields that still need attention. Confirm that it has not been submitted.",
+        FormReviewSchema,
+      )
+    ).data;
+    if (resumeAction && !resumeUploaded) {
+      resumeUploaded = (await page.locator("body").innerText()).includes(
+        basename(applicant.resumePath),
       );
     }
+    const applicationUrl = await page.url();
+    const resolvedJobUrl = isDirectRoleUrl(jobUrl)
+      ? jobUrl
+      : applicationUrl.replace(/\/application\/?$/, "");
 
     return {
-      company: careersPage.company,
+      company: headline.company,
       careersUrl: careersPage.careersUrl,
       success: true,
-      message: JSON.stringify(review),
+      review: {
+        jobTitle: headline.jobTitle,
+        jobUrl: resolvedJobUrl,
+        applicationUrl,
+        requirements:
+          description?.requirementsSummary.trim() &&
+          description.requirementsSummary.trim().toLowerCase() !== "null"
+            ? [description.requirementsSummary.trim()]
+            : fallbackSummary
+              ? [fallbackSummary]
+              : [],
+        responsibilities:
+          description?.responsibilitiesSummary.trim() &&
+          description.responsibilitiesSummary.trim().toLowerCase() !== "null"
+            ? [description.responsibilitiesSummary.trim()]
+            : [],
+        observedFields: descriptions,
+        fieldsAttempted,
+        resumeUploaded,
+        outstandingFields: formReview.visibleRequiredFields.filter(
+          (field) => !(resumeUploaded && /resume|\bcv\b/i.test(field)),
+        ),
+        summary: formReview.summary,
+      },
     };
   } catch (error) {
     return {
       company: careersPage.company,
       careersUrl: careersPage.careersUrl,
       success: false,
-      message: error instanceof Error ? error.message : String(error),
+      error: error instanceof Error ? error.message : String(error),
     };
   } finally {
-    await mcpClient.close();
+    await stagehand.close().catch(() => undefined);
+    await browser.close().catch(() => undefined);
   }
 }
 
 async function main() {
-  if (
-    !process.env.BROWSERBASE_API_KEY ||
-    !process.env.AI_GATEWAY_API_KEY ||
-    !process.env.EXA_API_KEY
-  ) {
-    throw new Error("BROWSERBASE_API_KEY, AI_GATEWAY_API_KEY, and EXA_API_KEY are required");
+  if (!process.env.BROWSERBASE_API_KEY || !process.env.EXA_API_KEY) {
+    throw new Error("BROWSERBASE_API_KEY and EXA_API_KEY are required");
   }
 
-  const exa = new Exa(process.env.EXA_API_KEY);
-  console.log(`Searching for companies: ${searchConfig.companyQuery}`);
-  const companies = await exa.searchAndContents(searchConfig.companyQuery, {
-    category: "company",
-    text: true,
-    type: "auto",
-    livecrawl: "fallback",
-    numResults: searchConfig.numCompanies,
-  });
-
-  const careersPages: CareersPage[] = [];
-  for (const company of companies.results) {
-    const companyName = company.title || parseHttpUrl(company.url)?.hostname;
-    if (!companyName) continue;
-    const homepageResults = await exa.searchAndContents(`${companyName} official homepage`, {
-      context: true,
-      excludeDomains: [
-        "linkedin.com",
-        "crunchbase.com",
-        "pitchbook.com",
-        "cbinsights.com",
-        "builtin.com",
-      ],
-      numResults: 5,
-      text: true,
-      type: "deep",
-      livecrawl: "fallback",
-    });
-    const homepage = homepageResults.results.find((result) => {
-      return parseHttpUrl(result.url)?.protocol === "https:";
-    });
-    if (!homepage) continue;
-
-    const homepageUrl = parseHttpUrl(homepage.url);
-    if (!homepageUrl) continue;
-    const domain = homepageUrl.hostname.replace(/^www\./, "");
-    const careers = await exa.searchAndContents(`${companyName} ${domain} careers page`, {
-      context: true,
-      excludeDomains: ["linkedin.com"],
-      numResults: 5,
-      text: true,
-      type: "deep",
-      livecrawl: "fallback",
-    });
-    const companyTerms = companyName
-      .replaceAll("-", " ")
-      .split(/\s+/)
-      .map((term) => term.toLowerCase())
-      .filter((term) => term.length >= 4);
-    const sameDomain = careers.results.filter((result) => {
-      const host = parseHttpUrl(result.url)?.hostname.replace(/^www\./, "");
-      if (!host) return false;
-      return host === domain || host.endsWith(`.${domain}`);
-    });
-    const brandedAts = careers.results.filter((result) => {
-      const parsedResultUrl = parseHttpUrl(result.url);
-      if (!parsedResultUrl) return false;
-      const searchable = `${result.title || ""} ${result.url}`.toLowerCase();
-      const host = parsedResultUrl.hostname;
-      return (
-        companyTerms.some((term) => searchable.includes(term)) &&
-        ["ashbyhq.com", "greenhouse.io", "lever.co", "smartrecruiters.com"].some((provider) =>
-          host.includes(provider),
-        )
-      );
-    });
-    const directSameDomain = sameDomain.filter((result) =>
-      ["ashby_jid=", "gh_jid=", "lever-origin="].some((marker) => result.url.includes(marker)),
-    );
-    const careerTermPattern =
-      /\b(careers?|jobs?|open[- ]?roles?|join[- ]?us|work[- ]?with[- ]?us)\b/i;
-    const sameDomainCareerPages = sameDomain.filter((result) =>
-      careerTermPattern.test(`${result.title || ""} ${result.url}`),
-    );
-    const candidates = directSameDomain.length
-      ? directSameDomain
-      : brandedAts.length
-        ? brandedAts
-        : sameDomainCareerPages;
-    if (candidates[0]) {
-      careersPages.push({ company: companyName, careersUrl: candidates[0].url });
-    }
-  }
-  if (careersPages.length === 0) {
-    throw new Error("Exa returned no company careers pages");
-  }
+  const pages = await discoverCareersPages(new Exa(process.env.EXA_API_KEY));
+  console.log(`Found ${pages.length} direct job or careers page(s)`);
 
   const results: ApplicationResult[] = [];
-  const batchSize = searchConfig.concurrent ? searchConfig.maxConcurrentBrowsers : 1;
-  for (let index = 0; index < careersPages.length; index += batchSize) {
-    const batch = careersPages.slice(index, index + batchSize);
+  const batchSize = config.concurrent ? config.maxConcurrentBrowsers : 1;
+  for (let index = 0; index < pages.length; index += batchSize) {
+    const batch = pages.slice(index, index + batchSize);
     results.push(
-      ...(await Promise.all(batch.map((page, offset) => applyToJob(page, index + offset)))),
+      ...(await Promise.all(batch.map((page, offset) => reviewApplication(page, index + offset)))),
     );
   }
 
   console.log(JSON.stringify(results, null, 2));
-  const failures = results.filter((result) => !result.success);
-  if (failures.length > 0) {
-    throw new Error(`${failures.length} of ${results.length} application reviews failed`);
+  if (!results.some((result) => result.success)) {
+    throw new Error("No application review reached a usable form");
   }
 }
 
 main().catch((error) => {
-  console.error("Error in Exa + Browserbase job application:", error);
-  console.error("Check BROWSERBASE_API_KEY, AI_GATEWAY_API_KEY, and EXA_API_KEY in .env");
+  console.error("Exa + Browserbase workflow failed:", error);
   process.exit(1);
 });
