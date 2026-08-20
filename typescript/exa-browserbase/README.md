@@ -10,8 +10,8 @@
 
 ## THE 5-STEP FLOW
 
-1. **Search for companies** — Exa finds companies matching your criteria (e.g., "AI startups in SF")
-2. **Find careers pages** — For each company, Exa searches for their careers/jobs page
+1. **Search for hiring companies** — Exa finds companies matching your criteria (by default, "AI startups in SF currently hiring")
+2. **Find careers pages** — For each company, Exa keeps verified careers/jobs or branded ATS pages and drops unrelated same-domain pages
 3. **Start a browser agent** — Vercel AI SDK owns the loop and receives Stagehand's `code_execute` MCP tool
 4. **Inspect and fill** — the agent reads the posting and fills known fields with deterministic V4 APIs or Stagehand AI primitives
 5. **Stop for review** — the agent uploads the resume but stops before final submission
@@ -40,12 +40,14 @@
 
 For a small verification run, set `COMPANY_QUERY=Browserbase NUM_COMPANIES=1`.
 
+Applications run sequentially by default. Set `CONCURRENT=true MAX_CONCURRENT_BROWSERS=5` to opt into concurrent agents when your Browserbase plan supports them.
+
 ## EXPECTED OUTPUT
 
 - Uses your exact info for name, email, phone
-- Writes custom answers for open-ended questions
-- Creates a tailored cover letter based on the job
-- Handles location and visa questions smartly
+- Fills only fields that map exactly to the provided applicant record
+- Uploads the configured resume and verifies which provided fields were present and filled
+- Leaves genuinely missing information and consequential choices for human review
 - Stops before submitting (for testing/review purposes)
 - Closes every MCP client, Stagehand instance, and browser cleanly
 

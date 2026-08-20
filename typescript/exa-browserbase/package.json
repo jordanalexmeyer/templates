@@ -12,7 +12,8 @@
     "@browserbasehq/stagehand-codemode": "github:browserbase/stagehand#54302fc5f13be5ad8e717d8e1388502de22be2ed&path:packages/integrations",
     "ai": "^7.0.58",
     "dotenv": "latest",
-    "exa-js": "latest"
+    "exa-js": "latest",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "latest",
