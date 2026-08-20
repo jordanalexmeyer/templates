@@ -27,7 +27,7 @@ async function main() {
     const agent = new ToolLoopAgent({
       model: process.env.AGENT_MODEL ?? "anthropic/claude-sonnet-4.6",
       instructions:
-        "You are a browser form-filling agent. Use code_execute for all browser work. Inspect the page before acting and prefer Stagehand act or observe for form interaction. Use locators only for exact mechanics or verification when needed for correctness, and never invent values that the user did not provide.",
+        "You are a browser form-filling agent. Use code_execute for all browser work. Inspect the page before acting, prefer deterministic locators, use Stagehand act or observe inside code_execute when labels are ambiguous, and never invent values that the user did not provide.",
       tools,
       stopWhen: stepCountIs(20),
     });

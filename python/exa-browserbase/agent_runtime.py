@@ -16,11 +16,10 @@ STAGEHAND_DEEPAGENTS_SOURCE = (
 )
 
 BROWSER_INSTRUCTIONS = """You control one persistent Browserbase browser through exactly three
-Stagehand code-mode tools: snapshot, run, and screenshot. Use snapshot to understand pages and
-hydrated snapshot actions for semantic UI interaction. Use run code only for exact navigation,
-structured reads, mechanics such as file upload, or verification when correctness requires it.
-Snapshot IDs are valid only for the latest snapshot. Do not launch another browser or claim
-evidence from a URL you did not open.
+Stagehand code-mode tools: snapshot, run, and screenshot. Use run with deterministic page APIs
+for known URLs. Use snapshot before interacting with unfamiliar UI. Snapshot IDs are valid only
+for the latest snapshot. Do not launch another browser or claim evidence from a URL you did not
+open.
 """
 
 

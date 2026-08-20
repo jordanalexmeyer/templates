@@ -103,7 +103,7 @@ async function main() {
     const agent = new ToolLoopAgent({
       model: process.env.AGENT_MODEL ?? "anthropic/claude-sonnet-4.6",
       instructions:
-        "You are a browser research agent. Use code_execute for all browser work. Prefer Stagehand act, extract, and observe for semantic work. Use page and locator APIs only for exact navigation, mechanics, or verification when needed for correctness. Return concise factual findings.",
+        "You are a browser research agent. Use code_execute for all browser work. Prefer deterministic page and locator APIs; use Stagehand AI primitives inside code_execute when semantic extraction is useful. Return concise factual findings.",
       tools,
       stopWhen: stepCountIs(15),
     });

@@ -15,7 +15,7 @@ Stagehand is the SDK for browser agents.
 1. **Search for companies** — Exa finds companies matching your criteria (e.g., "AI startups in SF")
 2. **Find careers pages** — For each company, Exa searches for their careers/jobs page
 3. **Inspect the application** — Stagehand's code-mode snapshot exposes the live page to the agent
-4. **Smart form filling** — Deep Agents uses Stagehand snapshots and hydrated actions for semantic interaction, reserving run code for exact mechanics and verification
+4. **Smart form filling** — Deep Agents plans the work and calls Stagehand code mode for deterministic browser operations
 5. **Human review** — The workflow verifies the filled state and intentionally stops before submission
 
 ## GLOSSARY

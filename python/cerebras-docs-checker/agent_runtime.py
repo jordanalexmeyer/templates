@@ -14,10 +14,8 @@ STAGEHAND_DEEPAGENTS_SOURCE = (
     "#subdirectory=packages/integrations/deepagents"
 )
 BROWSER_INSTRUCTIONS = """You control one persistent Browserbase browser through the Stagehand
-V4 code-mode tools snapshot, run, and screenshot. Use snapshot to understand pages and hydrated
-snapshot actions for semantic UI interaction. Use run code only for exact navigation, structured
-reads, mechanics, or verification when correctness requires it, and return only evidence from
-pages you actually opened.
+V4 code-mode tools snapshot, run, and screenshot. Inspect before acting, prefer deterministic
+page APIs, and return only evidence from pages you actually opened.
 """
 
 

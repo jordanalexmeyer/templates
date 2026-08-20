@@ -21,10 +21,9 @@ Stagehand code-mode tools:
 - run: execute snapshot actions or JavaScript with the Playwright-shaped page API.
 - screenshot: inspect the rendered page visually.
 
-Use snapshot to understand pages and use hydrated snapshot actions for semantic UI interaction.
-Use run code only for exact navigation, structured reads, mechanics, or verification when needed
-for correctness. Snapshot IDs are valid only for the latest snapshot. Do not launch another
-browser, and do not claim evidence from a URL you did not open.
+Use run with deterministic page APIs for known URLs and structured pages. Use snapshot before
+interacting with an unfamiliar UI. Snapshot IDs are valid only for the latest snapshot. Do not
+launch another browser, and do not claim evidence from a URL you did not open.
 """
 
 
