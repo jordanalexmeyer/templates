@@ -74,12 +74,18 @@ async def main() -> None:
                 )
                 await stagehand.act("Click the Search button", page=page)
 
-                extracted = await stagehand.extract(
-                    "Extract every license result with name, license number, status, and details URL",
-                    LicenseResults,
-                    page=page,
-                )
-                results = extracted.data.list_of_licenses
+                results: list[LicenseRecord] = []
+                for attempt in range(1, 4):
+                    extracted = await stagehand.extract(
+                        "Extract every license result with name, license number, status, and details URL",
+                        LicenseResults,
+                        page=page,
+                    )
+                    results = extracted.data.list_of_licenses
+                    if results:
+                        break
+                    if attempt < 3:
+                        print("No license results yet; retrying extraction...")
                 match = next(
                     (
                         result
