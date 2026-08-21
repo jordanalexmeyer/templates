@@ -45,11 +45,7 @@ async def main() -> None:
         agent = create_deep_agent(
             model=create_gateway_model("anthropic/claude-sonnet-4.6"),
             tools=tools,
-            system_prompt=(
-                BROWSER_INSTRUCTIONS
-                + "\nUse no more than eight browser-tool calls. Once you find the exact record, "
-                "return the structured response immediately."
-            ),
+            system_prompt=BROWSER_INSTRUCTIONS,
             response_format=BusinessInfo,
         )
         source_url = (

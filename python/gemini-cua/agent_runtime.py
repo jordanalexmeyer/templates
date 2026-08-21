@@ -11,7 +11,7 @@ from pydantic import SecretStr
 SERVER_NAME = "stagehand_browser"
 
 STAGEHAND_DEEPAGENTS_SOURCE = (
-    "git+https://github.com/browserbase/stagehand.git@2785d0d1fb9f254a51b9f223f1f1a250094c8e79"
+    "git+https://github.com/browserbase/stagehand.git@main"
     "#subdirectory=packages/integrations/deepagents"
 )
 

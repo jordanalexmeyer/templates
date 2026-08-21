@@ -6,9 +6,7 @@ mapping, field filling, and form submission.
 """
 
 import asyncio
-import difflib
 import os
-import re
 from dataclasses import dataclass
 from enum import Enum
 
@@ -136,112 +134,6 @@ class StagehandFormFiller:
         self.field_mapper = FormFieldMapping()
         self.collected_data: dict[str, str] = {}
 
-    @staticmethod
-    def _match_radio_option(answer: str, options: list[str]) -> str | None:
-        """Resolve conversational speech to one unambiguous form option."""
-
-        if not options:
-            return None
-
-        def normalize(value: str) -> str:
-            return " ".join(re.sub(r"[^a-z0-9]+", " ", value.lower()).split())
-
-        normalized_answer = normalize(answer)
-        normalized_options = {option: normalize(option) for option in options}
-        if not normalized_answer:
-            return None
-
-        exact = [
-            option
-            for option, normalized_option in normalized_options.items()
-            if normalized_option == normalized_answer
-        ]
-        if len(exact) == 1:
-            return exact[0]
-
-        option_by_value = {value: option for option, value in normalized_options.items()}
-        if set(option_by_value) == {"yes", "no"}:
-            padded_answer = f" {normalized_answer} "
-            if any(
-                phrase in padded_answer
-                for phrase in (
-                    " not sure ",
-                    " not certain ",
-                    " unsure ",
-                    " uncertain ",
-                    " don t know ",
-                    " do not know ",
-                    " can t say ",
-                    " cannot say ",
-                    " no idea ",
-                    " maybe ",
-                    " perhaps ",
-                )
-            ):
-                return None
-            idiomatic_no = any(
-                phrase in padded_answer
-                for phrase in (
-                    " no problem ",
-                    " no problems ",
-                    " no issue ",
-                    " no issues ",
-                    " no worries ",
-                )
-            )
-            affirmative_words = {
-                "yes",
-                "yeah",
-                "yep",
-                "yup",
-                "affirmative",
-                "absolutely",
-                "definitely",
-            }
-            has_affirmative = bool(set(normalized_answer.split()) & affirmative_words)
-            has_negative = (" no " in padded_answer and not idiomatic_no) or any(
-                phrase in padded_answer
-                for phrase in (
-                    " nope ",
-                    " nah ",
-                    " not ",
-                    " never ",
-                    " cannot ",
-                    " can not ",
-                    " can t ",
-                    " don t ",
-                    " do not ",
-                    " haven t ",
-                    " have not ",
-                )
-            )
-            if has_affirmative != has_negative:
-                return option_by_value["yes" if has_affirmative else "no"]
-            return None
-
-        padded_answer = f" {normalized_answer} "
-        contained = [
-            option
-            for option, normalized_option in normalized_options.items()
-            if f" {normalized_option} " in padded_answer
-            or padded_answer in f" {normalized_option} "
-        ]
-        if len(contained) == 1:
-            return contained[0]
-
-        ranked = sorted(
-            (
-                difflib.SequenceMatcher(None, normalized_answer, normalized_option).ratio(),
-                option,
-            )
-            for option, normalized_option in normalized_options.items()
-        )
-        best_score, best_option = ranked[-1]
-        next_score = ranked[-2][0] if len(ranked) > 1 else 0.0
-        if best_score >= 0.65 and best_score - next_score >= 0.1:
-            return best_option
-        return None
-
     async def initialize(self) -> None:
         """Initialize Stagehand and open the form.
 
@@ -314,13 +206,13 @@ class StagehandFormFiller:
             logger.info(f"Async filling field '{field.label}' with: {answer}")
 
             # Use Stagehand's natural language API to fill the field
+            act_variables = {"answer": answer}
             if field.field_type == FieldType.RADIO:
-                matched_option = self._match_radio_option(answer, field.options or [])
-                if matched_option is None:
-                    raise RuntimeError(f"Could not select {answer} for {field.label}")
-                answer = matched_option
+                act_variables = None
                 instruction = (
-                    f"Within the question '{field.label}', click the option labeled %answer%"
+                    f"Within the question '{field.label}', select the one option that best "
+                    f"matches the user's spoken answer {answer!r}. Available options: "
+                    f"{', '.join(field.options or [])}."
                 )
             if field.field_type in [FieldType.TEXT, FieldType.EMAIL, FieldType.PHONE]:
                 instruction = f"Fill the '{field.label}' field with %answer%"
@@ -345,25 +237,29 @@ class StagehandFormFiller:
                         instruction = f"Uncheck the '{field.label}' checkbox"
 
             result = None
-            if field.field_type == FieldType.RADIO:
-                observed = await self.stagehand.observe(
-                    f"Find the option labeled {answer!r} within the question {field.label!r}",
-                    page=self.page,
-                )
-                if not observed.data:
-                    raise RuntimeError(f"Could not find {answer} for {field.label}")
-                result = await self.stagehand.act(observed.data[0], page=self.page)
-            else:
-                for attempt in range(2):
+            for attempt in range(2):
+                try:
                     result = await self.stagehand.act(
                         instruction,
                         page=self.page,
-                        variables={"answer": answer},
+                        variables=act_variables,
                     )
                     if result.data.success:
                         break
-                    if attempt == 0:
-                        await self.page.wait_for_timeout(750)
+                except Exception:
+                    result = None
+                if attempt == 0:
+                    await self.page.wait_for_timeout(750)
+
+            if field.field_type == FieldType.RADIO and (result is None or not result.data.success):
+                observed = await self.stagehand.observe(
+                    f"Within the question {field.label!r}, find the one option that best "
+                    f"matches the user's spoken answer {answer!r}. Available options: "
+                    f"{', '.join(field.options or [])}.",
+                    page=self.page,
+                )
+                if observed.data:
+                    result = await self.stagehand.act(observed.data[0], page=self.page)
 
             if result is None:
                 raise RuntimeError(f"Could not fill {field.label}")
