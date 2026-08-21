@@ -81,7 +81,7 @@ async function main() {
 
   if (
     newYork.country !== "US" ||
-    !/new york/i.test(newYork.region) ||
+    !/^(?:new york|new jersey|ny|nj)$/i.test(newYork.region.trim()) ||
     newYork.timezone !== "America/New_York"
   ) {
     throw new Error(
