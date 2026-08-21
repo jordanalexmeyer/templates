@@ -61,7 +61,6 @@ async function createStagehand(): Promise<{ stagehand: Stagehand; browser: Stage
   });
   const stagehand = await Stagehand.create({
     browser,
-    model: { modelName: "google/gemini-2.5-pro" },
     logging: { level: "error" },
   });
   return { stagehand, browser };

@@ -149,7 +149,6 @@ async function extractWithBrowser(url: string) {
   });
   const stagehand = await Stagehand.create({
     browser: browser,
-    model: { modelName: "google/gemini-2.5-flash" },
     logging: { level: "info" },
   });
 
@@ -166,8 +165,8 @@ async function extractWithBrowser(url: string) {
 
     return data;
   } finally {
-    await stagehand.close();
-    await browser.close();
+    await stagehand.close().catch((error) => console.warn("Stagehand cleanup warning:", error));
+    await browser.close().catch((error) => console.warn("Browser cleanup warning:", error));
     console.log("[Browser] Session closed");
   }
 }
