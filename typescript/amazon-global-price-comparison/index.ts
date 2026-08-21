@@ -14,12 +14,7 @@ const ProductSchema = z.object({
     ),
   rating: z.string().describe("The star rating (e.g., '4.5 out of 5 stars')"),
   reviews_count: z.string().describe("The number of customer reviews (e.g., '1,234')"),
-  product_url: z
-    .string()
-    .url()
-    .describe(
-      "The absolute href URL of the product detail page; never an accessibility-tree reference",
-    ),
+  product_url: z.string().url().describe("The absolute href URL of the product detail page"),
 });
 
 // Schema for extracting multiple products from search results
@@ -150,7 +145,7 @@ async function getProductsForCountry(
 
     console.log(`[${country.name}] Extracting top ${resultsCount} products...`);
     const { data: extractionResult } = await stagehand.extract(
-      `Extract the first ${resultsCount} product search results from this Amazon page. For each product, extract the full title, displayed price with currency symbol (or "N/A"), star rating, review count, and absolute product-page href. Each URL must be a real Amazon link containing /dp/, never an accessibility-tree reference such as /2-8109. Only extract actual product listings.`,
+      `Extract the first ${resultsCount} product search results from this Amazon page. For each product, extract the full title, displayed price with currency symbol (or "N/A"), star rating, review count, and absolute product-page href. Each URL must be a real Amazon link containing /dp/. Only extract actual product listings.`,
       ProductsSchema,
     );
 

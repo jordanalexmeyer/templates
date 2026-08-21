@@ -73,8 +73,7 @@ async def main() -> None:
             extracted = await stagehand.extract(
                 (
                     "Extract the actual absolute HTTP(S) href URLs of the four FY2025 Financial "
-                    "Statements PDF links, ordered Q4 through Q1. Never return accessibility-tree "
-                    "references."
+                    "Statements PDF links, ordered Q4 through Q1."
                 ),
                 StatementLinks,
                 page=page,

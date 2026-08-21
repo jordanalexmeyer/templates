@@ -8,7 +8,7 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
-from browserbase import Browserbase
+from browserbase import AsyncBrowserbase
 from dotenv import load_dotenv
 from pydantic import BaseModel, HttpUrl
 from reducto import Reducto
@@ -22,14 +22,14 @@ class StatementLink(BaseModel):
 
 
 async def save_downloads_with_retry(
-    client: Browserbase,
+    client: AsyncBrowserbase,
     session_id: str,
     retry_for_seconds: int = 60,
 ) -> int:
     started = time.monotonic()
     while time.monotonic() - started < retry_for_seconds:
-        response = await asyncio.to_thread(client.sessions.downloads.list, session_id)
-        payload = await asyncio.to_thread(response.read)
+        response = await client.sessions.downloads.list(session_id)
+        payload = await response.read()
         if len(payload) > 100:
             Path("downloaded_files.zip").write_bytes(payload)
             print(f"Saved downloaded_files.zip ({len(payload)} bytes)")
@@ -67,8 +67,8 @@ def extract_pdf_from_zip(
     return first_pdf
 
 
-async def extract_pdf_with_reducto(pdf_path: Path, client: Reducto) -> dict[str, Any]:
-    upload = await asyncio.to_thread(client.upload, file=pdf_path)
+async def extract_pdf_with_reducto(pdf_path: Path, reducto_client: Reducto) -> dict[str, Any]:
+    upload = await asyncio.to_thread(reducto_client.upload, file=pdf_path)
     print("Uploaded statement to Reducto")
     schema = {
         "type": "object",
@@ -96,7 +96,7 @@ async def extract_pdf_with_reducto(pdf_path: Path, client: Reducto) -> dict[str,
         "required": ["iphone_net_sales"],
     }
     response = await asyncio.to_thread(
-        client.extract.run,
+        reducto_client.extract.run,
         input=upload,
         instructions={
             "schema": schema,
@@ -125,7 +125,7 @@ async def main() -> None:
     if not browserbase_key or not reducto_key:
         raise RuntimeError("BROWSERBASE_API_KEY and REDUCTOAI_API_KEY are required")
 
-    api = Browserbase(api_key=browserbase_key)
+    api = AsyncBrowserbase(api_key=browserbase_key)
     reducto = Reducto(api_key=reducto_key)
     browser = await browserbase.launch(api_key=browserbase_key)
     session_id = browser.session_id
@@ -157,7 +157,7 @@ async def main() -> None:
             extracted = await stagehand.extract(
                 (
                     "Extract the actual absolute HTTP(S) href URL of the FY2025 Q4 Financial "
-                    "Statements PDF. Never return an accessibility-tree reference."
+                    "Statements PDF."
                 ),
                 StatementLink,
                 page=page,
@@ -189,6 +189,7 @@ async def main() -> None:
             await stagehand.close()
     finally:
         await browser.close()
+        await api.close()
         print("Session closed successfully")
 
 

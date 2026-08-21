@@ -102,14 +102,11 @@ async function collectLinksFromHomepage(): Promise<Link[]> {
     console.log(`Successfully loaded ${URL}. Extracting links...`);
 
     const { data: extractedLinks } = await stagehand.extract(
-      "Extract all rendered links on the page with their visible link text or accessible label and their absolute HTTP(S) href. Return actual destination URLs, never accessibility-tree references.",
+      "Extract all rendered links on the page with their visible link text or accessible label and their absolute HTTP(S) href. Return actual destination URLs.",
       z.object({
         links: z.array(
           z.object({
-            url: z
-              .string()
-              .url()
-              .describe("The absolute HTTP(S) href, never an accessibility-tree reference"),
+            url: z.string().url().describe("The absolute HTTP(S) href"),
             linkText: z.string(),
           }),
         ),

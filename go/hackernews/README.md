@@ -24,8 +24,6 @@ Stagehand is the SDK for browser agents.
 3. Run `go mod download`.
 4. Run `go run .`.
 
-The V4 Go SDK is temporarily pinned to an exact Stagehand source commit. Replace it with the published V4 Go module once that package is released.
-
 ## EXPECTED OUTPUT
 
 - Launches a real Browserbase browser and attaches Stagehand V4.

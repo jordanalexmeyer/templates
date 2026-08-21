@@ -112,7 +112,7 @@ async function main(): Promise<void> {
 
     console.log("Extracting image URLs from page...");
     const { data: extractedUrls } = await stagehand.extract(
-      "Extract the absolute HTTP(S) source URLs of all rendered images on this page, including image src attributes and background-image URLs. Return each URL exactly as rendered and preserve every hostname character, including any www prefix. Never return accessibility-tree references such as 0-180.",
+      "Extract the absolute HTTP(S) source URLs of all rendered images on this page, including image src attributes and background-image URLs. Return each URL exactly as rendered and preserve every hostname character, including any www prefix.",
       z.object({
         urls: z
           .array(z.string())

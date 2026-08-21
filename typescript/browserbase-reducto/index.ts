@@ -288,7 +288,7 @@ async function main(): Promise<void> {
     await stagehand.act("Under Quarterly Earnings Reports, click on '2025'");
     page = (await browser.context.activePage()) ?? page;
     const { data: statement } = await stagehand.extract(
-      "Extract the actual absolute HTTP(S) href URL of the FY2025 Q4 Financial Statements PDF. Never return an accessibility-tree reference.",
+      "Extract the actual absolute HTTP(S) href URL of the FY2025 Q4 Financial Statements PDF.",
       z.object({ statementUrl: z.string().url() }),
     );
     const statementUrl = statement.statementUrl;

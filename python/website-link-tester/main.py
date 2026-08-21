@@ -85,7 +85,7 @@ async def collect_links() -> list[Link]:
             (
                 "Extract all rendered links on the page with their visible link text or "
                 "accessible label and their absolute HTTP(S) href. Return actual destination "
-                "URLs, never accessibility-tree references."
+                "URLs."
             ),
             ExtractedLinks,
             page=page,

@@ -102,7 +102,7 @@ async function main(): Promise<void> {
     // Discover the intended documents semantically and keep the actual UI
     // interaction in Stagehand act().
     const { data: statements } = await stagehand.extract(
-      "Extract the actual absolute HTTP(S) href URLs of the four FY2025 Financial Statements PDF links, ordered Q4 through Q1. Never return accessibility-tree references.",
+      "Extract the actual absolute HTTP(S) href URLs of the four FY2025 Financial Statements PDF links, ordered Q4 through Q1.",
       z.object({ statementUrls: z.array(z.string().url()) }),
     );
     const statementUrls = statements.statementUrls.slice(0, 4);

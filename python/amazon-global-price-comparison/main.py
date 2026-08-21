@@ -18,9 +18,7 @@ class Product(BaseModel):
     price: str
     rating: str
     reviews_count: str
-    product_url: HttpUrl = Field(
-        description=("Absolute Amazon product-detail href; never an accessibility-tree reference")
-    )
+    product_url: HttpUrl = Field(description="Absolute Amazon product-detail href")
 
 
 class Products(BaseModel):
@@ -113,7 +111,7 @@ async def products_for_country(
                     f"Extract the first {result_count} product search results. For each product, "
                     "return the full title, displayed price with currency symbol or N/A, star "
                     "rating, review count, and absolute product-page href. Each URL must be a "
-                    "real Amazon link containing /dp/, never an accessibility-tree reference. "
+                    "real Amazon link containing /dp/. "
                     "Only include actual listings."
                 ),
                 Products,

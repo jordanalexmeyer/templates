@@ -131,8 +131,7 @@ async def main() -> None:
                     "Extract all rendered image URLs on this page, including image src "
                     "attributes and background-image URLs. Return absolute HTTP(S) image "
                     "resource URLs exactly as rendered. Preserve every hostname character, "
-                    "including any www prefix. Never return accessibility-tree references "
-                    "such as 0-180."
+                    "including any www prefix."
                 ),
                 ImageUrls,
                 page=page,
