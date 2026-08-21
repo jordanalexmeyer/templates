@@ -3,8 +3,8 @@
 Stagehand is the SDK for browser agents.
 
 This template pairs a bring-your-own Gemini model with LangChain Deep Agents and Stagehand V4 code
-mode. The agent opens the live Stagehand introduction, summarizes it, and cites only the URL it
-opened in the browser.
+mode. The agent researches the next two visible solar eclipses in North America, cross-checks live
+NASA and Timeanddate sources, and cites only URLs it opened in the browser.
 
 ## How it works
 
@@ -30,8 +30,8 @@ its Stagehand server dependency to `stagehand==4.0.0`.
 
 ## Expected outcome
 
-The agent returns a concise description of Stagehand with the live documentation URL it opened
-directly. The script exits nonzero when the answer is empty or omits that source URL.
+The agent returns the expected dates of the next two visible solar eclipses in North America and
+the live source URLs it opened. The script exits nonzero only when the agent workflow itself fails.
 
 ## Configuration
 

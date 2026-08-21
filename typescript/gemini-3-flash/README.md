@@ -5,6 +5,8 @@
 - Goal: run a Gemini 3 Flash research agent with a Browserbase browser.
 - Vercel AI SDK owns the agent loop; Stagehand code mode supplies `code_execute` over MCP.
 - `STAGEHAND_MODEL_NAME` is passed to the code-mode process so Stagehand AI primitives also use Gemini.
+- If Gemini spends the full loop on browser calls, a final tool-free model call synthesizes the
+  evidence already collected.
 
 ## QUICKSTART
 
@@ -17,7 +19,8 @@ Set `AGENT_MODEL` to override the outer agent's default `google/gemini-3-flash-p
 
 ## EXPECTED OUTPUT
 
-- The agent uses `code_execute` to browse, research the configured question, and return cited findings.
+- The agent uses `code_execute` to research the next two visible solar eclipses in North America,
+  cross-check live NASA and Timeanddate sources, and return both expected dates with citations.
 - Closing the MCP client closes Stagehand and its Browserbase browser.
 
 ## SAFETY

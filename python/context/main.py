@@ -4,8 +4,7 @@ import asyncio
 import json
 import os
 
-import httpx
-from browserbase import Browserbase
+from browserbase import AsyncBrowserbase
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
@@ -86,28 +85,20 @@ async def verify_reused_context(context_id: str) -> UserData:
         await browser.close()
 
 
-async def delete_context(context_id: str) -> None:
-    async with httpx.AsyncClient(timeout=30) as client:
-        response = await client.delete(
-            f"https://api.browserbase.com/v1/contexts/{context_id}",
-            headers={"X-BB-API-Key": require_env("BROWSERBASE_API_KEY")},
-        )
-    if response.status_code not in {200, 204, 404}:
-        raise RuntimeError(f"Context deletion failed with HTTP {response.status_code}")
-
-
 async def main() -> None:
-    api = Browserbase(api_key=require_env("BROWSERBASE_API_KEY"))
-    context = await asyncio.to_thread(api.contexts.create)
-    print("Created temporary Browserbase context")
-    try:
-        await login_and_persist(context.id)
-        user = await verify_reused_context(context.id)
-        print("Reused context reached authenticated profile data:")
-        print(json.dumps(user.model_dump(mode="json"), indent=2))
-    finally:
-        await delete_context(context.id)
-        print("Deleted temporary Browserbase context")
+    async with AsyncBrowserbase(api_key=require_env("BROWSERBASE_API_KEY")) as api:
+        context = await api.contexts.create()
+        print("Created temporary Browserbase context")
+        try:
+            await login_and_persist(context.id)
+            user = await verify_reused_context(context.id)
+            print("Reused context reached authenticated profile data:")
+            print(json.dumps(user.model_dump(mode="json"), indent=2))
+        finally:
+            # The generated SDK currently sets a JSON content type on DELETE, so send an
+            # explicit empty object instead of an empty body.
+            await api.contexts.delete(context.id, extra_body={})
+            print("Deleted temporary Browserbase context")
 
 
 if __name__ == "__main__":

@@ -2,17 +2,20 @@
 
 ## AT A GLANCE
 
-- Goal: extract all image URLs from a page with Stagehand and download each image through the browser's direct connection.
-- Browser-context downloads: `fetch()` runs inside the browser via `page.evaluate()` — no special proxy configuration needed. It automatically inherits any active Browserbase proxy and session cookies, so you get the same image the browser sees, even for auth-gated or same-origin-only URLs.
+- Goal: extract all image URLs from a page with Stagehand and download each image with the Browserbase Fetch API.
+- SDK-backed downloads: `Browserbase.fetchAPI.create()` retrieves each discovered image through Browserbase without handwritten HTTP requests.
 - Semantic URL discovery: uses `extract()` with a Zod schema to find rendered image and background-image URLs.
-- Correctness fallback: reads the exact image DOM shape only when the accessibility snapshot yields no URLs.
-- Format-agnostic: uses `FileReader.readAsDataURL()` inside the browser to encode image bytes and detect the real MIME type — files are saved with the correct extension (`.jpg`, `.png`, `.svg`, `.webp`, etc.).
+- Narrow DOM fallback: reads exact image URLs only when semantic extraction yields no fetchable candidates.
+- Format-agnostic: uses the Fetch API response MIME type and base64 payload to save files with the correct extension (`.jpg`, `.png`, `.svg`, `.webp`, etc.).
 - Organized output: images are saved to `./images/<hostname>/` so runs against different sites never mix.
   Docs → https://docs.stagehand.dev/v4/reference/page
 
 ## GLOSSARY
 
-- page.evaluate: fetch same-session assets inside the browser context after Stagehand discovers their URLs; it inherits the active proxy, cookies, and headers.
+- Browserbase Fetch API: retrieve a discovered asset through the first-party Browserbase SDK.
+  Docs → https://docs.browserbase.com/features/fetch-api
+- page.evaluate: a narrow fallback that reads exact DOM asset URLs only when semantic extraction
+  returns no fetchable candidates.
   Docs → https://docs.stagehand.dev/v4/reference/page
 - MAX_IMAGES: configurable cap (default: 10) on how many images to download per run. Set via the `MAX_IMAGES` env var or the constant at the top of `index.ts`.
 
@@ -30,7 +33,7 @@
 - Navigates to the target URL
 - Reads rendered image and inline background-image URLs from the page
 - Deduplicates URLs and caps at `MAX_IMAGES` (default: 10)
-- Downloads each image via `fetch()` inside `page.evaluate()` — runs in the browser context so it automatically picks up any proxy or cookies without extra configuration — encoded via `FileReader.readAsDataURL()`
+- Downloads each image with the Browserbase Fetch API through the first-party TypeScript SDK
 - Saves images to `./images/<hostname>/`, named `<url-segment>-<timestamp>.<ext>` with the extension derived from the real MIME type
 - Logs per-image status (saved / failed) and a final summary count
 - Closes session cleanly
@@ -41,7 +44,7 @@
 - Missing credentials: verify .env contains BROWSERBASE_API_KEY
 - Empty images folder: some pages load images lazily — try scrolling the page before extraction, or increase the page load wait
 - Zero images found: the page may lazy-load media or use stylesheet-only backgrounds; scroll or add target-specific selectors
-- CORS / auth-gated images: images behind login walls or strict CORS policies may fail in `page.evaluate()` — ensure you are authenticated before running the script
+- Download failures (403): some auth-gated image URLs require session cookies that the Fetch API request does not inherit
 - MAX_IMAGES cap: if you need more than 10 images, set `MAX_IMAGES=50` in your .env or edit the constant at the top of `index.ts`
 - Large pages: use `MAX_IMAGES` to cap the download set
 
@@ -50,12 +53,12 @@
 • Asset archiving: bulk-save product images, thumbnails, or media assets from websites you own or have permission to scrape.
 • Visual regression testing: download reference images from a staging environment to diff against production.
 • Dataset collection: gather labeled image sets from public pages for ML training pipelines.
-• Auth-gated media: download images from pages that require login — the browser session handles authentication automatically.
+• Public media: archive images discovered on pages without maintaining separate download HTTP code.
 
 ## NEXT STEPS
 
 • Scroll before discovery: call `stagehand.act("Scroll to the bottom of the page")` to trigger lazy-loaded images.
-• Concurrent downloads: fan out the `page.evaluate` fetch calls with `Promise.allSettled` for faster bulk downloads.
+• Concurrent downloads: fan out the Fetch API calls with `Promise.allSettled` for faster bulk downloads.
 • Metadata CSV: write a `manifest.csv` alongside the images recording original URL, filename, MIME type, byte size, and download timestamp.
 • Extend MIME support: add entries to the `MIME_TO_EXT` map at the top of `index.ts` for any formats not already covered.
 

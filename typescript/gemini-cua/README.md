@@ -5,6 +5,8 @@
 - Goal: replace the former Stagehand CUA orchestration example with a bring-your-own Gemini agent.
 - Vercel AI SDK `ToolLoopAgent` owns reasoning and tool selection.
 - Stagehand code mode provides one stateful browser tool, `code_execute`.
+- If Gemini spends the full loop on browser calls, a final tool-free model call synthesizes the
+  evidence already collected.
 
 ## QUICKSTART
 
@@ -15,8 +17,9 @@
 
 ## EXPECTED OUTPUT
 
-- Gemini calls `code_execute` as needed to browse and research the configured question.
-- The final response includes source URLs.
+- Gemini calls `code_execute` as needed to research the next two visible solar eclipses in North
+  America and cross-check live NASA and Timeanddate sources.
+- The final response includes both expected dates and only source URLs the agent opened.
 - Closing the MCP client closes Stagehand and the browser.
 
 ## SAFETY

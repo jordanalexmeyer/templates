@@ -4,8 +4,7 @@ import asyncio
 import os
 import time
 
-import httpx
-from browserbase import Browserbase
+from browserbase import AsyncBrowserbase
 from dotenv import load_dotenv
 from pydantic import BaseModel
 
@@ -107,29 +106,21 @@ async def verify_context(context_id: str) -> None:
         await browser.close()
 
 
-async def delete_context(context_id: str) -> None:
-    async with httpx.AsyncClient(timeout=30) as client:
-        response = await client.delete(
-            f"https://api.browserbase.com/v1/contexts/{context_id}",
-            headers={"X-BB-API-Key": require_env("BROWSERBASE_API_KEY")},
-        )
-    if response.status_code not in {200, 204, 404}:
-        raise RuntimeError(f"Context deletion failed with HTTP {response.status_code}")
-
-
 async def main() -> None:
     require_env("GITHUB_USERNAME")
     require_env("GITHUB_PASSWORD")
-    api = Browserbase(api_key=require_env("BROWSERBASE_API_KEY"))
-    context = await asyncio.to_thread(api.contexts.create)
-    print("Created temporary Browserbase context")
-    try:
-        await first_login(context.id)
-        await asyncio.sleep(5)
-        await verify_context(context.id)
-    finally:
-        await delete_context(context.id)
-        print("Deleted temporary Browserbase context")
+    async with AsyncBrowserbase(api_key=require_env("BROWSERBASE_API_KEY")) as api:
+        context = await api.contexts.create()
+        print("Created temporary Browserbase context")
+        try:
+            await first_login(context.id)
+            await asyncio.sleep(5)
+            await verify_context(context.id)
+        finally:
+            # The generated SDK currently sets a JSON content type on DELETE, so send an
+            # explicit empty object instead of an empty body.
+            await api.contexts.delete(context.id, extra_body={})
+            print("Deleted temporary Browserbase context")
 
 
 if __name__ == "__main__":

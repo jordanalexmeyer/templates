@@ -95,6 +95,23 @@ async def collect_links() -> list[Link]:
             url = str(item.url)
             if url.startswith(("http://", "https://")):
                 unique.setdefault(url, Link(url=url, link_text=item.link_text))
+        if not unique:
+            # Accessibility snapshots can omit link hrefs on heavily animated pages.
+            # Preserve semantic extraction as the primary path and read exact DOM hrefs
+            # only when it returns no usable links.
+            dom_links = await page.evaluate(
+                """(() => Array.from(document.querySelectorAll('a[href]')).map((anchor) => ({
+                    url: anchor.href,
+                    link_text: (anchor.textContent || anchor.getAttribute('aria-label') || '').trim()
+                })))()"""
+            )
+            for item in dom_links:
+                url = str(item.get("url", ""))
+                if url.startswith(("http://", "https://")):
+                    unique.setdefault(
+                        url,
+                        Link(url=url, link_text=str(item.get("link_text", ""))),
+                    )
         links = list(unique.values())[:MAX_LINKS]
         if not links:
             raise RuntimeError("No HTTP links were collected from the homepage")

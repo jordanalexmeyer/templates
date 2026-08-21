@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import date
 
 from agent_runtime import (
     BROWSER_INSTRUCTIONS,
@@ -31,10 +32,13 @@ def message_text(message: object) -> str:
 
 
 async def main() -> None:
-    target_url = "https://docs.stagehand.dev/v4/first-steps/introduction"
+    today = date.today().isoformat()
     instruction = (
-        f"Open {target_url}, explain in one sentence what Stagehand is, and cite the exact URL "
-        "you opened."
+        f"As of {today}, use these two live sources to find the next visible solar eclipse in "
+        "North America and its expected date, then the one after that: "
+        "https://eclipse.gsfc.nasa.gov/solar.html and "
+        "https://www.timeanddate.com/eclipse/list-solar.html?region=north-america. "
+        "Open and cross-check both sources, then cite each URL."
     )
     print("Executing instruction:", instruction)
 
@@ -46,13 +50,14 @@ async def main() -> None:
             tools=tools,
             system_prompt=(
                 BROWSER_INSTRUCTIONS
-                + "\nUse no more than four browser-tool calls. Prefer deterministic browser APIs "
-                "and return the cited summary as soon as you have read the target page."
+                + "\nUse no more than six browser-tool calls. Prefer deterministic browser APIs, "
+                "cross-check at least two reliable sources, and return an evidence-backed answer "
+                "after finding two future eclipse dates."
             ),
         )
         result = await agent.ainvoke(
             {"messages": [{"role": "user", "content": instruction}]},
-            config={"recursion_limit": 20},
+            config={"recursion_limit": 25},
         )
         answer = message_text(result["messages"][-1]).strip()
 

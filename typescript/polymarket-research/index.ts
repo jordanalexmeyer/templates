@@ -86,8 +86,8 @@ async function main() {
   } finally {
     // Clean up browser session
     console.log("Closing browser session...");
-    await stagehand.close();
-    await browser.close();
+    await stagehand.close().catch((error) => console.warn("Stagehand cleanup warning:", error));
+    await browser.close().catch((error) => console.warn("Browser cleanup warning:", error));
     console.log("Session closed successfully");
   }
 }

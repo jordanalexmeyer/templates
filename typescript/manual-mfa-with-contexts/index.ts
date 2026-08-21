@@ -160,20 +160,10 @@ async function reuseContext(contextId: string) {
 async function deleteContext(contextId: string) {
   console.log("Deleting Browserbase context");
   try {
-    // Delete via API (SDK doesn't have delete method)
-    const response = await fetch(`https://api.browserbase.com/v1/contexts/${contextId}`, {
-      method: "DELETE",
-      headers: {
-        "X-BB-API-Key": process.env.BROWSERBASE_API_KEY!,
-      },
-    });
-
-    if (response.ok) {
-      console.log("Context deleted\n");
-    } else {
-      console.log(`Could not delete context: ${response.status} ${response.statusText}`);
-      console.log("   Context will auto-expire after 30 days\n");
-    }
+    // The generated SDK currently sets a JSON content type on DELETE, so send an
+    // explicit empty object instead of an empty body.
+    await bb.contexts.delete(contextId, { body: {} });
+    console.log("Context deleted\n");
   } catch (error) {
     console.log(
       `Could not delete context: ${error instanceof Error ? error.message : String(error)}`,

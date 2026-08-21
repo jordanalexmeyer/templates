@@ -1,10 +1,11 @@
 // Stagehand + Browserbase: Image URL Download - See README.md for full documentation
 //
 // Uses Stagehand extract() to find all image URLs on a page, then downloads each
-// image through the browser's proxied fetch() — inheriting session cookies, headers,
-// and the Browserbase proxy. Works for any image format (JPG, PNG, WebP, etc.).
+// image through the Browserbase Fetch API. Works for any image format (JPG, PNG,
+// WebP, etc.).
 
 import "dotenv/config";
+import { Browserbase } from "@browserbasehq/sdk";
 import { browserbase, Stagehand } from "@browserbasehq/stagehand";
 import { z } from "zod/v4";
 import fs from "fs";
@@ -64,6 +65,11 @@ async function main(): Promise<void> {
   console.log(`Image URL Download — target: ${targetUrl}`);
   console.log(`Max images: ${MAX_IMAGES} | Output: ${OUTPUT_DIR}/<hostname>/\n`);
 
+  if (!process.env.BROWSERBASE_API_KEY) {
+    throw new Error("BROWSERBASE_API_KEY is required");
+  }
+  const bb = new Browserbase({ apiKey: process.env.BROWSERBASE_API_KEY });
+
   // Initialize Stagehand with Browserbase for cloud-based browser automation.
   const browser = await browserbase.launch({
     apiKey: process.env.BROWSERBASE_API_KEY!,
@@ -79,30 +85,8 @@ async function main(): Promise<void> {
 
     console.log("Stagehand initialized successfully!");
     const page = (await browser.context.pages())[0];
-
-    // Many modern sites keep analytics and streaming requests open indefinitely, so
-    // wait for DOM readiness and then allow client-rendered images a short settle period.
-    console.log(`\nNavigating to ${targetUrl}...`);
-    await page.goto(targetUrl, {
-      waitUntil: "domcontentloaded",
-      timeout: 60000, // Extended timeout for reliable page loading.
-    });
-    await page.waitForTimeout(3000);
-
-    console.log("Extracting image URLs from page...");
-    const { data: extractedUrls } = await stagehand.extract(
-      "Extract the absolute HTTP(S) source URLs of all rendered images on this page, including image src attributes and background-image URLs. Return actual image resource URLs, never accessibility-tree references such as 0-180.",
-      z.object({
-        urls: z
-          .array(z.string())
-          .describe("Absolute HTTP(S) image resource URLs from src or background-image values"),
-      }),
-    );
-    let allUrls = extractedUrls.urls.filter((url) => /^https?:\/\//i.test(url));
-    if (allUrls.length === 0) {
-      // Accessibility snapshots can omit decorative images. Use the exact DOM
-      // shape only when semantic extraction returns no candidates at all.
-      allUrls = (await page.evaluate(() => {
+    const exactDomImageUrls = async (): Promise<string[]> =>
+      (await page.evaluate(() => {
         const urls = new Set<string>();
         for (const image of Array.from(document.images)) {
           if (image.currentSrc) urls.add(image.currentSrc);
@@ -116,6 +100,30 @@ async function main(): Promise<void> {
         }
         return [...urls];
       })) as string[];
+
+    // Many modern sites keep analytics and streaming requests open indefinitely, so
+    // wait for DOM readiness and then allow client-rendered images a short settle period.
+    console.log(`\nNavigating to ${targetUrl}...`);
+    await page.goto(targetUrl, {
+      waitUntil: "domcontentloaded",
+      timeout: 60000, // Extended timeout for reliable page loading.
+    });
+    await page.waitForTimeout(3000);
+
+    console.log("Extracting image URLs from page...");
+    const { data: extractedUrls } = await stagehand.extract(
+      "Extract the absolute HTTP(S) source URLs of all rendered images on this page, including image src attributes and background-image URLs. Return each URL exactly as rendered and preserve every hostname character, including any www prefix. Never return accessibility-tree references such as 0-180.",
+      z.object({
+        urls: z
+          .array(z.string())
+          .describe("Absolute HTTP(S) image resource URLs from src or background-image values"),
+      }),
+    );
+    let allUrls = extractedUrls.urls.filter((url) => /^https?:\/\//i.test(url));
+    if (allUrls.length === 0) {
+      // Accessibility snapshots can omit decorative images. Use the exact DOM
+      // shape only when semantic extraction returns no candidates at all.
+      allUrls = await exactDomImageUrls();
     }
 
     // Extract only absolute image resource URLs, then deduplicate before applying the limit.
@@ -145,91 +153,66 @@ async function main(): Promise<void> {
     let saved = 0;
     let failed = 0;
 
-    console.log(`\nDownloading ${urls.length} image(s) via browser fetch...\n`);
+    const downloadImages = async (candidateUrls: string[]): Promise<void> => {
+      for (let i = 0; i < candidateUrls.length; i++) {
+        const url = candidateUrls[i];
+        process.stdout.write(`[${i + 1}/${candidateUrls.length}] ${url} → `);
 
-    for (let i = 0; i < urls.length; i++) {
-      const url = urls[i];
-
-      process.stdout.write(`[${i + 1}/${urls.length}] ${url} → `);
-
-      // Fetch the image through the browser's proxied connection.
-      // Running fetch() inside page.evaluate() means it inherits the Browserbase
-      // proxy and all active session cookies — no CORS or auth issues.
-      // FileReader.readAsDataURL() is the most reliable browser-native way to
-      // encode binary data as base64, and it also gives us the real MIME type.
-      // Wrap the entire page.evaluate() call — not just the code inside it — so that
-      // CDP-level errors (execution context destroyed, timeout, page navigation) are
-      // caught per-image and don't abort the rest of the download loop.
-      let result: { base64: string; mimeType: string } | null = null;
-      try {
-        result = await page.evaluate(async (imgUrl: string) => {
-          try {
-            const res = await fetch(imgUrl);
-            if (!res.ok) return null;
-            const blob = await res.blob();
-            if (!blob.type.startsWith("image/")) return null;
-            return await new Promise<{ base64: string; mimeType: string } | null>((resolve) => {
-              const reader = new FileReader();
-              reader.onload = () => {
-                const dataUrl = reader.result as string;
-                const comma = dataUrl.indexOf(",");
-                if (comma === -1) {
-                  resolve(null);
-                  return;
-                }
-                const prefix = dataUrl.slice(0, comma); // e.g. "data:image/png;base64"
-                const base64 = dataUrl.slice(comma + 1);
-                const mimeMatch = prefix.match(/data:([^;]+)/);
-                resolve({ base64, mimeType: mimeMatch?.[1] ?? "application/octet-stream" });
-              };
-              reader.onerror = () => resolve(null);
-              reader.readAsDataURL(blob);
-            });
-          } catch {
-            return null;
-          }
-        }, url);
-      } catch (err) {
-        console.log(`FAILED (${err instanceof Error ? err.message : err}, skipping)`);
-        failed++;
-        continue;
-      }
-
-      // Browser fetch obeys CORS. Public CDN images sometimes omit CORS headers,
-      // so fall back to a server-side fetch when no authenticated browser state is needed.
-      if (!result) {
+        let buffer: Buffer | null = null;
+        let mimeType = "";
         try {
-          const response = await fetch(url);
-          const mimeType = response.headers.get("content-type")?.split(";")[0] ?? "";
-          if (response.ok && mimeType.startsWith("image/")) {
-            result = {
-              base64: Buffer.from(await response.arrayBuffer()).toString("base64"),
-              mimeType,
-            };
+          const response = await bb.fetchAPI.create({
+            url,
+            format: "raw",
+            allowRedirects: true,
+          });
+          mimeType = response.contentType.split(";", 1)[0];
+          if (
+            response.statusCode >= 200 &&
+            response.statusCode < 300 &&
+            mimeType.startsWith("image/") &&
+            typeof response.content === "string"
+          ) {
+            buffer = Buffer.from(
+              response.content,
+              response.encoding === "base64" ? "base64" : "utf8",
+            );
           }
         } catch {
           // The common failure path below records this URL as skipped.
         }
-      }
 
-      if (!result) {
-        console.log("FAILED (skipping)");
-        failed++;
-        continue;
-      }
+        if (!buffer) {
+          console.log("FAILED (skipping)");
+          failed++;
+          continue;
+        }
 
-      const filename = imageFilename(url, result.mimeType, i);
-      const filepath = path.join(outputDir, filename);
-      const buffer = Buffer.from(result.base64, "base64");
-      try {
-        fs.writeFileSync(filepath, buffer);
-      } catch (err) {
-        console.log(`FAILED (write error: ${err instanceof Error ? err.message : err}, skipping)`);
-        failed++;
-        continue;
+        const filename = imageFilename(url, mimeType, i);
+        const filepath = path.join(outputDir, filename);
+        try {
+          fs.writeFileSync(filepath, buffer);
+        } catch (err) {
+          console.log(
+            `FAILED (write error: ${err instanceof Error ? err.message : err}, skipping)`,
+          );
+          failed++;
+          continue;
+        }
+        console.log(`saved as ${filename} (${buffer.length} bytes)`);
+        saved++;
       }
-      console.log(`saved as ${filename} (${buffer.length} bytes)`);
-      saved++;
+    };
+
+    console.log(`\nDownloading ${urls.length} image(s) via the Browserbase Fetch API...\n`);
+    await downloadImages(urls);
+    if (saved === 0 && uniqueUrls.length > 0) {
+      // If semantic extraction produced URLs that cannot be fetched, fall back to
+      // exact DOM mechanics without changing the semantic-first discovery path.
+      const fallbackUrls = (await exactDomImageUrls())
+        .filter((url) => !uniqueUrls.includes(url))
+        .slice(0, MAX_IMAGES);
+      await downloadImages(fallbackUrls);
     }
 
     console.log(`\nDone! ${saved} saved, ${failed} failed → ${outputDir}/`);

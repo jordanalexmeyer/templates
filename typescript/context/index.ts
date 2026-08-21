@@ -4,7 +4,6 @@ import "dotenv/config";
 import { browserbase, Stagehand } from "@browserbasehq/stagehand";
 import { Browserbase } from "@browserbasehq/sdk";
 import { z } from "zod/v4";
-import axios from "axios";
 
 async function createSessionContextID() {
   const email = process.env.SF_REC_PARK_EMAIL;
@@ -70,17 +69,13 @@ async function createSessionContextID() {
 async function deleteContext(contextId: string) {
   try {
     console.log("Cleaning up Browserbase context");
-    // Delete context via Browserbase API to clean up stored authentication data.
-    // This prevents accumulation of unused contexts and ensures security cleanup.
-    const response = await axios.delete(`https://api.browserbase.com/v1/contexts/${contextId}`, {
-      headers: {
-        "X-BB-API-Key": process.env.BROWSERBASE_API_KEY,
-      },
-    });
-    console.log("Context deleted successfully (status:", response.status + ")");
+    const bb = new Browserbase({ apiKey: process.env.BROWSERBASE_API_KEY! });
+    // The generated SDK currently sets a JSON content type on DELETE, so send an
+    // explicit empty object instead of an empty body.
+    await bb.contexts.delete(contextId, { body: {} });
+    console.log("Context deleted successfully");
   } catch (error: unknown) {
-    const err = error as { response?: { data?: unknown }; message?: string };
-    console.error("Error deleting context:", err.response?.data || err.message || error);
+    console.error("Error deleting context:", error instanceof Error ? error.message : error);
   }
 }
 
