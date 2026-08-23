@@ -58,7 +58,7 @@ function resolveTemplatesApiUrl(explicit) {
   if (explicit && String(explicit).trim()) return String(explicit).trim();
   const fromEnv = process.env.TEMPLATES_API_URL;
   if (typeof fromEnv === "string" && fromEnv.trim()) return fromEnv.trim();
-  return "https://www.browserbase.com/website-api/templates";
+  return "https://www.browserbase.com/api/templates";
 }
 
 export async function fetchPlaygroundTypescriptTemplateEntries(apiUrl) {
