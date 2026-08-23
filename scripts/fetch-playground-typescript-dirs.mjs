@@ -11,7 +11,6 @@ const TYPESCRIPT_ROOT = path.join(ROOT, "typescript");
  */
 const TEMPLATE_FLAG_TO_TYPESCRIPT_DIR = new Map([
   ["google-trends-keywords", "google-trends"],
-  ["amazon-price-comparison", "amazon-global-price-comparison"],
   ["real-estate-license-verification", "license-verification"],
 ]);
 
