@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-from typing import Any
 from urllib.parse import urlencode
 
 from browserbase import AsyncBrowserbase
@@ -16,6 +15,21 @@ load_dotenv()
 
 BUSINESS_NAME = os.environ.get("BUSINESS_NAME", "Jalebi Street")
 DATASET_URL = "https://data.sfgov.org/resource/g8m3-pdis.json"
+
+
+class RawBusinessRecord(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    dba_name: str
+    ownership_name: str | None = None
+    ttxid: str
+    uniqueid: str | None = None
+    full_business_address: str | None = None
+    dba_start_date: str | None = None
+    dba_end_date: str | None = None
+    neighborhoods_analysis_boundaries: str | None = None
+    self_reported_naics_code: str | None = None
+    lic_code_description: str | None = None
 
 
 class BusinessInfo(BaseModel):
@@ -32,14 +46,6 @@ class BusinessInfo(BaseModel):
     naics_code: str | None
     naics_code_description: str | None
     source_url: str
-
-
-def string_field(record: dict[str, Any], *keys: str) -> str | None:
-    for key in keys:
-        value = record.get(key)
-        if isinstance(value, str) and value.strip():
-            return value.strip()
-    return None
 
 
 async def main() -> None:
@@ -60,15 +66,15 @@ async def main() -> None:
     if not isinstance(response.content, str):
         raise RuntimeError("Expected a raw JSON response from SF Open Data")
 
-    records = json.loads(response.content)
-    if not isinstance(records, list):
+    raw_records = json.loads(response.content)
+    if not isinstance(raw_records, list):
         raise RuntimeError("Expected SF Open Data to return a JSON array")
+    records = [RawBusinessRecord.model_validate(candidate) for candidate in raw_records]
     record = next(
         (
             candidate
             for candidate in records
-            if isinstance(candidate, dict)
-            and (string_field(candidate, "dba_name") or "").casefold() == BUSINESS_NAME.casefold()
+            if candidate.dba_name.casefold() == BUSINESS_NAME.casefold()
         ),
         None,
     )
@@ -76,22 +82,18 @@ async def main() -> None:
         raise RuntimeError(f"No exact DBA record found in {len(records)} returned records")
 
     business = BusinessInfo(
-        dba_name=string_field(record, "dba_name") or BUSINESS_NAME,
-        ownership_name=string_field(record, "ownership_name"),
-        business_account_number=string_field(record, "ttxid") or "",
-        location_id=string_field(record, "uniqueid"),
-        street_address=string_field(record, "full_business_address", "street_address"),
-        business_start_date=string_field(record, "dba_start_date", "business_start_date"),
-        business_end_date=string_field(record, "dba_end_date", "business_end_date"),
-        neighborhood=string_field(record, "neighborhoods_analysis_boundaries", "neighborhood"),
-        naics_code=string_field(record, "naics_code", "naic_code"),
-        naics_code_description=string_field(
-            record, "naics_code_description", "naic_code_description"
-        ),
+        dba_name=record.dba_name,
+        ownership_name=record.ownership_name,
+        business_account_number=record.ttxid,
+        location_id=record.uniqueid,
+        street_address=record.full_business_address,
+        business_start_date=record.dba_start_date,
+        business_end_date=record.dba_end_date,
+        neighborhood=record.neighborhoods_analysis_boundaries,
+        naics_code=record.self_reported_naics_code,
+        naics_code_description=record.lic_code_description,
         source_url=source_url,
     )
-    if not business.business_account_number:
-        raise RuntimeError("The exact record did not include its ttxid")
 
     print(business.model_dump_json(indent=2))
 

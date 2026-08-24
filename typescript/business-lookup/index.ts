@@ -7,7 +7,20 @@ import { z } from "zod/v4";
 const BUSINESS_NAME = process.env.BUSINESS_NAME ?? "Jalebi Street";
 const DATASET_URL = "https://data.sfgov.org/resource/g8m3-pdis.json";
 
-const RawRecordSchema = z.record(z.string(), z.unknown());
+const RawBusinessSchema = z
+  .object({
+    dba_name: z.string(),
+    ownership_name: z.string().optional(),
+    ttxid: z.string(),
+    uniqueid: z.string().optional(),
+    full_business_address: z.string().optional(),
+    dba_start_date: z.string().optional(),
+    dba_end_date: z.string().optional(),
+    neighborhoods_analysis_boundaries: z.string().optional(),
+    self_reported_naics_code: z.string().optional(),
+    lic_code_description: z.string().optional(),
+  })
+  .passthrough();
 const BusinessSchema = z.object({
   dbaName: z.string(),
   ownershipName: z.string().nullable(),
@@ -21,14 +34,6 @@ const BusinessSchema = z.object({
   naicsCodeDescription: z.string().nullable(),
   sourceUrl: z.string().url(),
 });
-
-function stringField(record: Record<string, unknown>, ...keys: string[]): string | null {
-  for (const key of keys) {
-    const value = record[key];
-    if (typeof value === "string" && value.trim()) return value.trim();
-  }
-  return null;
-}
 
 async function main(): Promise<void> {
   const apiKey = process.env.BROWSERBASE_API_KEY;
@@ -52,10 +57,10 @@ async function main(): Promise<void> {
     throw new Error("Expected a raw JSON response from SF Open Data");
   }
 
-  const records = z.array(RawRecordSchema).parse(JSON.parse(response.content));
+  const records = z.array(RawBusinessSchema).parse(JSON.parse(response.content));
   const record = records.find(
     (candidate) =>
-      stringField(candidate, "dba_name")?.localeCompare(BUSINESS_NAME, undefined, {
+      candidate.dba_name.localeCompare(BUSINESS_NAME, undefined, {
         sensitivity: "accent",
       }) === 0,
   );
@@ -64,16 +69,16 @@ async function main(): Promise<void> {
   }
 
   const business = BusinessSchema.parse({
-    dbaName: stringField(record, "dba_name"),
-    ownershipName: stringField(record, "ownership_name"),
-    businessAccountNumber: stringField(record, "ttxid"),
-    locationId: stringField(record, "uniqueid"),
-    streetAddress: stringField(record, "full_business_address", "street_address"),
-    businessStartDate: stringField(record, "dba_start_date", "business_start_date"),
-    businessEndDate: stringField(record, "dba_end_date", "business_end_date"),
-    neighborhood: stringField(record, "neighborhoods_analysis_boundaries", "neighborhood"),
-    naicsCode: stringField(record, "naics_code", "naic_code"),
-    naicsCodeDescription: stringField(record, "naics_code_description", "naic_code_description"),
+    dbaName: record.dba_name,
+    ownershipName: record.ownership_name ?? null,
+    businessAccountNumber: record.ttxid,
+    locationId: record.uniqueid ?? null,
+    streetAddress: record.full_business_address ?? null,
+    businessStartDate: record.dba_start_date ?? null,
+    businessEndDate: record.dba_end_date ?? null,
+    neighborhood: record.neighborhoods_analysis_boundaries ?? null,
+    naicsCode: record.self_reported_naics_code ?? null,
+    naicsCodeDescription: record.lic_code_description ?? null,
     sourceUrl: sourceUrl.toString(),
   });
 

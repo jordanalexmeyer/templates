@@ -23,12 +23,15 @@ async function main(): Promise<void> {
   const apiKey = process.env.BROWSERBASE_API_KEY;
   if (!apiKey) throw new Error("BROWSERBASE_API_KEY is required");
 
+  const calendarUrl = new URL(CALENDAR_URL);
+  calendarUrl.searchParams.set("Mode", String(CURRENT_YEAR));
+
   console.log(`Fetching the ${CURRENT_YEAR} Philadelphia Council calendar...`);
   const bb = new Browserbase({ apiKey });
   const schema = z.toJSONSchema(CouncilEventsSchema) as Record<string, unknown>;
   delete schema.$schema;
   const response = await bb.fetchAPI.create({
-    url: CALENDAR_URL,
+    url: calendarUrl.toString(),
     format: "json",
     schema,
     allowRedirects: true,
@@ -39,7 +42,9 @@ async function main(): Promise<void> {
 
   const result = CouncilEventsSchema.parse(response.content);
   console.log(`Found ${result.events.length} events for ${CURRENT_YEAR}.`);
-  console.log(JSON.stringify({ year: CURRENT_YEAR, sourceUrl: CALENDAR_URL, ...result }, null, 2));
+  console.log(
+    JSON.stringify({ year: CURRENT_YEAR, sourceUrl: calendarUrl.toString(), ...result }, null, 2),
+  );
 }
 
 main().catch((error) => {

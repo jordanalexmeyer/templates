@@ -30,6 +30,7 @@ async def main() -> None:
         raise RuntimeError("BROWSERBASE_API_KEY is required")
 
     year = datetime.now(UTC).year
+    calendar_url = f"{CALENDAR_URL}?Mode={year}"
     schema = CouncilEvents.model_json_schema()
     schema["properties"]["events"]["description"] = (
         f"Every {year} event displayed in the council calendar table"
@@ -38,7 +39,7 @@ async def main() -> None:
     print(f"Fetching the {year} Philadelphia Council calendar...")
     async with AsyncBrowserbase(api_key=api_key) as api:
         response = await api.fetch_api.create(
-            url=CALENDAR_URL,
+            url=calendar_url,
             format="json",
             schema=schema,
             allow_redirects=True,
@@ -50,7 +51,7 @@ async def main() -> None:
     print(f"Found {len(result.events)} events for {year}.")
     print(
         json.dumps(
-            {"year": year, "source_url": CALENDAR_URL, **result.model_dump(mode="json")},
+            {"year": year, "source_url": calendar_url, **result.model_dump(mode="json")},
             indent=2,
         )
     )

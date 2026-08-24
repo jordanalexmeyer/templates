@@ -22,7 +22,8 @@ Configuration:
 The JSON report includes the target status code, content type, HTML title, and any request error for
 each link. The process exits nonzero when at least one checked link fails.
 
-Browserbase Fetch does not execute page JavaScript. For sites whose links exist only after client-side
+Browserbase Fetch retrieves the raw HTTP response with a real-browser User-Agent; it does not create
+a browser session or execute page JavaScript. For sites whose links exist only after client-side
 rendering, use a Browserbase browser to discover the rendered links and keep Fetch API for the
 individual status checks.
 

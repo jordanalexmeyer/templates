@@ -15,8 +15,9 @@ uv run python main.py
 Set `TARGET_URL` to analyze another public landing page. The JSON output contains the source URL,
 the extracted value proposition, and an opener of at most nine words beginning with “Your.”
 
-Fetch API does not execute JavaScript. Use a browser fallback when the target's meaningful content is
-only available after client-side rendering.
+Fetch API retrieves the raw HTTP response with a real-browser User-Agent; it does not create a browser
+session or execute JavaScript. Use a browser fallback when the target's meaningful content is only
+available after client-side rendering.
 
 ## Resources
 
