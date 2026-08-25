@@ -15,7 +15,8 @@ pnpm start
 Set `BUSINESS_NAME` to query a different DBA. The default is `Jalebi Street`.
 
 The result includes the official source URL, business account and location identifiers, ownership,
-address, dates, neighborhood, and NAICS fields when the dataset provides them.
+address, dates, neighborhood, self-reported NAICS code, and license classification when the dataset
+provides them.
 
 ## Resources
 

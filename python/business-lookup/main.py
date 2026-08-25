@@ -29,6 +29,7 @@ class RawBusinessRecord(BaseModel):
     dba_end_date: str | None = None
     neighborhoods_analysis_boundaries: str | None = None
     self_reported_naics_code: str | None = None
+    lic: str | None = None
     lic_code_description: str | None = None
 
 
@@ -44,7 +45,8 @@ class BusinessInfo(BaseModel):
     business_end_date: str | None
     neighborhood: str | None
     naics_code: str | None
-    naics_code_description: str | None
+    license_code: str | None
+    license_code_description: str | None
     source_url: str
 
 
@@ -91,7 +93,8 @@ async def main() -> None:
         business_end_date=record.dba_end_date,
         neighborhood=record.neighborhoods_analysis_boundaries,
         naics_code=record.self_reported_naics_code,
-        naics_code_description=record.lic_code_description,
+        license_code=record.lic,
+        license_code_description=record.lic_code_description,
         source_url=source_url,
     )
 

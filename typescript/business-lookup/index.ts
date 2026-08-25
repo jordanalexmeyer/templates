@@ -18,6 +18,7 @@ const RawBusinessSchema = z
     dba_end_date: z.string().optional(),
     neighborhoods_analysis_boundaries: z.string().optional(),
     self_reported_naics_code: z.string().optional(),
+    lic: z.string().optional(),
     lic_code_description: z.string().optional(),
   })
   .passthrough();
@@ -31,7 +32,8 @@ const BusinessSchema = z.object({
   businessEndDate: z.string().nullable(),
   neighborhood: z.string().nullable(),
   naicsCode: z.string().nullable(),
-  naicsCodeDescription: z.string().nullable(),
+  licenseCode: z.string().nullable(),
+  licenseCodeDescription: z.string().nullable(),
   sourceUrl: z.string().url(),
 });
 
@@ -78,7 +80,8 @@ async function main(): Promise<void> {
     businessEndDate: record.dba_end_date ?? null,
     neighborhood: record.neighborhoods_analysis_boundaries ?? null,
     naicsCode: record.self_reported_naics_code ?? null,
-    naicsCodeDescription: record.lic_code_description ?? null,
+    licenseCode: record.lic ?? null,
+    licenseCodeDescription: record.lic_code_description ?? null,
     sourceUrl: sourceUrl.toString(),
   });
 
